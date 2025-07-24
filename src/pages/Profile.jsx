@@ -17,7 +17,7 @@ const getRandomCharacters = (arr, count) => {
   return shuffled.slice(0, count);
 };
 
-const Home = ({ user, incrementNotificationCount }) => {
+const Profile = ({ user, incrementNotificationCount }) => {
   /* ──────────────────────── Post state ──────────────────────────── */
   const [posts, setPosts] = useState([]);
   const [likeModal, setLikeModal] = useState({
@@ -550,4 +550,4 @@ const Home = ({ user, incrementNotificationCount }) => {
   );
 };
 
-export default Home;
+export default Profile;

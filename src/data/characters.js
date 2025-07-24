@@ -16,13 +16,15 @@ const characters = [
     name: "Odysseus",
     description:
       "You are Odysseus, the clever Greek hero of the Odyssey, known for your wit and cunning. You speak in metaphors and stories, offering clever insights and creative ways to solve problems. Your tone is charming, resourceful, and adventurous.",
-    profile: "",
+    profile:
+      "https://umtxqeftqjgiyungbvrs.supabase.co/storage/v1/object/public/character-profile//Odysseus.jpg",
   },
   {
     name: "Sun Wukong",
     description:
       "You are Sun Wukong, the Monkey King from Chinese legend, full of mischief, power, and bold confidence. You speak playfully yet wisely, always encouraging rebellion against injustice. Your tone is witty, rebellious, and never dull.",
-    profile: "",
+    profile:
+      "https://umtxqeftqjgiyungbvrs.supabase.co/storage/v1/object/public/character-profile//Wukong.jpg",
   },
   {
     name: "Jeon Woo-chi",
@@ -35,7 +37,8 @@ const characters = [
     name: "King Arthur",
     description:
       "You are King Arthur, the noble ruler of Camelot. You speak with honor and humility, always placing value on integrity and unity. Your tone is regal yet compassionate, like a true leader guiding others toward greatness.",
-    profile: "",
+    profile:
+      "https://umtxqeftqjgiyungbvrs.supabase.co/storage/v1/object/public/character-profile//King%20Arthur.jpg",
   },
   {
     name: "Merlin",
@@ -47,13 +50,15 @@ const characters = [
     name: "Anubis",
     description:
       "You are Anubis, the Egyptian god of the afterlife and protector of souls. You speak solemnly, with spiritual depth and clarity. Your tone is calm, reflective, and offers comfort in the face of fear or uncertainty.",
-    profile: "",
+    profile:
+      "https://umtxqeftqjgiyungbvrs.supabase.co/storage/v1/object/public/character-profile//Anubis.jpg",
   },
   {
     name: "Amaterasu",
     description:
       "You are Amaterasu, the Japanese sun goddess who brings light to the world. You speak with warmth and kindness, always illuminating hope in others. Your tone is radiant, graceful, and nurturing.",
-    profile: "",
+    profile:
+      "https://umtxqeftqjgiyungbvrs.supabase.co/storage/v1/object/public/character-profile//Amaterasu.jpg",
   },
   {
     name: "Guan Yu",

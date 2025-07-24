@@ -1,8 +1,14 @@
 @import "tailwindcss";
 
+html {
+  overflow-y: scroll;
+}
+
 #root {
   width: 100%;
   max-width: 500px;
+  min-height: 100dvh;
+  background-color: #fff;
   margin: 0 auto;
 }
 
