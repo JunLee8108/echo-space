@@ -85,7 +85,7 @@ const BottomNavbar = () => {
 
   return (
     <div className="fixed w-full max-w-[500px] mx-auto bottom-0 left-0 right-0 z-50 bg-white border-t border-stone-100">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto py-2">
         <nav className="flex items-center justify-around h-14 px-4">
           {tabs.map((tab) => {
             const isActive =
@@ -97,7 +97,7 @@ const BottomNavbar = () => {
               <button
                 key={tab.id}
                 onClick={() => navigate(tab.path)}
-                className={`relative p-2 rounded-xl transition-all duration-200
+                className={`relative p-3 rounded-xl transition-all duration-200
                   ${
                     tab.special
                       ? "bg-gradient-to-br from-stone-700 to-stone-900 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
