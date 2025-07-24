@@ -1,7 +1,6 @@
-// src/services/postService.js
 import supabase from "./supabaseClient";
 
-// 게시글 + 댓글 + 좋아요 캐릭터 저장
+// 게시글 + 댓글 + 좋아요 캐릭터 저장 (SAVE)
 export async function savePostWithCommentsAndLikes(
   post,
   comments,
@@ -68,7 +67,25 @@ export async function savePostWithCommentsAndLikes(
   return postId;
 }
 
-// Post + 연결된 댓글 + 좋아요 누른 캐릭터까지 모두 불러오기
+// DELETE
+export async function deletePostById(postId, uid) {
+  if (!uid) throw new Error("user_id가 없습니다.");
+
+  // RLS 정책이 'user_id = auth.uid()' 로 걸려 있으면
+  // uid 체크 없이 delete 만 호출해도 안전합니다.
+  const { error } = await supabase
+    .from("Post")
+    .delete()
+    .eq("id", postId)
+    .eq("user_id", uid); // 안전망 한 번 더
+
+  if (error) {
+    console.error("❌ Post 삭제 실패:", error.message);
+    throw error;
+  }
+}
+
+// Post + 연결된 댓글 + 좋아요 누른 캐릭터까지 모두 불러오기 (FETCH)
 export async function fetchPostsWithCommentsAndLikes(uid) {
   if (!uid) throw new Error("user_id가 없습니다.");
 

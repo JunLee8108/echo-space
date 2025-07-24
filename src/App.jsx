@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from "react";
+import Footer from "./components/layout/Footer";
 import PostForm from "./components/PostForm";
 import AuthForm from "./components/AuthForm";
 import { fetchAIComment } from "./services/openaiService";
 import characters from "./data/characters";
 import {
   savePostWithCommentsAndLikes,
+  deletePostById,
   fetchPostsWithCommentsAndLikes,
 } from "./services/postService";
 import supabase from "./services/supabaseClient";
 import { getCurrentUser } from "./services/authService";
+
+import "./App.css";
 
 const getRandomCharacters = (arr, count) => {
   const shuffled = [...arr].sort(() => 0.5 - Math.random());
@@ -20,7 +24,7 @@ const App = () => {
   const [user, setUser] = useState(null); // 로그인된 유저
   const [loadingUser, setLoadingUser] = useState(true);
 
-  /* ──────────────────────────── Post state ──────────────────────────── */
+  /* ──────────────────────── Post state ──────────────────────────── */
   const [posts, setPosts] = useState([]);
   const [likeModal, setLikeModal] = useState({
     show: false,
@@ -31,6 +35,8 @@ const App = () => {
     show: false,
     postId: null,
   });
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [loadingPosts, setLoadingPosts] = useState(new Set()); // Track loading posts
   const modalRef = useRef(null);
   const optionsModalRef = useRef(null);
 
@@ -63,14 +69,6 @@ const App = () => {
     setPosts(data);
   };
 
-  // useEffect(() => {
-  //   const loadPosts = async () => {
-  //     const data = await fetchPostsWithCommentsAndLikes();
-  //     setPosts(data);
-  //   };
-  //   loadPosts();
-  // }, []);
-
   // Close modals when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -100,44 +98,83 @@ const App = () => {
   }, [likeModal.show, optionsModal.show]);
 
   const handlePostSubmit = async (post) => {
+    const tempId = Date.now();
+
+    // 1. Immediately add the post without comments/likes
+    const newPost = {
+      ...post,
+      id: tempId,
+      Comment: [],
+      Post_Like: [],
+      like: 0,
+      created_at: new Date().toISOString(),
+    };
+
+    setPosts((prev) => [newPost, ...prev]);
+    setLoadingPosts((prev) => new Set([...prev, tempId]));
+
+    // 2. Generate AI comments and likes in the background
     const commentCharacters = getRandomCharacters(characters, 2);
     const likeCharacters = getRandomCharacters(
       characters,
       Math.floor(Math.random() * 5) + 1
     );
 
-    const comments = await Promise.all(
-      commentCharacters.map(async (char) => {
-        const reply = await fetchAIComment(char, post.title, post.content);
-        return {
-          character: char,
-          message: reply,
-        };
-      })
-    );
-
     try {
-      await savePostWithCommentsAndLikes(post, comments, likeCharacters);
-    } catch {
-      alert("저장 중 오류가 발생했습니다.");
-      return;
-    }
+      const comments = await Promise.all(
+        commentCharacters.map(async (char) => {
+          const reply = await fetchAIComment(char, post.title, post.content);
+          return {
+            character: char,
+            message: reply,
+          };
+        })
+      );
 
-    // 새 Post + 댓글 + 좋아요를 추가
-    setPosts((prev) => [
-      {
-        ...post,
-        id: Date.now(), // 임시 ID (추후 reload 필요)
-        Comment: comments.map((c) => ({
-          character: c.character.name,
-          message: c.message,
-        })),
-        Post_Like: likeCharacters.map((c) => ({ character: c.name })),
-        like: likeCharacters.length,
-        created_at: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
+      // 3. Save to database
+      const savedPostId = await savePostWithCommentsAndLikes(
+        post,
+        comments,
+        likeCharacters
+      );
+
+      // 4. Update the post with comments and likes with animation
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === tempId
+            ? {
+                ...p,
+                id: savedPostId || tempId,
+                Comment: comments.map((c) => ({
+                  character: c.character.name,
+                  message: c.message,
+                })),
+                Post_Like: likeCharacters.map((c) => ({ character: c.name })),
+                like: likeCharacters.length,
+              }
+            : p
+        )
+      );
+
+      // 5. Show notification
+      setNotificationCount((prev) => prev + 1);
+
+      // Clear notification after 5 seconds
+      setTimeout(() => {
+        setNotificationCount((prev) => Math.max(0, prev - 1));
+      }, 5000);
+    } catch (error) {
+      console.error("Error processing post:", error);
+      alert("저장 중 오류가 발생했습니다.");
+      // Remove the post on error
+      setPosts((prev) => prev.filter((p) => p.id !== tempId));
+    } finally {
+      setLoadingPosts((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(tempId);
+        return newSet;
+      });
+    }
   };
 
   const formatRelativeTime = (isoString) => {
@@ -189,10 +226,15 @@ const App = () => {
     });
   };
 
-  const handleDeletePost = (postId) => {
-    // 포스트 삭제 로직
-    setPosts((prev) => prev.filter((post) => post.id !== postId));
-    setOptionsModal({ show: false, postId: null });
+  const handleDeletePost = async (postId) => {
+    try {
+      await deletePostById(postId, user.id); // ← DB 삭제
+      setPosts((prev) => prev.filter((p) => p.id !== postId)); // UI 갱신
+      setOptionsModal({ show: false, postId: null });
+    } catch (err) {
+      console.log(err);
+      alert("삭제 중 오류가 발생했습니다.");
+    }
   };
 
   if (loadingUser) return <div className="p-8 text-center">Loading…</div>;
@@ -244,7 +286,7 @@ const App = () => {
                 />
               </svg>
             </button>
-            <button className="p-2 rounded-lg hover:bg-stone-50 transition-colors">
+            <button className="p-2 rounded-lg hover:bg-stone-50 transition-colors relative">
               <svg
                 className="w-5 h-5 text-stone-600"
                 fill="none"
@@ -258,6 +300,11 @@ const App = () => {
                   d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                 />
               </svg>
+              {notificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                  {notificationCount}
+                </span>
+              )}
             </button>
           </nav>
         </div>
@@ -300,178 +347,234 @@ const App = () => {
               </p>
             </div>
           ) : (
-            posts.map((post) => (
-              <article
-                key={post.id}
-                className="bg-white rounded-2xl border border-stone-100 overflow-hidden hover:border-stone-200 transition-all duration-200"
-              >
-                {/* Post Header */}
-                <div className="px-6 pt-6 pb-2 flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-stone-600 to-stone-800 rounded-full flex items-center justify-center">
-                      <span className="text-white font-medium">
-                        {post.title.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-stone-900">Anonymous</h3>
-                      <p className="text-xs text-stone-500">
-                        {formatRelativeTime(post.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="relative">
-                    <button
-                      className="options-button p-2 hover:bg-stone-50 rounded-lg transition-colors"
-                      onClick={(e) => handleOptionsClick(e, post.id)}
-                    >
-                      <svg
-                        className="w-5 h-5 text-stone-400"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                        />
-                      </svg>
-                    </button>
+            posts.map((post) => {
+              const isLoading = loadingPosts.has(post.id);
 
-                    {/* Options Modal */}
-                    {optionsModal.show && optionsModal.postId === post.id && (
-                      <div
-                        ref={optionsModalRef}
-                        className="absolute top-full mt-2 right-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 py-2 min-w-[160px]"
-                      >
-                        <button
-                          onClick={() => handleDeletePost(post.id)}
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                          <span>Delete</span>
-                        </button>
-                        {/* 추가 옵션들을 여기에 넣을 수 있습니다 */}
+              return (
+                <article
+                  key={post.id}
+                  className={`bg-white rounded-2xl border border-stone-100 overflow-hidden hover:border-stone-200 transition-all duration-200 ${
+                    isLoading ? "animate-pulse" : ""
+                  }`}
+                >
+                  {/* Post Header */}
+                  <div className="px-6 pt-6 pb-2 flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-stone-600 to-stone-800 rounded-full flex items-center justify-center">
+                        <span className="text-white font-medium">
+                          {post.title.charAt(0).toUpperCase()}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Post Content */}
-                <div className="px-6 pb-4">
-                  <h2 className="text-lg font-semibold text-stone-900 mb-2">
-                    {post.title}
-                  </h2>
-                  <p className="text-stone-700 leading-relaxed whitespace-pre-wrap">
-                    {post.content}
-                  </p>
-                </div>
-
-                {/* Comments Section */}
-                {post.Comment && post.Comment.length > 0 && (
-                  <div className="px-6 pb-3">
-                    <div className="border-t border-stone-100 pt-4 space-y-3">
-                      {post.Comment.map((c, idx) => (
-                        <div key={idx} className="flex items-start space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-stone-500 to-stone-700 rounded-full flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-xs font-medium">
-                              {c.character?.charAt(0) || "A"}
-                            </span>
-                          </div>
-                          <div className="flex-1 bg-stone-50 rounded-2xl px-4 py-2">
-                            <p className="text-sm font-medium text-stone-800 mb-0.5">
-                              {c.character || "AI Friend"}
-                            </p>
-                            <p className="text-sm text-stone-600">
-                              {c.message}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                      <div>
+                        <h3 className="font-medium text-stone-900">
+                          {user.user_metadata.display_name}
+                        </h3>
+                        <p className="text-xs text-stone-500">
+                          {formatRelativeTime(post.created_at)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {/* Post Actions - Fixed Icons */}
-                <div className="px-6 py-3 border-t border-stone-100 flex items-center justify-between">
-                  <div className="flex items-center space-x-1">
                     <div className="relative">
                       <button
-                        className="like-button flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors"
-                        onClick={(e) =>
-                          handleLikeClick(e, post.id, post.Post_Like)
-                        }
+                        className="options-button p-2 hover:bg-stone-50 rounded-lg transition-colors"
+                        onClick={(e) => handleOptionsClick(e, post.id)}
                       >
                         <svg
-                          className="w-5 h-5 text-stone-600"
-                          fill={post.like > 0 ? "#FF8DA1" : "none"}
-                          stroke={post.like > 0 ? "#FF8DA1" : "currentColor"}
+                          className="w-5 h-5 text-stone-400"
+                          fill="none"
+                          stroke="currentColor"
                           strokeWidth="2"
                           viewBox="0 0 24 24"
                         >
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                            d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
                           />
                         </svg>
-                        <span className="text-sm text-stone-600">
-                          {post.like > 0 ? post.like : "Like"}
-                        </span>
                       </button>
 
-                      {/* Like Modal - positioned relative to button */}
-                      {likeModal.show && likeModal.postId === post.id && (
+                      {/* Options Modal */}
+                      {optionsModal.show && optionsModal.postId === post.id && (
                         <div
-                          ref={modalRef}
-                          className="absolute bottom-full mb-2 left-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 p-4 min-w-[200px] max-w-xs"
+                          ref={optionsModalRef}
+                          className="absolute top-full mt-2 right-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 py-2 min-w-[160px]"
                         >
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-semibold text-stone-900 text-sm">
-                              Likes
-                            </h3>
-                            <span className="text-xs text-stone-500">
-                              {likeModal.likes.length}
-                            </span>
-                          </div>
-                          <div className="space-y-2 max-h-60 overflow-y-auto">
-                            {likeModal.likes.map((like, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center space-x-2 py-1"
-                              >
-                                <div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center flex-shrink-0">
-                                  <span className="text-white text-xs font-medium">
-                                    {like.character?.charAt(0) || "?"}
-                                  </span>
-                                </div>
-                                <span className="text-sm text-stone-700">
-                                  {like.character || "Unknown"}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                          {/* 모달 아래 화살표 */}
-                          <div className="absolute -bottom-2 left-6 w-4 h-4 bg-white border-b border-r border-stone-200 transform rotate-45"></div>
+                          <button
+                            onClick={() => handleDeletePost(post.id)}
+                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                            <span>Delete</span>
+                          </button>
+                          {/* 추가 옵션들을 여기에 넣을 수 있습니다 */}
                         </div>
                       )}
                     </div>
+                  </div>
 
-                    <button className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors">
+                  {/* Post Content */}
+                  <div className="px-6 pb-4">
+                    <h2 className="text-lg font-semibold text-stone-900 mb-2">
+                      {post.title}
+                    </h2>
+                    <p className="text-stone-700 leading-relaxed whitespace-pre-wrap">
+                      {post.content}
+                    </p>
+                  </div>
+
+                  {/* Loading indicator for AI responses */}
+                  {isLoading && post.Comment.length === 0 && (
+                    <div className="px-6 pb-3">
+                      <div className="border-t border-stone-100 pt-4">
+                        <div className="flex items-center space-x-2 text-stone-400">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-stone-400"></div>
+                          <span className="text-sm">
+                            AI friends are thinking...
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Comments Section with fade-in animation */}
+                  {post.Comment && post.Comment.length > 0 && (
+                    <div className="px-6 pb-3 animate-fadeIn">
+                      <div className="border-t border-stone-100 pt-4 space-y-3">
+                        {post.Comment.map((c, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-start space-x-3 animate-slideIn"
+                            style={{ animationDelay: `${idx * 100}ms` }}
+                          >
+                            <div className="w-8 h-8 bg-gradient-to-br from-stone-500 to-stone-700 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-white text-xs font-medium">
+                                {c.character?.charAt(0) || "A"}
+                              </span>
+                            </div>
+                            <div className="flex-1 bg-stone-50 rounded-2xl px-4 py-2">
+                              <p className="text-sm font-medium text-stone-800 mb-0.5">
+                                {c.character || "AI Friend"}
+                              </p>
+                              <p className="text-sm text-stone-600">
+                                {c.message}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Post Actions - Fixed Icons */}
+                  <div className="px-6 py-3 border-t border-stone-100 flex items-center justify-between">
+                    <div className="flex items-center space-x-1">
+                      <div className="relative">
+                        <button
+                          className="like-button flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors"
+                          onClick={(e) =>
+                            handleLikeClick(e, post.id, post.Post_Like)
+                          }
+                          disabled={isLoading}
+                        >
+                          <svg
+                            className={`w-5 h-5 ${
+                              isLoading ? "text-stone-300" : "text-stone-600"
+                            }`}
+                            fill={
+                              post.like > 0 && !isLoading ? "#FF8DA1" : "none"
+                            }
+                            stroke={
+                              post.like > 0 && !isLoading
+                                ? "#FF8DA1"
+                                : "currentColor"
+                            }
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                            />
+                          </svg>
+                          <span
+                            className={`text-sm ${
+                              isLoading ? "text-stone-300" : "text-stone-600"
+                            }`}
+                          >
+                            {post.like > 0 ? post.like : "Like"}
+                          </span>
+                        </button>
+
+                        {/* Like Modal - positioned relative to button */}
+                        {likeModal.show && likeModal.postId === post.id && (
+                          <div
+                            ref={modalRef}
+                            className="absolute bottom-full mb-2 left-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 p-4 min-w-[200px] max-w-xs"
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="font-semibold text-stone-900 text-sm">
+                                Likes
+                              </h3>
+                              <span className="text-xs text-stone-500">
+                                {likeModal.likes.length}
+                              </span>
+                            </div>
+                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                              {likeModal.likes.map((like, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center space-x-2 py-1"
+                                >
+                                  <div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <span className="text-white text-xs font-medium">
+                                      {like.character?.charAt(0) || "?"}
+                                    </span>
+                                  </div>
+                                  <span className="text-sm text-stone-700">
+                                    {like.character || "Unknown"}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                            {/* 모달 아래 화살표 */}
+                            <div className="absolute -bottom-2 left-6 w-4 h-4 bg-white border-b border-r border-stone-200 transform rotate-45"></div>
+                          </div>
+                        )}
+                      </div>
+
+                      <button className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors">
+                        <svg
+                          className="w-5 h-5 text-stone-600"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                          />
+                        </svg>
+                        <span className="text-sm text-stone-600">Comment</span>
+                      </button>
+                    </div>
+
+                    <button className="p-2 rounded-lg hover:bg-stone-50 transition-colors">
                       <svg
                         className="w-5 h-5 text-stone-600"
                         fill="none"
@@ -482,34 +585,19 @@ const App = () => {
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
                         />
                       </svg>
-                      <span className="text-sm text-stone-600">Comment</span>
                     </button>
                   </div>
-
-                  <button className="p-2 rounded-lg hover:bg-stone-50 transition-colors">
-                    <svg
-                      className="w-5 h-5 text-stone-600"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </article>
-            ))
+                </article>
+              );
+            })
           )}
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 };

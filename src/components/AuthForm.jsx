@@ -1,10 +1,11 @@
-// src/components/AuthForm.jsx
+// src/components/AuthForm.jsx - Enhanced with Display Name
 import { useState, useEffect } from "react";
 import supabase from "../services/supabaseClient";
 
 const AuthForm = ({ onAuthSuccess }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState(""); // 새로 추가
   const [mode, setMode] = useState("signIn");
   const [isLoading, setIsLoading] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -30,17 +31,16 @@ const AuthForm = ({ onAuthSuccess }) => {
         password,
       }));
     } else {
-      ({ data, error } = await supabase.auth.signUp(
-        {
-          email,
-          password,
-        },
-        {
+      // 회원가입 시 display_name 포함
+      ({ data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
           data: {
-            username: email.split("@")[0],
+            display_name: displayName.trim() || email.split("@")[0],
           },
-        }
-      ));
+        },
+      }));
 
       // If sign up is successful
       if (!error && data) {
@@ -48,6 +48,7 @@ const AuthForm = ({ onAuthSuccess }) => {
         setShowSuccessModal(true);
         setEmail("");
         setPassword("");
+        setDisplayName(""); // 초기화
         // Switch to sign in mode after a short delay
         setTimeout(() => {
           handleModeToggle("signIn");
@@ -64,9 +65,7 @@ const AuthForm = ({ onAuthSuccess }) => {
 
   const handleModeToggle = (newMode) => {
     setIsTransitioning(true);
-    setTimeout(() => {
-      setMode(newMode);
-    }, 150);
+    setMode(newMode);
   };
 
   return (
@@ -97,9 +96,7 @@ const AuthForm = ({ onAuthSuccess }) => {
 
         {/* Auth Form Card */}
         <div
-          className={`bg-white rounded-2xl shadow-xl border border-stone-100 p-8 transition-all duration-300 ${
-            isTransitioning ? "scale-95 opacity-90" : "scale-100 opacity-100"
-          }`}
+          className={`bg-white rounded-2xl shadow-xl border border-stone-100 p-8 transition-all duration-300 `}
         >
           <form onSubmit={handleAuth} className="space-y-5">
             {/* Mode Indicator */}
@@ -129,6 +126,40 @@ const AuthForm = ({ onAuthSuccess }) => {
                 </button>
               </div>
             </div>
+
+            {/* Display Name Input - 회원가입 모드에서만 표시 */}
+            {mode === "signUp" && (
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-2">
+                  Display Name
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="How others will see you"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="w-full px-4 py-3 pl-11 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:border-transparent transition-all"
+                  />
+                  <svg
+                    className="absolute left-4 top-3.5 w-4 h-4 text-stone-400"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                </div>
+                <p className="text-xs text-stone-500 mt-1">
+                  Leave blank to use your email username
+                </p>
+              </div>
+            )}
 
             {/* Email Input */}
             <div>
