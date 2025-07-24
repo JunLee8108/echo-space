@@ -82,7 +82,7 @@ function App() {
         <Header notificationCount={notificationCount} />
 
         {/* Main Content */}
-        <main className="pb-16">
+        <main className="pb-20">
           {" "}
           {/* padding-bottom for BottomNavbar */}
           <Routes>
