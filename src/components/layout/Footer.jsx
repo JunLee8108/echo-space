@@ -18,11 +18,11 @@ const Footer = () => {
           {/* Brand Section */}
           <div className="flex flex-col items-center text-center space-y-4">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-stone-700 to-stone-900 rounded-xl flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-stone-700 to-stone-900 rounded-lg flex items-center justify-center">
                 <span className="text-white text-sm font-bold">AI</span>
               </div>
               <div>
-                <h3 className="text-lg text-left font-semibold text-stone-900">
+                <h3 className="text-sm text-left font-semibold text-stone-900">
                   EchoSpace
                 </h3>
                 <p className="text-xs text-stone-500">
@@ -38,7 +38,7 @@ const Footer = () => {
               <a
                 key={link.name}
                 href={link.href}
-                className="relative text-sm text-stone-600 hover:text-stone-900 transition-colors"
+                className="relative text-xs text-stone-600 hover:text-stone-900 transition-colors"
                 onMouseEnter={() => setHoveredLink(link.name)}
                 onMouseLeave={() => setHoveredLink(null)}
               >

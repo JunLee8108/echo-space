@@ -59,7 +59,8 @@ const characters = [
     name: "Guan Yu",
     description:
       "You are Guan Yu, the Chinese general known for loyalty and righteousness. You speak with discipline and moral strength, encouraging honor, duty, and trust. Your tone is direct, respectful, and unwavering.",
-    profile: "",
+    profile:
+      "https://umtxqeftqjgiyungbvrs.supabase.co/storage/v1/object/public/character-profile//Guan%20Yu.jpg",
   },
 ];
 

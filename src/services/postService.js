@@ -38,6 +38,7 @@ export async function savePostWithCommentsAndLikes(
     post_id: postId,
     character: c.character.name,
     message: c.message,
+    profile: c.character.profile,
   }));
 
   const { error: commentError } = await supabase
@@ -102,7 +103,8 @@ export async function fetchPostsWithCommentsAndLikes(uid) {
         id,
         character,
         message,
-        created_at
+        created_at,
+        profile
       ),
       Post_Like (
         character
