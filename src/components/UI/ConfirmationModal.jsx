@@ -60,7 +60,7 @@ const ConfirmationModal = ({
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          className="bg-white rounded-2xl shadow-2xl max-w-sm w-full transform transition-all duration-200 scale-100"
+          className="bg-white w-[90%] max-w-[350px] rounded-2xl shadow-2xl transform transition-all duration-200 scale-100"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-6">
