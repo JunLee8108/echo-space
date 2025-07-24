@@ -60,13 +60,34 @@ const App = () => {
         else setPosts([]);
       }
     );
+
     return () => listener.subscription.unsubscribe();
   }, []);
 
   /* ───────── ③ 현재 로그인 유저의 게시글만 가져오기 ───────── */
   const loadPostsOfUser = async (uid) => {
-    const data = await fetchPostsWithCommentsAndLikes(uid); // ← user_id 기준 필터
-    setPosts(data);
+    const data = await fetchPostsWithCommentsAndLikes(uid);
+
+    // characters 배열을 Map으로 변환 (O(1) 룩업을 위해)
+    const characterMap = new Map(
+      characters.map((char) => [char.name, char.profile])
+    );
+
+    const postsWithProfiles = data.map((post) => ({
+      ...post,
+      Comment:
+        post.Comment?.map((comment) => ({
+          ...comment,
+          characterProfile: characterMap.get(comment.character) || null,
+        })) || [],
+      Post_Like:
+        post.Post_Like?.map((like) => ({
+          ...like,
+          characterProfile: characterMap.get(like.character) || null,
+        })) || [],
+    }));
+
+    setPosts(postsWithProfiles);
   };
 
   // Close modals when clicking outside
@@ -147,6 +168,7 @@ const App = () => {
                 id: savedPostId || tempId,
                 Comment: comments.map((c) => ({
                   character: c.character.name,
+                  characterProfile: c.character.profile,
                   message: c.message,
                 })),
                 Post_Like: likeCharacters.map((c) => ({ character: c.name })),
@@ -459,11 +481,29 @@ const App = () => {
                             className="flex items-start space-x-3 animate-slideIn"
                             style={{ animationDelay: `${idx * 100}ms` }}
                           >
-                            <div className="w-8 h-8 bg-gradient-to-br from-stone-500 to-stone-700 rounded-full flex items-center justify-center flex-shrink-0">
+                            {c.characterProfile ? (
+                              <img
+                                src={c.characterProfile}
+                                alt={c.character}
+                                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                onError={(e) => {
+                                  // 이미지 로드 실패 시 폴백
+                                  e.target.style.display = "none";
+                                  e.target.nextSibling.style.display = "flex";
+                                }}
+                              />
+                            ) : null}
+                            <div
+                              className="w-8 h-8 bg-gradient-to-br from-stone-500 to-stone-700 rounded-full flex items-center justify-center flex-shrink-0"
+                              style={{
+                                display: c.characterProfile ? "none" : "flex",
+                              }}
+                            >
                               <span className="text-white text-xs font-medium">
                                 {c.character?.charAt(0) || "A"}
                               </span>
                             </div>
+
                             <div className="flex-1 bg-stone-50 rounded-2xl px-4 py-2">
                               <p className="text-sm font-medium text-stone-800 mb-0.5">
                                 {c.character || "AI Friend"}
