@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useCharacters } from "../components/hooks/useCharacters";
 
+import ProfileModal from "../components/UI/ProfileModal";
+
 const Profile = ({ user }) => {
   const {
     characters,
@@ -24,6 +26,12 @@ const Profile = ({ user }) => {
 
   const displayName =
     user?.user_metadata?.display_name || user?.email || "User";
+
+  /* ──────────────────────── Modal state ──────────────────────────── */
+  const [profileModal, setProfileModal] = useState({
+    show: false,
+    character: null,
+  });
 
   // Show loading state if context is still loading
   if (contextLoading) {
@@ -87,7 +95,19 @@ const Profile = ({ user }) => {
                           <img
                             src={character.avatar_url}
                             alt={character.name}
-                            className="w-14 h-14 rounded-2xl object-cover shadow-sm"
+                            className="w-14 h-14 cursor-pointer rounded-2xl object-cover shadow-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProfileModal({
+                                show: true,
+                                character: {
+                                  name: character.name,
+                                  avatar_url: character.avatar_url,
+                                  prompt_description:
+                                    character.prompt_description,
+                                },
+                              });
+                            }}
                             onError={(e) => {
                               e.target.style.display = "none";
                               e.target.nextSibling.style.display = "flex";
@@ -204,6 +224,12 @@ const Profile = ({ user }) => {
           </div>
         </div>
       </div>
+
+      <ProfileModal
+        isOpen={profileModal.show}
+        onClose={() => setProfileModal({ show: false, character: null })}
+        character={profileModal.character}
+      />
     </div>
   );
 };

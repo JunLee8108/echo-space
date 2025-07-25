@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Modal
 import ConfirmationModal from "../components/UI/ConfirmationModal";
@@ -15,11 +16,10 @@ import {
 import "./Home.css";
 
 const Home = ({ user, incrementNotificationCount }) => {
-  /* ─────────────── Use Character Context ─────────────── */
+  const queryClient = useQueryClient();
   const { getRandomCharacters } = useCharacters();
 
-  /* ──────────────────────── Post state ──────────────────────────── */
-  const [posts, setPosts] = useState([]);
+  /* ──────────────────────── Modal state ──────────────────────────── */
   const [likeModal, setLikeModal] = useState({
     show: false,
     likes: [],
@@ -29,11 +29,6 @@ const Home = ({ user, incrementNotificationCount }) => {
     show: false,
     postId: null,
   });
-  const [loadingPosts, setLoadingPosts] = useState(new Set()); // Track loading posts
-  const modalRef = useRef(null);
-  const optionsModalRef = useRef(null);
-
-  /* ──────────────────────── Modal state ──────────────────────────── */
   const [confirmDelete, setConfirmDelete] = useState({
     show: false,
     postId: null,
@@ -44,23 +39,156 @@ const Home = ({ user, incrementNotificationCount }) => {
     character: null,
   });
 
-  /* ───────── Load posts when user changes ───────── */
-  useEffect(() => {
-    if (user) {
-      loadPosts(user.id);
-    }
-  }, [user]);
+  const modalRef = useRef(null);
+  const optionsModalRef = useRef(null);
 
-  /* ───────── Load posts ───────── */
-  const loadPosts = async (uid) => {
-    const postData = await fetchPostsWithCommentsAndLikes(uid);
-    setPosts(postData);
-  };
+  /* ───────── React Query: Fetch Posts ───────── */
+  const {
+    data: posts = [],
+    isLoading,
+    error,
+    isStale,
+  } = useQuery({
+    queryKey: ["posts", user?.id],
+    queryFn: () => fetchPostsWithCommentsAndLikes(user.id),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000, // 5분간 fresh 상태 유지
+    cacheTime: 10 * 60 * 1000, // 10분간 캐시 보관
+    refetchOnWindowFocus: false, // 윈도우 포커스 시 자동 refetch 비활성화
+    refetchOnReconnect: true, // 네트워크 재연결 시 refetch
+  });
+
+  /* ───────── React Query: Create Post Mutation ───────── */
+  const createPostMutation = useMutation({
+    mutationFn: async (post) => {
+      const tempId = `temp-${Date.now()}`;
+      const commentCharacters = getRandomCharacters(2);
+      const likeCharacters = getRandomCharacters(
+        Math.floor(Math.random() * 5) + 1
+      );
+
+      // AI 댓글 생성
+      const comments = await Promise.all(
+        commentCharacters.map(async (char) => {
+          const reply = await fetchAIComment(char, post.title, post.content);
+          return {
+            character: char,
+            message: reply,
+          };
+        })
+      );
+
+      // DB에 저장
+      const savedPostId = await savePostWithCommentsAndLikes(
+        post,
+        comments,
+        likeCharacters
+      );
+
+      return {
+        tempId,
+        savedPostId,
+        post,
+        comments,
+        likeCharacters,
+      };
+    },
+    onMutate: async (post) => {
+      // 이전 쿼리 취소
+      await queryClient.cancelQueries({ queryKey: ["posts", user?.id] });
+
+      // 이전 데이터 스냅샷
+      const previousPosts = queryClient.getQueryData(["posts", user?.id]);
+
+      // 낙관적 업데이트: 즉시 포스트 추가 (로딩 상태로)
+      const tempId = `temp-${Date.now()}`;
+      const optimisticPost = {
+        ...post,
+        id: tempId,
+        Comment: [],
+        Post_Like: [],
+        like: 0,
+        created_at: new Date().toISOString(),
+        isLoading: true, // 로딩 표시를 위한 플래그
+      };
+
+      queryClient.setQueryData(["posts", user?.id], (old) => [
+        optimisticPost,
+        ...(old || []),
+      ]);
+
+      return { previousPosts, tempId };
+    },
+    onSuccess: (data, variables, context) => {
+      // 성공 시 실제 데이터로 업데이트
+      queryClient.setQueryData(["posts", user?.id], (old) =>
+        old.map((post) =>
+          post.id === context.tempId
+            ? {
+                ...data.post,
+                id: data.savedPostId,
+                Comment: data.comments.map((c) => ({
+                  character: c.character.name,
+                  avatar_url: c.character.avatar_url,
+                  message: c.message,
+                  prompt_description: c.character.prompt_description,
+                })),
+                Post_Like: data.likeCharacters.map((c) => ({
+                  character: c.name,
+                  avatar_url: c.avatar_url,
+                  prompt_description: c.prompt_description,
+                })),
+                like: data.likeCharacters.length,
+                created_at: new Date().toISOString(),
+                isLoading: false,
+              }
+            : post
+        )
+      );
+
+      incrementNotificationCount();
+    },
+    onError: (error, variables, context) => {
+      // 에러 시 이전 데이터로 롤백
+      if (context?.previousPosts) {
+        queryClient.setQueryData(["posts", user?.id], context.previousPosts);
+      }
+      console.error("Error creating post:", error);
+      alert("포스트 작성 중 오류가 발생했습니다.");
+    },
+  });
+
+  /* ───────── React Query: Delete Post Mutation ───────── */
+  const deletePostMutation = useMutation({
+    mutationFn: ({ postId }) => deletePostById(postId, user.id),
+    onMutate: async ({ postId }) => {
+      await queryClient.cancelQueries({ queryKey: ["posts", user?.id] });
+      const previousPosts = queryClient.getQueryData(["posts", user?.id]);
+
+      // 낙관적 업데이트: 즉시 삭제
+      queryClient.setQueryData(["posts", user?.id], (old) =>
+        old.filter((post) => post.id !== postId)
+      );
+
+      return { previousPosts };
+    },
+    onError: (error, variables, context) => {
+      // 에러 시 롤백
+      if (context?.previousPosts) {
+        queryClient.setQueryData(["posts", user?.id], context.previousPosts);
+      }
+      console.error("Error deleting post:", error);
+      alert("삭제 중 오류가 발생했습니다.");
+    },
+    onSettled: () => {
+      // 성공/실패 관계없이 서버 데이터로 동기화
+      queryClient.invalidateQueries({ queryKey: ["posts", user?.id] });
+    },
+  });
 
   // Close modals when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      // Close like modal
       if (
         likeModal.show &&
         modalRef.current &&
@@ -70,7 +198,6 @@ const Home = ({ user, incrementNotificationCount }) => {
         setLikeModal({ show: false, likes: [], postId: null });
       }
 
-      // Close options modal
       if (
         optionsModal.show &&
         optionsModalRef.current &&
@@ -85,84 +212,8 @@ const Home = ({ user, incrementNotificationCount }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [likeModal.show, optionsModal.show]);
 
-  const handlePostSubmit = async (post) => {
-    const tempId = Date.now();
-
-    // 1. Immediately add the post without comments/likes
-    const newPost = {
-      ...post,
-      id: tempId,
-      Comment: [],
-      Post_Like: [],
-      like: 0,
-      created_at: new Date().toISOString(),
-    };
-
-    setPosts((prev) => [newPost, ...prev]);
-    setLoadingPosts((prev) => new Set([...prev, tempId]));
-
-    // 2. Generate AI comments and likes in the background
-    const commentCharacters = getRandomCharacters(2);
-    const likeCharacters = getRandomCharacters(
-      Math.floor(Math.random() * 5) + 1
-    );
-
-    try {
-      const comments = await Promise.all(
-        commentCharacters.map(async (char) => {
-          const reply = await fetchAIComment(char, post.title, post.content);
-          return {
-            character: char,
-            message: reply,
-          };
-        })
-      );
-
-      // 3. Save to database
-      const savedPostId = await savePostWithCommentsAndLikes(
-        post,
-        comments,
-        likeCharacters
-      );
-
-      // 4. Update the post with comments and likes with animation
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === tempId
-            ? {
-                ...p,
-                id: savedPostId || tempId,
-                Comment: comments.map((c) => ({
-                  character: c.character.name,
-                  avatar_url: c.character.avatar_url,
-                  message: c.message,
-                  prompt_description: c.character.prompt_description,
-                })),
-                Post_Like: likeCharacters.map((c) => ({
-                  character: c.name,
-                  avatar_url: c.avatar_url,
-                  prompt_description: c.prompt_description,
-                })),
-                like: likeCharacters.length,
-              }
-            : p
-        )
-      );
-
-      // 5. Show notification
-      incrementNotificationCount();
-    } catch (error) {
-      console.error("Error processing post:", error);
-      alert("저장 중 오류가 발생했습니다.");
-      // Remove the post on error
-      setPosts((prev) => prev.filter((p) => p.id !== tempId));
-    } finally {
-      setLoadingPosts((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(tempId);
-        return newSet;
-      });
-    }
+  const handlePostSubmit = (post) => {
+    createPostMutation.mutate(post);
   };
 
   const formatRelativeTime = (isoString) => {
@@ -186,7 +237,6 @@ const Home = ({ user, incrementNotificationCount }) => {
 
     if (!postLikes || postLikes.length === 0) return;
 
-    // 같은 post의 like를 다시 클릭한 경우 모달 닫기
     if (likeModal.show && likeModal.postId === postId) {
       setLikeModal({ show: false, likes: [], postId: null });
       return;
@@ -202,7 +252,6 @@ const Home = ({ user, incrementNotificationCount }) => {
   const handleOptionsClick = (e, postId) => {
     e.stopPropagation();
 
-    // 같은 post의 옵션을 다시 클릭한 경우 모달 닫기
     if (optionsModal.show && optionsModal.postId === postId) {
       setOptionsModal({ show: false, postId: null });
       return;
@@ -225,23 +274,59 @@ const Home = ({ user, incrementNotificationCount }) => {
   };
 
   const handleDeletePost = async () => {
-    try {
-      await deletePostById(confirmDelete.postId, user.id);
-      setPosts((prev) => prev.filter((p) => p.id !== confirmDelete.postId));
-    } catch (err) {
-      console.log(err);
-      alert("삭제 중 오류가 발생했습니다.");
-    }
+    deletePostMutation.mutate({ postId: confirmDelete.postId });
+    setConfirmDelete({ show: false, postId: null, postTitle: null });
   };
+
+  // 초기 로딩 상태
+  if (isLoading && posts.length === 0) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-stone-600 mx-auto"></div>
+          <p className="mt-4 text-stone-500">포스트를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">포스트를 불러올 수 없습니다.</p>
+          <button
+            onClick={() => queryClient.invalidateQueries(["posts", user?.id])}
+            className="px-4 py-2 bg-stone-600 text-white rounded-lg hover:bg-stone-700"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-2xl mx-auto px-6 py-8 min-h-[70dvh]">
+        {/* Stale 데이터 표시 (백그라운드 refetch 중) */}
+        {isStale && (
+          <div className="mb-4 text-center">
+            <span className="text-xs text-stone-400">
+              새로운 포스트를 확인하는 중...
+            </span>
+          </div>
+        )}
+
         {/* Enhanced Post Form */}
         <div className="mb-8">
           <div className="bg-stone-50 rounded-2xl p-1">
             <div className="bg-white rounded-xl shadow-sm">
-              <PostForm onPostSubmit={handlePostSubmit} />
+              <PostForm
+                onPostSubmit={handlePostSubmit}
+                isSubmitting={createPostMutation.isLoading}
+              />
             </div>
           </div>
         </div>
@@ -274,7 +359,7 @@ const Home = ({ user, incrementNotificationCount }) => {
             </div>
           ) : (
             posts.map((post) => {
-              const isLoading = loadingPosts.has(post.id);
+              const isLoading = post.isLoading || false;
 
               return (
                 <article
@@ -304,6 +389,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                       <button
                         className="options-button p-2 hover:bg-stone-50 rounded-lg transition-colors"
                         onClick={(e) => handleOptionsClick(e, post.id)}
+                        disabled={isLoading}
                       >
                         <svg
                           className="w-5 h-5 text-stone-400"
@@ -345,7 +431,6 @@ const Home = ({ user, incrementNotificationCount }) => {
                             </svg>
                             <span>Delete</span>
                           </button>
-                          {/* 추가 옵션들을 여기에 넣을 수 있습니다 */}
                         </div>
                       )}
                     </div>
@@ -389,7 +474,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                               <img
                                 src={c.avatar_url}
                                 alt={c.character}
-                                className="w-10 h-10 cursor-pointer rounded-full object-cover flex-shrink-0"
+                                className="w-11 h-11 cursor-pointer rounded-2xl object-cover flex-shrink-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setProfileModal({
@@ -402,7 +487,6 @@ const Home = ({ user, incrementNotificationCount }) => {
                                   });
                                 }}
                                 onError={(e) => {
-                                  // 이미지 로드 실패 시 폴백
                                   e.target.style.display = "none";
                                   e.target.nextSibling.style.display = "flex";
                                 }}
@@ -433,7 +517,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                     </div>
                   )}
 
-                  {/* Post Actions - Fixed Icons */}
+                  {/* Post Actions */}
                   <div className="px-6 py-3 border-t border-stone-100 flex items-center justify-between">
                     <div className="flex items-center space-x-1">
                       <div className="relative">
@@ -474,7 +558,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                           </span>
                         </button>
 
-                        {/* Like Modal - positioned relative to button */}
+                        {/* Like Modal */}
                         {likeModal.show && likeModal.postId === post.id && (
                           <div
                             ref={modalRef}
@@ -512,7 +596,6 @@ const Home = ({ user, incrementNotificationCount }) => {
                                         });
                                       }}
                                       onError={(e) => {
-                                        // 이미지 로드 실패 시 폴백
                                         e.target.style.display = "none";
                                         e.target.nextSibling.style.display =
                                           "flex";
@@ -537,7 +620,6 @@ const Home = ({ user, incrementNotificationCount }) => {
                                 </div>
                               ))}
                             </div>
-                            {/* 모달 아래 화살표 */}
                             <div className="absolute -bottom-2 left-6 w-4 h-4 bg-white border-b border-r border-stone-200 transform rotate-45"></div>
                           </div>
                         )}
@@ -581,6 +663,29 @@ const Home = ({ user, incrementNotificationCount }) => {
               );
             })
           )}
+        </div>
+
+        {/* 수동 새로고침 버튼 (선택적) */}
+        <div className="mt-8 text-center">
+          <button
+            onClick={() => queryClient.invalidateQueries(["posts", user?.id])}
+            className="text-sm text-stone-400 hover:text-stone-600 transition-colors"
+          >
+            <svg
+              className="w-4 h-4 inline mr-1"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            새로고침
+          </button>
         </div>
       </div>
 

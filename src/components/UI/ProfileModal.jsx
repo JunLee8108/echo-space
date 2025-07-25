@@ -40,36 +40,31 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div
         ref={modalRef}
-        className="relative w-[90%] max-w-[380px] bg-white rounded-3xl shadow-2xl overflow-hidden"
+        className="relative w-[90%] max-w-[380px] max-h-[70dvh] overflow-y-auto bg-white rounded-3xl shadow-2xl"
       >
-        {/* Header with gradient background */}
-        <div className="relative h-30 bg-gradient-to-br from-stone-600 via-stone-700 to-stone-900">
-          <div className="absolute inset-0 bg-black/20" />
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors"
-          >
-            <svg
-              className="w-5 h-5 text-white"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-
         {/* Profile Content */}
-        <div className="relative px-6 pb-6">
+        <div className="relative px-4 pt-20 pb-4">
           {/* Avatar */}
           <div className="relative -mt-16 mb-2">
-            <div className="w-32 h-32 mx-auto rounded-full shadow-xl overflow-hidden bg-white">
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors"
+            >
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            <div className="w-full h-50 mx-auto rounded-2xl shadow-xl overflow-hidden bg-white">
               {character.avatar_url ? (
                 <img
                   src={character.avatar_url}

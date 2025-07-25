@@ -9,6 +9,7 @@ import AuthForm from "./components/AuthForm";
 import supabase from "./services/supabaseClient";
 import { getCurrentUser } from "./services/authService";
 import { CharacterProvider } from "./components/contexts/CharacterContext";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 function App() {
   // Auth state
@@ -17,6 +18,16 @@ function App() {
 
   // Global notification count
   const [notificationCount, setNotificationCount] = useState(0);
+
+  // 1️⃣ 전역 QueryClient 생성 (옵션 필요 시 여기서 설정)
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: 1, // 예시: 실패 시 1회 재시도
+        refetchOnWindowFocus: false,
+      },
+    },
+  });
 
   // Check initial auth state
   useEffect(() => {
@@ -70,38 +81,40 @@ function App() {
 
   // Authenticated layout with CharacterProvider
   return (
-    <CharacterProvider userId={user?.id}>
-      <BrowserRouter>
-        <div className="min-h-screen bg-white">
-          <ScrollToTop />
+    <QueryClientProvider client={queryClient}>
+      <CharacterProvider userId={user?.id}>
+        <BrowserRouter>
+          <div className="min-h-screen bg-white">
+            <ScrollToTop />
 
-          {/* Global Header */}
-          <Header notificationCount={notificationCount} />
+            {/* Global Header */}
+            <Header notificationCount={notificationCount} />
 
-          {/* Main Content */}
-          <main className="pb-20">
-            {/* padding-bottom for BottomNavbar */}
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <Home
-                    user={user}
-                    incrementNotificationCount={incrementNotificationCount}
-                  />
-                }
-              />
-              <Route path="/profile" element={<Profile user={user} />} />
-              {/* Redirect any unknown routes to home */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
+            {/* Main Content */}
+            <main className="pb-20">
+              {/* padding-bottom for BottomNavbar */}
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <Home
+                      user={user}
+                      incrementNotificationCount={incrementNotificationCount}
+                    />
+                  }
+                />
+                <Route path="/profile" element={<Profile user={user} />} />
+                {/* Redirect any unknown routes to home */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </main>
 
-          {/* Bottom Navigation */}
-          <BottomNavbar />
-        </div>
-      </BrowserRouter>
-    </CharacterProvider>
+            {/* Bottom Navigation */}
+            <BottomNavbar />
+          </div>
+        </BrowserRouter>
+      </CharacterProvider>
+    </QueryClientProvider>
   );
 }
 
