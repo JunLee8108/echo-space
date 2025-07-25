@@ -1,37 +1,38 @@
-import { useState, useEffect } from "react";
-import characters from "../data/characters";
+import { useState } from "react";
+import { useCharacters } from "../components/hooks/useCharacters";
 
 const Profile = ({ user }) => {
-  const [followedCharacters, setFollowedCharacters] = useState(new Set());
-  const [loading, setLoading] = useState(false);
+  const {
+    characters,
+    followedCharacterIds,
+    toggleFollow,
+    loading: contextLoading,
+  } = useCharacters();
 
-  // Initialize with all characters as followed (since they comment on posts)
-  useEffect(() => {
-    // You could load this from a database or localStorage in the future
-    setFollowedCharacters(new Set(characters.map((char) => char.name)));
-  }, []);
+  const [localLoading, setLocalLoading] = useState(false);
 
-  const toggleFollow = async (characterName) => {
-    setLoading(true);
-
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    setFollowedCharacters((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(characterName)) {
-        newSet.delete(characterName);
-      } else {
-        newSet.add(characterName);
-      }
-      return newSet;
-    });
-
-    setLoading(false);
+  const handleToggleFollow = async (character) => {
+    setLocalLoading(true);
+    try {
+      await toggleFollow(character);
+    } catch {
+      alert("팔로우 상태 변경에 실패했습니다.");
+    } finally {
+      setLocalLoading(false);
+    }
   };
 
   const displayName =
     user?.user_metadata?.display_name || user?.email || "User";
+
+  // Show loading state if context is still loading
+  if (contextLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-stone-900"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -64,27 +65,27 @@ const Profile = ({ user }) => {
               </h2>
             </div>
             <div className="text-sm text-stone-500 flex-shrink-0">
-              {followedCharacters.size} following
+              {followedCharacterIds.size} following
             </div>
           </div>
 
           {/* Characters Grid */}
           <div className="space-y-3">
             {characters.map((character) => {
-              const isFollowed = followedCharacters.has(character.name);
+              const isFollowed = followedCharacterIds.has(character.id);
 
               return (
                 <div
-                  key={character.name}
+                  key={character.id}
                   className="bg-white rounded-2xl border border-stone-100 p-6 hover:border-stone-200 transition-all duration-200"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4 mr-4">
                       {/* Character Avatar */}
                       <div className="relative">
-                        {character.profile ? (
+                        {character.avatar_url ? (
                           <img
-                            src={character.profile}
+                            src={character.avatar_url}
                             alt={character.name}
                             className="w-14 h-14 rounded-2xl object-cover shadow-sm"
                             onError={(e) => {
@@ -96,7 +97,7 @@ const Profile = ({ user }) => {
                         <div
                           className="w-14 h-14 bg-gradient-to-br from-stone-500 to-stone-700 rounded-2xl flex items-center justify-center shadow-sm"
                           style={{
-                            display: character.profile ? "none" : "flex",
+                            display: character.avatar_url ? "none" : "flex",
                           }}
                         >
                           <span className="text-white text-lg font-bold">
@@ -114,22 +115,22 @@ const Profile = ({ user }) => {
                           {character.name}
                         </h3>
                         <p className="text-stone-600 text-sm leading-relaxed line-clamp-2">
-                          {character.description.split(".")[0]}.
+                          {character.prompt_description.split(".")[0]}.
                         </p>
                       </div>
                     </div>
 
                     {/* Follow Button */}
                     <button
-                      onClick={() => toggleFollow(character.name)}
-                      disabled={loading}
+                      onClick={() => handleToggleFollow(character)}
+                      disabled={localLoading || contextLoading}
                       className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 min-w-[100px] ${
                         isFollowed
                           ? "bg-stone-900 text-white hover:bg-stone-800"
                           : "bg-stone-100 text-stone-700 hover:bg-stone-200"
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      {loading ? (
+                      {localLoading ? (
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
                         </div>
@@ -154,13 +155,13 @@ const Profile = ({ user }) => {
           <div className="grid grid-cols-2 gap-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-stone-900 mb-1">
-                {followedCharacters.size}
+                {followedCharacterIds.size}
               </div>
               <div className="text-sm text-stone-600">Active Companions</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-stone-900 mb-1">
-                {characters.length - followedCharacters.size}
+                {characters.length - followedCharacterIds.size}
               </div>
               <div className="text-sm text-stone-600">Inactive</div>
             </div>

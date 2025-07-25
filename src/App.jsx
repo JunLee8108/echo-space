@@ -8,6 +8,7 @@ import Profile from "./pages/Profile";
 import AuthForm from "./components/AuthForm";
 import supabase from "./services/supabaseClient";
 import { getCurrentUser } from "./services/authService";
+import { CharacterProvider } from "./components/contexts/CharacterContext";
 
 function App() {
   // Auth state
@@ -36,11 +37,6 @@ function App() {
     );
     return () => listener.subscription.unsubscribe();
   }, []);
-
-  // Function to update notification count (to be passed to child components)
-  // const updateNotificationCount = (count) => {
-  //   setNotificationCount(count);
-  // };
 
   // Function to increment notification count
   const incrementNotificationCount = () => {
@@ -72,39 +68,40 @@ function App() {
     );
   }
 
-  // Authenticated layout
+  // Authenticated layout with CharacterProvider
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-white">
-        <ScrollToTop />
+    <CharacterProvider userId={user?.id}>
+      <BrowserRouter>
+        <div className="min-h-screen bg-white">
+          <ScrollToTop />
 
-        {/* Global Header */}
-        <Header notificationCount={notificationCount} />
+          {/* Global Header */}
+          <Header notificationCount={notificationCount} />
 
-        {/* Main Content */}
-        <main className="pb-20">
-          {" "}
-          {/* padding-bottom for BottomNavbar */}
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <Home
-                  user={user}
-                  incrementNotificationCount={incrementNotificationCount}
-                />
-              }
-            />
-            <Route path="/profile" element={<Profile user={user} />} />
-            {/* Redirect any unknown routes to home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
+          {/* Main Content */}
+          <main className="pb-20">
+            {/* padding-bottom for BottomNavbar */}
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <Home
+                    user={user}
+                    incrementNotificationCount={incrementNotificationCount}
+                  />
+                }
+              />
+              <Route path="/profile" element={<Profile user={user} />} />
+              {/* Redirect any unknown routes to home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
 
-        {/* Bottom Navigation */}
-        <BottomNavbar />
-      </div>
-    </BrowserRouter>
+          {/* Bottom Navigation */}
+          <BottomNavbar />
+        </div>
+      </BrowserRouter>
+    </CharacterProvider>
   );
 }
 

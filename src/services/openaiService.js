@@ -10,7 +10,7 @@ export async function fetchAIComment(character, postTitle, postContent) {
       messages: [
         {
           role: "system",
-          content: `${character.description} Always respond positively in 1–2 short sentences, staying in character.`,
+          content: `${character.prompt_description} Always respond positively in 1–2 short sentences, staying in character.`,
         },
         {
           role: "user",

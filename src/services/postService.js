@@ -36,9 +36,8 @@ export async function savePostWithCommentsAndLikes(
   // 2. 댓글 저장
   const commentData = comments.map((c) => ({
     post_id: postId,
-    character: c.character.name,
+    character_id: c.character.id,
     message: c.message,
-    profile: c.character.profile,
   }));
 
   const { error: commentError } = await supabase
@@ -53,7 +52,7 @@ export async function savePostWithCommentsAndLikes(
   // 3. 좋아요 저장
   const likeData = likeCharacters.map((c) => ({
     post_id: postId,
-    character: c.name,
+    character_id: c.id,
   }));
 
   const { error: likeError } = await supabase
@@ -101,13 +100,24 @@ export async function fetchPostsWithCommentsAndLikes(uid) {
       created_at,
       Comment (
         id,
-        character,
+        character_id,
         message,
         created_at,
-        profile
+        Character (
+          id,
+          name,
+          avatar_url,
+          prompt_description
+        )
       ),
       Post_Like (
-        character
+        character_id,
+        Character (
+          id,
+          name,
+          avatar_url,
+          prompt_description
+        )
       )
     `
     )
@@ -119,5 +129,28 @@ export async function fetchPostsWithCommentsAndLikes(uid) {
     throw error;
   }
 
-  return data;
+  // 데이터 구조 평탄화
+  const formattedData =
+    data?.map((post) => ({
+      ...post,
+      Comment:
+        post.Comment?.map((comment) => ({
+          id: comment.id,
+          character_id: comment.character_id,
+          message: comment.message,
+          created_at: comment.created_at,
+          character: comment.Character?.name || "Unknown",
+          avatar_url: comment.Character?.avatar_url || null,
+          prompt_description: comment.Character?.prompt_description || "",
+        })) || [],
+      Post_Like:
+        post.Post_Like?.map((like) => ({
+          character_id: like.character_id,
+          character: like.Character?.name || "Unknown",
+          avatar_url: like.Character?.avatar_url || null,
+          prompt_description: like.Character?.prompt_description || "",
+        })) || [],
+    })) || [];
+
+  return formattedData;
 }

@@ -1,23 +1,23 @@
 import { useState, useEffect, useRef } from "react";
-import ConfirmationModal from "../components/UI/ConfirmationModal";
-import PostForm from "../components/PostForm";
 
+// Modal
+import ConfirmationModal from "../components/UI/ConfirmationModal";
+import ProfileModal from "../components/UI/ProfileModal";
+
+import PostForm from "../components/PostForm";
+import { useCharacters } from "../components/hooks/useCharacters";
 import { fetchAIComment } from "../services/openaiService";
-import characters from "../data/characters";
 import {
   savePostWithCommentsAndLikes,
   deletePostById,
   fetchPostsWithCommentsAndLikes,
 } from "../services/postService";
-
 import "./Home.css";
 
-const getRandomCharacters = (arr, count) => {
-  const shuffled = [...arr].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, count);
-};
-
 const Home = ({ user, incrementNotificationCount }) => {
+  /* ─────────────── Use Character Context ─────────────── */
+  const { getRandomCharacters } = useCharacters();
+
   /* ──────────────────────── Post state ──────────────────────────── */
   const [posts, setPosts] = useState([]);
   const [likeModal, setLikeModal] = useState({
@@ -33,24 +33,28 @@ const Home = ({ user, incrementNotificationCount }) => {
   const modalRef = useRef(null);
   const optionsModalRef = useRef(null);
 
-  /* ──────────────────────── Confirmation modal state ──────────────────────────── */
+  /* ──────────────────────── Modal state ──────────────────────────── */
   const [confirmDelete, setConfirmDelete] = useState({
     show: false,
     postId: null,
     postTitle: null,
   });
+  const [profileModal, setProfileModal] = useState({
+    show: false,
+    character: null,
+  });
 
   /* ───────── Load posts when user changes ───────── */
   useEffect(() => {
     if (user) {
-      loadPostsOfUser(user.id);
+      loadPosts(user.id);
     }
   }, [user]);
 
-  /* ───────── ③ 현재 로그인 유저의 게시글만 가져오기 ───────── */
-  const loadPostsOfUser = async (uid) => {
-    const data = await fetchPostsWithCommentsAndLikes(uid); // ← user_id 기준 필터
-    setPosts(data);
+  /* ───────── Load posts ───────── */
+  const loadPosts = async (uid) => {
+    const postData = await fetchPostsWithCommentsAndLikes(uid);
+    setPosts(postData);
   };
 
   // Close modals when clicking outside
@@ -98,9 +102,8 @@ const Home = ({ user, incrementNotificationCount }) => {
     setLoadingPosts((prev) => new Set([...prev, tempId]));
 
     // 2. Generate AI comments and likes in the background
-    const commentCharacters = getRandomCharacters(characters, 2);
+    const commentCharacters = getRandomCharacters(2);
     const likeCharacters = getRandomCharacters(
-      characters,
       Math.floor(Math.random() * 5) + 1
     );
 
@@ -131,7 +134,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                 id: savedPostId || tempId,
                 Comment: comments.map((c) => ({
                   character: c.character.name,
-                  profile: c.character.profile,
+                  avatar_url: c.character.avatar_url,
                   message: c.message,
                 })),
                 Post_Like: likeCharacters.map((c) => ({ character: c.name })),
@@ -377,11 +380,22 @@ const Home = ({ user, incrementNotificationCount }) => {
                             className="flex items-start space-x-3 animate-slideIn"
                             style={{ animationDelay: `${idx * 100}ms` }}
                           >
-                            {c.profile ? (
+                            {c.avatar_url ? (
                               <img
-                                src={c.profile}
+                                src={c.avatar_url}
                                 alt={c.character}
-                                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                className="w-10 h-10 cursor-pointer rounded-full object-cover flex-shrink-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setProfileModal({
+                                    show: true,
+                                    character: {
+                                      name: c.character,
+                                      avatar_url: c.avatar_url,
+                                      prompt_description: c.prompt_description,
+                                    },
+                                  });
+                                }}
                                 onError={(e) => {
                                   // 이미지 로드 실패 시 폴백
                                   e.target.style.display = "none";
@@ -392,7 +406,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                             <div
                               className="w-10 h-10 bg-gradient-to-br from-stone-500 to-stone-700 rounded-full flex items-center justify-center flex-shrink-0"
                               style={{
-                                display: c.profile ? "none" : "flex",
+                                display: c.avatar_url ? "none" : "flex",
                               }}
                             >
                               <span className="text-white text-xs font-medium">
@@ -475,7 +489,39 @@ const Home = ({ user, incrementNotificationCount }) => {
                                   key={idx}
                                   className="flex items-center space-x-2 py-1"
                                 >
-                                  <div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                  {like.avatar_url ? (
+                                    <img
+                                      src={like.avatar_url}
+                                      alt={like.character}
+                                      className="w-10 h-10 cursor-pointer rounded-full object-cover flex-shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setProfileModal({
+                                          show: true,
+                                          character: {
+                                            name: like.character,
+                                            avatar_url: like.avatar_url,
+                                            prompt_description:
+                                              like.prompt_description,
+                                          },
+                                        });
+                                      }}
+                                      onError={(e) => {
+                                        // 이미지 로드 실패 시 폴백
+                                        e.target.style.display = "none";
+                                        e.target.nextSibling.style.display =
+                                          "flex";
+                                      }}
+                                    />
+                                  ) : null}
+                                  <div
+                                    className="w-8 h-8 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center flex-shrink-0"
+                                    style={{
+                                      display: like.avatar_url
+                                        ? "none"
+                                        : "flex",
+                                    }}
+                                  >
                                     <span className="text-white text-xs font-medium">
                                       {like.character?.charAt(0) || "?"}
                                     </span>
@@ -545,6 +591,12 @@ const Home = ({ user, incrementNotificationCount }) => {
         cancelText="Cancel"
         confirmButtonClass="bg-red-600 hover:bg-red-700"
         icon="danger"
+      />
+
+      <ProfileModal
+        isOpen={profileModal.show}
+        onClose={() => setProfileModal({ show: false, character: null })}
+        character={profileModal.character}
       />
     </div>
   );
