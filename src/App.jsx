@@ -11,6 +11,21 @@ import { getCurrentUser } from "./services/authService";
 import { CharacterProvider } from "./components/contexts/CharacterContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+// QueryClient를 컴포넌트 밖에서 생성 (싱글톤 패턴)
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5분
+      cacheTime: 10 * 60 * 1000, // 10분
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
+
 function App() {
   // Auth state
   const [user, setUser] = useState(null);
@@ -18,21 +33,6 @@ function App() {
 
   // Global notification count
   const [notificationCount, setNotificationCount] = useState(0);
-
-  // 1️⃣ 전역 QueryClient 생성 (옵션 필요 시 여기서 설정)
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: 1,
-        refetchOnWindowFocus: false,
-        staleTime: 5 * 60 * 1000, // 5분
-        cacheTime: 10 * 60 * 1000, // 10분
-      },
-      mutations: {
-        retry: 1,
-      },
-    },
-  });
 
   // Check initial auth state
   useEffect(() => {

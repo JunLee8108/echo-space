@@ -6,11 +6,14 @@ export async function fetchAIComment(character, postTitle, postContent) {
       Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "gpt-4.1-mini", // 또는 gpt-4
+      model: "gpt-4o-mini", // 또는 gpt-4.1-mini
       messages: [
         {
           role: "system",
-          content: `${character.prompt_description} Always respond positively in 1–2 short sentences, staying in character.`,
+          content: `
+          ${character.name} - ${character.prompt_description}
+          Must Remain fully immersed in your persona.
+          Must Reply in the user’s language with short 1‑2 witty or encouraging sentences that preserve the character’s unique tone and style.`,
         },
         {
           role: "user",

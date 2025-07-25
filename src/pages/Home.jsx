@@ -80,10 +80,6 @@ const Home = ({ user, incrementNotificationCount }) => {
       return lastPage.hasMore ? lastPage.nextOffset : undefined;
     },
     enabled: !!user,
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
   });
 
   // 모든 페이지의 포스트를 평면화
@@ -839,11 +835,6 @@ const Home = ({ user, incrementNotificationCount }) => {
               )}
             </>
           )}
-        </div>
-
-        {/* Pull to refresh 안내 (모바일) */}
-        <div className="mt-8 text-center lg:hidden">
-          <p className="text-xs text-stone-400">아래로 당겨서 새로고침</p>
         </div>
       </div>
 
