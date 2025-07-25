@@ -136,8 +136,13 @@ const Home = ({ user, incrementNotificationCount }) => {
                   character: c.character.name,
                   avatar_url: c.character.avatar_url,
                   message: c.message,
+                  prompt_description: c.character.prompt_description,
                 })),
-                Post_Like: likeCharacters.map((c) => ({ character: c.name })),
+                Post_Like: likeCharacters.map((c) => ({
+                  character: c.name,
+                  avatar_url: c.avatar_url,
+                  prompt_description: c.prompt_description,
+                })),
                 like: likeCharacters.length,
               }
             : p
