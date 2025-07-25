@@ -39,7 +39,7 @@
 | ---------- | --------- |
 |            |           |
 
-Live demo: **[https://echospace.vercel.app](https://echospace.vercel.app)**
+Live demo: **[https://echo-space-liart.vercel.app](https://echo-space-liart.vercel.app/)**
 
 ---
 
