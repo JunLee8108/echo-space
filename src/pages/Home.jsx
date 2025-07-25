@@ -53,7 +53,7 @@ const Home = ({ user, incrementNotificationCount }) => {
   const observerRef = useRef(null);
   const loadMoreRef = useRef(null);
 
-  /* ───────── React Query: Infinite Query로 변경 ───────── */
+  /* ───────── React Query: Infinite Query with Cursor ───────── */
   const {
     data,
     fetchNextPage,
@@ -64,26 +64,33 @@ const Home = ({ user, incrementNotificationCount }) => {
     refetch,
   } = useInfiniteQuery({
     queryKey: ["posts", user?.id],
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async ({ pageParam = null }) => {
       const result = await fetchPostsWithCommentsAndLikes(user.id, {
         limit: POSTS_PER_PAGE,
-        offset: pageParam,
+        cursor: pageParam, // cursor 사용 (null이면 처음부터)
       });
 
       return {
         posts: result.posts,
-        nextOffset: pageParam + POSTS_PER_PAGE,
+        nextCursor: result.nextCursor,
         hasMore: result.hasMore,
       };
     },
     getNextPageParam: (lastPage) => {
-      return lastPage.hasMore ? lastPage.nextOffset : undefined;
+      // 다음 페이지의 cursor 반환
+      return lastPage.hasMore ? lastPage.nextCursor : undefined;
     },
     enabled: !!user,
   });
 
-  // 모든 페이지의 포스트를 평면화
-  const posts = data?.pages.flatMap((page) => page.posts || []) || [];
+  // 모든 페이지의 포스트를 평면화 (중복 제거를 위해 Map 사용)
+  const postsMap = new Map();
+  data?.pages.forEach((page) => {
+    page.posts?.forEach((post) => {
+      postsMap.set(post.id, post);
+    });
+  });
+  const posts = Array.from(postsMap.values());
 
   /* ───────── Intersection Observer 설정 ───────── */
   useEffect(() => {
@@ -91,7 +98,7 @@ const Home = ({ user, incrementNotificationCount }) => {
 
     const options = {
       root: null,
-      rootMargin: "100px", // 100px 전에 미리 로드 시작
+      rootMargin: "100px",
       threshold: 0.1,
     };
 
@@ -99,21 +106,7 @@ const Home = ({ user, incrementNotificationCount }) => {
       const [entry] = entries;
 
       if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
-        // 다음 페이지 로드
         fetchNextPage();
-
-        // 프리페칭: 다음 다음 페이지도 미리 준비
-        const nextOffset = data?.pages[data.pages.length - 1]?.nextOffset;
-        if (nextOffset) {
-          queryClient.prefetchInfiniteQuery({
-            queryKey: ["posts", user?.id],
-            queryFn: () =>
-              fetchPostsWithCommentsAndLikes(user.id, {
-                limit: POSTS_PER_PAGE,
-                offset: nextOffset + POSTS_PER_PAGE,
-              }),
-          });
-        }
       }
     }, options);
 
@@ -124,16 +117,9 @@ const Home = ({ user, incrementNotificationCount }) => {
         observerRef.current.disconnect();
       }
     };
-  }, [
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-    data,
-    user?.id,
-    queryClient,
-  ]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  /* ───────── React Query: Create Post Mutation (무한 스크롤 대응) ───────── */
+  /* ───────── React Query: Create Post Mutation ───────── */
   const createPostMutation = useMutation({
     mutationFn: async (post) => {
       const tempId = `temp-${Date.now()}-${Math.random()}`;
@@ -152,7 +138,6 @@ const Home = ({ user, incrementNotificationCount }) => {
         })
       );
 
-      // savePostWithCommentsAndLikes가 이제 전체 포스트 데이터를 반환
       const savedPost = await savePostWithCommentsAndLikes(
         post,
         comments,
@@ -167,7 +152,6 @@ const Home = ({ user, incrementNotificationCount }) => {
     onMutate: async (post) => {
       await queryClient.cancelQueries({ queryKey: ["posts", user?.id] });
 
-      // 이전 데이터 스냅샷 저장
       const previousData = queryClient.getQueryData(["posts", user?.id]);
 
       const tempId = `temp-${Date.now()}-${Math.random()}`;
@@ -182,35 +166,33 @@ const Home = ({ user, incrementNotificationCount }) => {
         isLoading: true,
       };
 
-      // 무한 쿼리의 첫 페이지에 추가
       queryClient.setQueryData(["posts", user?.id], (old) => {
         if (!old) {
           return {
             pages: [
               {
                 posts: [optimisticPost],
-                nextOffset: POSTS_PER_PAGE,
+                nextCursor: null,
                 hasMore: false,
               },
             ],
-            pageParams: [0],
+            pageParams: [null],
           };
         }
 
-        // 깊은 복사로 불변성 보장
-        const newPages = JSON.parse(JSON.stringify(old.pages));
-
-        // 첫 페이지가 없으면 생성
+        const newPages = [...old.pages];
         if (!newPages[0]) {
           newPages[0] = {
             posts: [],
-            nextOffset: POSTS_PER_PAGE,
+            nextCursor: null,
             hasMore: false,
           };
         }
 
-        // 첫 페이지 맨 앞에 새 포스트 추가
-        newPages[0].posts = [optimisticPost, ...(newPages[0].posts || [])];
+        newPages[0] = {
+          ...newPages[0],
+          posts: [optimisticPost, ...(newPages[0].posts || [])],
+        };
 
         return {
           ...old,
@@ -224,27 +206,17 @@ const Home = ({ user, incrementNotificationCount }) => {
       queryClient.setQueryData(["posts", user?.id], (old) => {
         if (!old) return old;
 
-        // 깊은 복사로 불변성 보장
-        const newPages = JSON.parse(JSON.stringify(old.pages));
-
-        // 첫 페이지에서 임시 포스트를 실제 포스트로 교체
+        const newPages = [...old.pages];
         if (newPages[0] && newPages[0].posts) {
           const postIndex = newPages[0].posts.findIndex(
             (post) => post.id === context.tempId
           );
 
           if (postIndex !== -1) {
-            // 임시 포스트를 실제 저장된 포스트로 교체
             newPages[0].posts[postIndex] = {
               ...data.savedPost,
               isLoading: false,
             };
-          } else {
-            // 만약 못 찾으면 맨 앞에 추가
-            newPages[0].posts.unshift({
-              ...data.savedPost,
-              isLoading: false,
-            });
           }
         }
 
@@ -255,12 +227,9 @@ const Home = ({ user, incrementNotificationCount }) => {
       });
 
       incrementNotificationCount();
-
-      // 스크롤을 최상단으로 이동 (선택사항)
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
     onError: (error, variables, context) => {
-      // 에러 시 이전 데이터로 롤백
       if (context?.previousData) {
         queryClient.setQueryData(["posts", user?.id], context.previousData);
       }
@@ -269,11 +238,13 @@ const Home = ({ user, incrementNotificationCount }) => {
     },
   });
 
-  /* ───────── React Query: Delete Post Mutation (무한 스크롤 대응) ───────── */
+  /* ───────── React Query: Delete Post Mutation ───────── */
   const deletePostMutation = useMutation({
     mutationFn: ({ postId }) => deletePostById(postId, user.id),
     onMutate: async ({ postId }) => {
       await queryClient.cancelQueries({ queryKey: ["posts", user?.id] });
+
+      const previousData = queryClient.getQueryData(["posts", user?.id]);
 
       queryClient.setQueryData(["posts", user?.id], (old) => {
         if (!old) return old;
@@ -288,13 +259,18 @@ const Home = ({ user, incrementNotificationCount }) => {
           pages: newPages,
         };
       });
+
+      return { previousData };
     },
-    onError: (error) => {
-      refetch();
+    onError: (error, variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["posts", user?.id], context.previousData);
+      }
       console.error("Error deleting post:", error);
       alert("삭제 중 오류가 발생했습니다.");
     },
-    onSettled: () => {
+    onSuccess: () => {
+      // 삭제 성공 후 전체 데이터 다시 동기화
       queryClient.invalidateQueries({ queryKey: ["posts", user?.id] });
     },
   });
@@ -461,6 +437,8 @@ const Home = ({ user, incrementNotificationCount }) => {
     );
   }
 
+  console.log(posts);
+
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-2xl mx-auto px-6 py-8 min-h-[70dvh]">
@@ -504,14 +482,12 @@ const Home = ({ user, incrementNotificationCount }) => {
             </div>
           ) : (
             <>
-              {posts.map((post, index) => {
+              {posts.map((post) => {
                 const isLoading = post.isLoading || false;
-                // 고유한 키 생성 (페이지 인덱스와 포스트 ID 조합)
-                const uniqueKey = `${post.id}-${index}`;
 
                 return (
                   <article
-                    key={uniqueKey}
+                    key={post.id}
                     className={`bg-white rounded-2xl border border-stone-100 overflow-hidden hover:border-stone-200 transition-all duration-200 ${
                       isLoading ? "animate-pulse" : ""
                     }`}
@@ -615,7 +591,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                         <div className="border-t border-stone-100 pt-4 space-y-3">
                           {post.Comment.map((c, idx) => (
                             <div
-                              key={idx}
+                              key={c.id}
                               className="flex items-start space-x-3 animate-slideIn"
                               style={{ animationDelay: `${idx * 100}ms` }}
                             >
@@ -723,9 +699,9 @@ const Home = ({ user, incrementNotificationCount }) => {
                                 </span>
                               </div>
                               <div className="space-y-2 max-h-60 overflow-y-auto">
-                                {likeModal.likes.map((like, idx) => (
+                                {likeModal.likes.map((like) => (
                                   <div
-                                    key={idx}
+                                    key={like.id}
                                     className="flex items-center space-x-2 py-1"
                                   >
                                     {like.avatar_url ? (
