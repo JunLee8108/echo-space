@@ -85,9 +85,9 @@ const Profile = ({ user }) => {
               return (
                 <div
                   key={character.id}
-                  className="bg-white rounded-2xl border border-stone-100 p-6 hover:border-stone-200 transition-all duration-200"
+                  className="bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-200 transition-all duration-200"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-end gap-4 sm:flex-nowrap sm:gap-0 sm:justify-between">
                     <div className="flex items-center space-x-4 mr-4">
                       {/* Character Avatar */}
                       <div className="relative">

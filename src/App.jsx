@@ -23,8 +23,13 @@ function App() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        retry: 1, // 예시: 실패 시 1회 재시도
+        retry: 1,
         refetchOnWindowFocus: false,
+        staleTime: 5 * 60 * 1000, // 5분
+        cacheTime: 10 * 60 * 1000, // 10분
+      },
+      mutations: {
+        retry: 1,
       },
     },
   });

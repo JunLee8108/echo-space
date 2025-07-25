@@ -88,7 +88,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
           </div>
 
           {/* Name and Role */}
-          <div className="text-center mb-4">
+          <div className="text-center mb-2">
             <h2 className="text-xl font-bold text-stone-900 mb-1">
               {character.name || "Unknown Character"}
             </h2>
@@ -127,7 +127,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
             <div className="mb-6">
               <h3 className="text-sm font-semibold text-stone-900 mb-3 flex items-center">
                 <svg
-                  className="w-4 h-4 mr-2 text-stone-600"
+                  className="w-4 h-4 mr-1 text-stone-600"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
