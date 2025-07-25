@@ -43,7 +43,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
         className="relative w-[90%] max-w-[380px] bg-white rounded-3xl shadow-2xl overflow-hidden"
       >
         {/* Header with gradient background */}
-        <div className="relative h-40 bg-gradient-to-br from-stone-600 via-stone-700 to-stone-900">
+        <div className="relative h-30 bg-gradient-to-br from-stone-600 via-stone-700 to-stone-900">
           <div className="absolute inset-0 bg-black/20" />
           <button
             onClick={onClose}
@@ -68,7 +68,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
         {/* Profile Content */}
         <div className="relative px-6 pb-6">
           {/* Avatar */}
-          <div className="relative -mt-20 mb-4">
+          <div className="relative -mt-16 mb-2">
             <div className="w-32 h-32 mx-auto rounded-full shadow-xl overflow-hidden bg-white">
               {character.avatar_url ? (
                 <img
@@ -93,7 +93,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
           </div>
 
           {/* Name and Role */}
-          <div className="text-center mb-6">
+          <div className="text-center mb-4">
             <h2 className="text-xl font-bold text-stone-900 mb-1">
               {character.name || "Unknown Character"}
             </h2>
