@@ -34,8 +34,8 @@ export async function fetchUserCreatedAndSystemCharacters(userId) {
       )
     `
     )
-    .or(`created_by.eq.${userId},is_system_default.eq.true`);
-  // .eq("User_Character.user_id", userId);
+    .or(`created_by.eq.${userId},is_system_default.eq.true`)
+    .eq("User_Character.user_id", userId);
 
   if (error) {
     console.error("Error fetching characters:", error);
