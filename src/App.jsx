@@ -5,6 +5,8 @@ import Header from "./components/layout/Header";
 import BottomNavbar from "./components/layout/BottomNavbar";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
+import ProtectedRoute from "./components/utils/ProtectedRoute";
+import UpdatePassword from "./pages/UpdatePassword";
 import AuthForm from "./components/AuthForm";
 import supabase from "./services/supabaseClient";
 import { getCurrentUser } from "./services/authService";
@@ -109,6 +111,15 @@ function App() {
                   }
                 />
                 <Route path="/profile" element={<Profile user={user} />} />
+
+                <Route
+                  path="/account/update-password"
+                  element={
+                    <ProtectedRoute>
+                      <UpdatePassword />
+                    </ProtectedRoute>
+                  }
+                />
                 {/* Redirect any unknown routes to home */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

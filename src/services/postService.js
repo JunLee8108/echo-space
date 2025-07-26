@@ -19,6 +19,7 @@ export async function savePostWithCommentsAndLikes(
       {
         title: post.title,
         content: post.content,
+        mood: post.mood || null, // mood 추가
         like: likeCharacters.length,
         user_id: user.id,
       },
@@ -72,6 +73,7 @@ export async function savePostWithCommentsAndLikes(
       id,
       title,
       content,
+      mood,
       like,
       created_at,
       user_id,
@@ -172,6 +174,7 @@ export async function fetchPostsWithCommentsAndLikes(
         id,
         title,
         content,
+        mood,
         like,
         created_at,
         Comment (

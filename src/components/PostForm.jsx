@@ -1,10 +1,60 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { Smile, Meh, Frown } from "lucide-react";
 import "./PostForm.css";
+
+const MOODS = [
+  {
+    id: "happy",
+    icon: Smile,
+    label: "Happy",
+    color: "text-amber-500",
+    bgColor: "bg-amber-50",
+    hoverColor: "hover:bg-amber-100",
+  },
+  {
+    id: "neutral",
+    icon: Meh,
+    label: "Neutral",
+    color: "text-stone-500",
+    bgColor: "bg-stone-100",
+    hoverColor: "hover:bg-stone-100",
+  },
+  {
+    id: "sad",
+    icon: Frown,
+    label: "Sad",
+    color: "text-blue-500",
+    bgColor: "bg-blue-50",
+    hoverColor: "hover:bg-blue-100",
+  },
+];
 
 const PostForm = ({ onPostSubmit }) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const [showMoodModal, setShowMoodModal] = useState(false);
+  const [selectedMood, setSelectedMood] = useState(null);
+
+  const moodButtonRef = useRef(null);
+  const moodModalRef = useRef(null);
+
+  // Close mood modal when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        showMoodModal &&
+        moodModalRef.current &&
+        !moodModalRef.current.contains(e.target) &&
+        !moodButtonRef.current.contains(e.target)
+      ) {
+        setShowMoodModal(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showMoodModal]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -14,13 +64,16 @@ const PostForm = ({ onPostSubmit }) => {
       id: Date.now(),
       title,
       content,
+      mood: selectedMood?.id || null,
       created_at: new Date().toISOString(),
     };
 
     onPostSubmit(newPost);
     setTitle("");
     setContent("");
+    setSelectedMood(null);
     setIsFocused(false);
+    setShowMoodModal(false);
   };
 
   const handleFormBlur = (e) => {
@@ -28,9 +81,17 @@ const PostForm = ({ onPostSubmit }) => {
     if (!e.currentTarget.contains(e.relatedTarget)) {
       // Only close if both fields are empty
       if (!title.trim() && !content.trim()) {
-        setIsFocused(false);
+        setTimeout(() => {
+          setIsFocused(false);
+          setShowMoodModal(false);
+        }, 300);
       }
     }
+  };
+
+  const handleMoodSelect = (mood) => {
+    setSelectedMood(mood);
+    setShowMoodModal(false);
   };
 
   const isButtonDisabled = !title.trim() || !content.trim();
@@ -93,25 +154,110 @@ const PostForm = ({ onPostSubmit }) => {
                 />
               </svg>
             </button>
-            <button
-              type="button"
-              className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-colors"
-              title="Add emoji"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
+
+            {/* Mood Button */}
+            <div className="relative">
+              <button
+                ref={moodButtonRef}
+                type="button"
+                className={`p-2 rounded-lg transition-all duration-200 ${
+                  selectedMood
+                    ? `${selectedMood.bgColor} ${selectedMood.hoverColor}`
+                    : "text-stone-500 hover:text-stone-700 hover:bg-stone-50"
+                }`}
+                title="Add mood"
+                onClick={() => setShowMoodModal(!showMoodModal)}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </button>
+                {selectedMood ? (
+                  <selectedMood.icon
+                    className={`w-5 h-5 ${selectedMood.color}`}
+                  />
+                ) : (
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                )}
+              </button>
+
+              {/* Mood Modal */}
+              {showMoodModal && (
+                <div
+                  ref={moodModalRef}
+                  className="absolute bottom-full mb-2 left-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 p-4 min-w-[150px]"
+                >
+                  <div className="space-y-2">
+                    {MOODS.map((mood) => {
+                      const Icon = mood.icon;
+                      return (
+                        <button
+                          key={mood.id}
+                          type="button"
+                          onClick={() => handleMoodSelect(mood)}
+                          className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                            selectedMood?.id === mood.id
+                              ? `${mood.bgColor} ${mood.color} font-medium`
+                              : "hover:bg-stone-50"
+                          }`}
+                        >
+                          <Icon
+                            className={`w-4 h-4 ${
+                              selectedMood?.id === mood.id
+                                ? mood.color
+                                : "text-stone-600"
+                            }`}
+                          />
+                          <span
+                            className={`text-sm ${
+                              selectedMood?.id === mood.id
+                                ? mood.color
+                                : "text-stone-700"
+                            }`}
+                          >
+                            {mood.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {selectedMood && (
+                      <div className="pt-2 mt-2 border-t border-stone-100">
+                        <button
+                          type="button"
+                          onClick={() => handleMoodSelect(null)}
+                          className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-red-50 transition-colors text-stone-600 hover:text-red-600 text-sm"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                          <span className="text-sm">Remove</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute -bottom-2 left-6 w-4 h-4 bg-white border-b border-r border-stone-200 transform rotate-45"></div>
+                </div>
+              )}
+            </div>
+
             <button
               type="button"
               className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-colors"

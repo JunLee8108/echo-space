@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { useCharacters } from "../components/hooks/useCharacters";
 
+import {
+  updateDisplayName,
+  resetPasswordForEmail,
+} from "../services/authService";
 import ProfileModal from "../components/UI/ProfileModal";
+import EditProfileModal from "../components/UI/EditProfileModal";
+import { Pencil } from "lucide-react";
 
 const Profile = ({ user }) => {
   const {
@@ -12,6 +18,7 @@ const Profile = ({ user }) => {
   } = useCharacters();
 
   const [localLoading, setLocalLoading] = useState(false);
+  const [showEditNameModal, setShowEditNameModal] = useState(false);
 
   const handleToggleFollow = async (character) => {
     setLocalLoading(true);
@@ -21,6 +28,28 @@ const Profile = ({ user }) => {
       alert("팔로우 상태 변경에 실패했습니다.");
     } finally {
       setLocalLoading(false);
+    }
+  };
+
+  const handleUpdateDisplayName = async (newName) => {
+    try {
+      await updateDisplayName(newName);
+      // 성공 시 페이지 새로고침하여 업데이트된 정보 반영
+      window.location.reload();
+    } catch (error) {
+      alert("이름 변경에 실패했습니다.");
+      console.error("Error updating display name:", error);
+      throw error; // 모달에서 로딩 상태를 관리하기 위해 에러를 다시 throw
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    try {
+      await resetPasswordForEmail(user.email);
+      // Success is handled in the modal
+    } catch (error) {
+      console.error("Password reset error:", error);
+      throw error;
     }
   };
 
@@ -53,10 +82,19 @@ const Profile = ({ user }) => {
                 {displayName.charAt(0).toUpperCase()}
               </span>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-stone-900 mb-1">
-                {displayName}
-              </h1>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold text-stone-900">
+                  {displayName}
+                </h1>
+                <button
+                  onClick={() => setShowEditNameModal(true)}
+                  className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-all"
+                  title="프로필 수정"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              </div>
               <p className="text-stone-600 text-xs">
                 Managing your AI companions
               </p>
@@ -229,6 +267,14 @@ const Profile = ({ user }) => {
         isOpen={profileModal.show}
         onClose={() => setProfileModal({ show: false, character: null })}
         character={profileModal.character}
+      />
+
+      <EditProfileModal
+        isOpen={showEditNameModal}
+        onClose={() => setShowEditNameModal(false)}
+        onConfirm={handleUpdateDisplayName}
+        currentName={user?.user_metadata?.display_name || ""}
+        onPasswordReset={handlePasswordReset}
       />
     </div>
   );

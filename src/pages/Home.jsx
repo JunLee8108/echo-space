@@ -5,6 +5,8 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
+import { Smile, Meh, Frown } from "lucide-react";
+
 // Modal
 import ConfirmationModal from "../components/UI/ConfirmationModal";
 import ProfileModal from "../components/UI/ProfileModal";
@@ -21,6 +23,27 @@ import "./Home.css";
 
 // 페이지당 포스트 개수
 const POSTS_PER_PAGE = 5;
+
+const MOODS = {
+  happy: {
+    icon: Smile,
+    label: "Happy",
+    color: "text-amber-500",
+    bgColor: "bg-amber-50",
+  },
+  neutral: {
+    icon: Meh,
+    label: "Neutral",
+    color: "text-stone-500",
+    bgColor: "bg-stone-50",
+  },
+  sad: {
+    icon: Frown,
+    label: "Sad",
+    color: "text-blue-500",
+    bgColor: "bg-blue-50",
+  },
+};
 
 const Home = ({ user, incrementNotificationCount }) => {
   const queryClient = useQueryClient();
@@ -158,6 +181,7 @@ const Home = ({ user, incrementNotificationCount }) => {
       const optimisticPost = {
         ...post,
         id: tempId,
+        mood: post.mood || null, // mood 추가
         Comment: [],
         Post_Like: [],
         like: 0,
@@ -491,7 +515,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                     }`}
                   >
                     {/* Post Header */}
-                    <div className="px-6 pt-6 pb-2 flex items-center justify-between">
+                    <div className="px-6 pt-6 pb-2 flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-gradient-to-br from-stone-600 to-stone-800 rounded-full flex items-center justify-center">
                           <span className="text-xs text-white font-medium">
@@ -499,9 +523,30 @@ const Home = ({ user, incrementNotificationCount }) => {
                           </span>
                         </div>
                         <div>
-                          <h3 className="font-medium text-stone-900">
-                            {user.user_metadata.display_name}
-                          </h3>
+                          <div className="flex items-center space-x-2">
+                            <h3 className="font-medium text-stone-900">
+                              {user.user_metadata.display_name}
+                            </h3>
+                            {/* Mood indicator */}
+                            {post.mood && MOODS[post.mood] && (
+                              <div
+                                className={`flex items-center justify-center w-4 h-4 rounded-full ${
+                                  MOODS[post.mood].bgColor
+                                }`}
+                              >
+                                {(() => {
+                                  const MoodIcon = MOODS[post.mood].icon;
+                                  return (
+                                    <MoodIcon
+                                      className={`w-4 h-4 ${
+                                        MOODS[post.mood].color
+                                      }`}
+                                    />
+                                  );
+                                })()}
+                              </div>
+                            )}
+                          </div>
                           <p className="text-xs text-stone-500">
                             {formatRelativeTime(post.created_at)}
                           </p>
