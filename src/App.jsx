@@ -114,11 +114,7 @@ function App() {
 
                 <Route
                   path="/account/update-password"
-                  element={
-                    <ProtectedRoute>
-                      <UpdatePassword />
-                    </ProtectedRoute>
-                  }
+                  element={<UpdatePassword />}
                 />
                 {/* Redirect any unknown routes to home */}
                 <Route path="*" element={<Navigate to="/" replace />} />
