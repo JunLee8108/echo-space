@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { updatePassword } from "../services/authService";
 import { Eye, EyeOff, Lock, CheckCircle } from "lucide-react";
+import supabase from "../services/supabaseClient";
 
 const UpdatePassword = () => {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ const UpdatePassword = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Password strength indicators
   const [passwordStrength, setPasswordStrength] = useState({
@@ -21,6 +23,46 @@ const UpdatePassword = () => {
     number: false,
     special: false,
   });
+
+  useEffect(() => {
+    checkAccess();
+  }, []);
+
+  const checkAccess = async () => {
+    try {
+      // 세션 확인 - /auth/confirm을 통해 왔다면 세션이 있을 것
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (!session || error) {
+        console.log("No valid session for password reset");
+        navigate("/");
+        return;
+      }
+
+      // 추가로 onAuthStateChange를 사용하여 PASSWORD_RECOVERY 이벤트 감지
+      const { data: authListener } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+          console.log("Auth event:", event);
+          if (event === "PASSWORD_RECOVERY" && session) {
+            console.log("Password recovery session confirmed");
+          }
+        }
+      );
+
+      setIsCheckingAuth(false);
+
+      // Cleanup
+      return () => {
+        authListener?.subscription.unsubscribe();
+      };
+    } catch (error) {
+      console.error("Access check error:", error);
+      navigate("/");
+    }
+  };
 
   useEffect(() => {
     // Check password strength
@@ -52,6 +94,7 @@ const UpdatePassword = () => {
     try {
       await updatePassword(password);
       setSuccess(true);
+
       setTimeout(() => {
         navigate("/");
       }, 2000);
@@ -62,6 +105,18 @@ const UpdatePassword = () => {
       setLoading(false);
     }
   };
+
+  // 인증 확인 중
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-stone-900 mx-auto mb-4"></div>
+          <p className="text-stone-600">인증 확인 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
