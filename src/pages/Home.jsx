@@ -437,8 +437,6 @@ const Home = ({ user, incrementNotificationCount }) => {
     );
   }
 
-  console.log(posts);
-
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-2xl mx-auto px-6 py-8 min-h-[70dvh]">
@@ -496,7 +494,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                     <div className="px-6 pt-6 pb-2 flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-gradient-to-br from-stone-600 to-stone-800 rounded-full flex items-center justify-center">
-                          <span className="text-sm text-white font-medium">
+                          <span className="text-xs text-white font-medium">
                             {post.title.charAt(0).toUpperCase()}
                           </span>
                         </div>
@@ -599,7 +597,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                                 <img
                                   src={c.avatar_url}
                                   alt={c.character}
-                                  className="w-11 h-11 cursor-pointer rounded-2xl object-cover flex-shrink-0"
+                                  className="w-10 h-10 cursor-pointer rounded-2xl object-cover flex-shrink-0"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setProfileModal({
@@ -701,7 +699,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                               <div className="space-y-2 max-h-60 overflow-y-auto">
                                 {likeModal.likes.map((like) => (
                                   <div
-                                    key={like.id}
+                                    key={like.character_id}
                                     className="flex items-center space-x-2 py-1"
                                   >
                                     {like.avatar_url ? (
@@ -720,6 +718,13 @@ const Home = ({ user, incrementNotificationCount }) => {
                                                 like.prompt_description,
                                             },
                                           });
+                                          if (likeModal.show) {
+                                            setLikeModal({
+                                              show: false,
+                                              likes: [],
+                                              postId: null,
+                                            });
+                                          }
                                         }}
                                         onError={(e) => {
                                           e.target.style.display = "none";
@@ -804,9 +809,30 @@ const Home = ({ user, incrementNotificationCount }) => {
               {/* 더 이상 포스트가 없을 때 */}
               {!hasNextPage && posts.length > 0 && (
                 <div className="text-center py-8">
-                  <p className="text-stone-400 text-sm">
+                  <p className="text-stone-400 text-sm mb-4">
                     모든 포스트를 확인했습니다
                   </p>
+                  <button
+                    onClick={() =>
+                      window.scrollTo({ top: 0, behavior: "smooth" })
+                    }
+                    className="inline-flex items-center space-x-2 px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg transition-colors"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 10l7-7m0 0l7 7m-7-7v18"
+                      />
+                    </svg>
+                    <span className="text-sm font-medium">맨 위로</span>
+                  </button>
                 </div>
               )}
             </>

@@ -47,7 +47,7 @@ const Profile = ({ user }) => {
       <div className="max-w-2xl mx-auto px-6 py-8">
         {/* Profile Section */}
         <div className="mb-8">
-          <div className="flex items-center space-x-4 mb-6">
+          <div className="flex items-center space-x-4 mb-8">
             <div className="w-12 h-12 bg-gradient-to-br from-stone-600 to-stone-800 rounded-2xl flex items-center justify-center shadow-lg">
               <span className="text-lg text-white font-bold">
                 {displayName.charAt(0).toUpperCase()}
@@ -68,7 +68,7 @@ const Profile = ({ user }) => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2 gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-stone-900 mb-1">
+              <h2 className="text-base font-semibold text-stone-900 mb-1">
                 AI Companions
               </h2>
             </div>
@@ -88,7 +88,7 @@ const Profile = ({ user }) => {
                   className="bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-200 transition-all duration-200"
                 >
                   <div className="flex flex-wrap items-center justify-end gap-4 sm:flex-nowrap sm:gap-0 sm:justify-between">
-                    <div className="flex items-center space-x-4 mr-4">
+                    <div className="flex items-center space-x-4 mr-6">
                       {/* Character Avatar */}
                       <div className="relative">
                         {character.avatar_url ? (
@@ -144,7 +144,7 @@ const Profile = ({ user }) => {
                     <button
                       onClick={() => handleToggleFollow(character)}
                       disabled={localLoading || contextLoading}
-                      className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 min-w-[100px] ${
+                      className={`px-4 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 min-w-[85px] ${
                         isFollowed
                           ? "bg-stone-900 text-white hover:bg-stone-800"
                           : "bg-stone-100 text-stone-700 hover:bg-stone-200"
