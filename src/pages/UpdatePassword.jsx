@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { updatePassword } from "../services/authService";
 import { Eye, EyeOff, Lock, CheckCircle } from "lucide-react";
-import supabase from "../services/supabaseClient";
 
 const UpdatePassword = () => {
   const navigate = useNavigate();
@@ -13,7 +12,6 @@ const UpdatePassword = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [isValidAccess, setIsValidAccess] = useState(true);
 
   // Password strength indicators
   const [passwordStrength, setPasswordStrength] = useState({
@@ -23,30 +21,6 @@ const UpdatePassword = () => {
     number: false,
     special: false,
   });
-
-  useEffect(() => {
-    // 페이지 로드 시 접근 권한 확인
-    checkAccess();
-  }, []);
-
-  const checkAccess = async () => {
-    try {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
-
-      // 세션이 없거나 에러가 있으면 유효하지 않은 접근
-      if (!session || error) {
-        setIsValidAccess(false);
-        navigate("/");
-      }
-    } catch (error) {
-      console.error("Access check error:", error);
-      setIsValidAccess(false);
-      navigate("/");
-    }
-  };
 
   useEffect(() => {
     // Check password strength
@@ -88,10 +62,6 @@ const UpdatePassword = () => {
       setLoading(false);
     }
   };
-
-  if (!isValidAccess) {
-    return null; // 또는 로딩 스피너
-  }
 
   if (success) {
     return (

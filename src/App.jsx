@@ -5,7 +5,6 @@ import Header from "./components/layout/Header";
 import BottomNavbar from "./components/layout/BottomNavbar";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
-import ProtectedRoute from "./components/utils/ProtectedRoute";
 import UpdatePassword from "./pages/UpdatePassword";
 import AuthForm from "./components/AuthForm";
 import supabase from "./services/supabaseClient";
