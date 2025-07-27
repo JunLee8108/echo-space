@@ -137,13 +137,11 @@ export async function savePostWithCommentsAndLikes(
 export async function deletePostById(postId, uid) {
   if (!uid) throw new Error("user_id가 없습니다.");
 
-  // RLS 정책이 'user_id = auth.uid()' 로 걸려 있으면
-  // uid 체크 없이 delete 만 호출해도 안전합니다.
   const { error } = await supabase
     .from("Post")
     .delete()
     .eq("id", postId)
-    .eq("user_id", uid); // 안전망 한 번 더
+    .eq("user_id", uid);
 
   if (error) {
     console.error("❌ Post 삭제 실패:", error.message);
@@ -151,23 +149,15 @@ export async function deletePostById(postId, uid) {
   }
 }
 
-// Post + 연결된 댓글 + 좋아요 누른 캐릭터까지 모두 불러오기 (FETCH)
-
+// CURSOR 기반 페이지네이션으로 포스트 가져오기
 export async function fetchPostsWithCommentsAndLikes(
   uid,
-  { limit = 5, offset = 0 } = {}
+  { limit = 5, cursor = null } = {}
 ) {
   if (!uid) throw new Error("user_id가 없습니다.");
 
   try {
-    // 전체 포스트 개수 조회 (hasMore 판단용)
-    const { count } = await supabase
-      .from("Post")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", uid);
-
-    // 페이지네이션된 포스트 조회
-    const { data, error } = await supabase
+    let query = supabase
       .from("Post")
       .select(
         `
@@ -177,6 +167,7 @@ export async function fetchPostsWithCommentsAndLikes(
         mood,
         like,
         created_at,
+        user_id,
         Comment (
           id,
           character_id,
@@ -202,40 +193,63 @@ export async function fetchPostsWithCommentsAndLikes(
       )
       .eq("user_id", uid)
       .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1); // LIMIT과 OFFSET 적용
+      .order("id", { ascending: false }) // created_at이 같을 경우를 위한 2차 정렬
+      .limit(limit + 1); // hasMore 확인을 위해 1개 더 가져옴
+
+    // cursor가 있으면 해당 지점부터 시작
+    if (cursor) {
+      // cursor는 { created_at, id } 형태의 객체
+      query = query.or(
+        `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`
+      );
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("❌ 불러오기 실패:", error.message);
       throw error;
     }
 
+    // hasMore 판단 및 실제 반환할 데이터 준비
+    const hasMore = data.length > limit;
+    const posts = hasMore ? data.slice(0, -1) : data; // 마지막 1개 제거
+
+    // 다음 cursor 준비
+    const nextCursor =
+      posts.length > 0
+        ? {
+            created_at: posts[posts.length - 1].created_at,
+            id: posts[posts.length - 1].id,
+          }
+        : null;
+
     // 데이터 구조 평탄화
-    const formattedData =
-      data?.map((post) => ({
-        ...post,
-        Comment:
-          post.Comment?.map((comment) => ({
-            id: comment.id,
-            character_id: comment.character_id,
-            message: comment.message,
-            created_at: comment.created_at,
-            character: comment.Character?.name || "Unknown",
-            avatar_url: comment.Character?.avatar_url || null,
-            prompt_description: comment.Character?.prompt_description || "",
-          })) || [],
-        Post_Like:
-          post.Post_Like?.map((like) => ({
-            character_id: like.character_id,
-            character: like.Character?.name || "Unknown",
-            avatar_url: like.Character?.avatar_url || null,
-            prompt_description: like.Character?.prompt_description || "",
-          })) || [],
-      })) || [];
+    const formattedData = posts.map((post) => ({
+      ...post,
+      Comment:
+        post.Comment?.map((comment) => ({
+          id: comment.id,
+          character_id: comment.character_id,
+          message: comment.message,
+          created_at: comment.created_at,
+          character: comment.Character?.name || "Unknown",
+          avatar_url: comment.Character?.avatar_url || null,
+          prompt_description: comment.Character?.prompt_description || "",
+        })) || [],
+      Post_Like:
+        post.Post_Like?.map((like) => ({
+          character_id: like.character_id,
+          character: like.Character?.name || "Unknown",
+          avatar_url: like.Character?.avatar_url || null,
+          prompt_description: like.Character?.prompt_description || "",
+        })) || [],
+    }));
 
     return {
       posts: formattedData,
-      totalCount: count,
-      hasMore: offset + limit < count,
+      nextCursor,
+      hasMore,
     };
   } catch (error) {
     console.error("Error in fetchPostsWithCommentsAndLikes:", error);

@@ -857,7 +857,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                   <p className="text-stone-400 text-sm mb-4">
                     모든 포스트를 확인했습니다
                   </p>
-                  <button
+                  {/* <button
                     onClick={() =>
                       window.scrollTo({ top: 0, behavior: "smooth" })
                     }
@@ -877,7 +877,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                       />
                     </svg>
                     <span className="text-sm font-medium">맨 위로</span>
-                  </button>
+                  </button> */}
                 </div>
               )}
             </>

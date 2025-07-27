@@ -80,10 +80,10 @@ const PostForm = ({ onPostSubmit }) => {
     // Check if the new focus target is still within the form
     if (!e.currentTarget.contains(e.relatedTarget)) {
       // Only close if both fields are empty
+      setShowMoodModal(false);
       if (!title.trim() && !content.trim()) {
         setTimeout(() => {
           setIsFocused(false);
-          setShowMoodModal(false);
         }, 300);
       }
     }
