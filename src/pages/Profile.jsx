@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useCharacters } from "../components/hooks/useCharacters";
 
-import { updateDisplayName } from "../services/authService";
+import { updateDisplayName, updatePassword } from "../services/authService";
 import ProfileModal from "../components/UI/ProfileModal";
 import EditProfileModal from "../components/UI/EditProfileModal";
 import { Pencil } from "lucide-react";
@@ -15,7 +15,7 @@ const Profile = ({ user }) => {
   } = useCharacters();
 
   const [localLoading, setLocalLoading] = useState(false);
-  const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false); // 모달 상태 추가
 
   const handleToggleFollow = async (character) => {
     setLocalLoading(true);
@@ -40,13 +40,13 @@ const Profile = ({ user }) => {
     }
   };
 
-  const handlePasswordReset = async () => {
+  const handlePasswordChange = async (currentPassword, newPassword) => {
     try {
-      await resetPasswordForEmail(user.email);
-      // Success is handled in the modal
+      await updatePassword(currentPassword, newPassword);
+      // 비밀번호 변경 성공 시 모달에서 처리
     } catch (error) {
-      console.error("Password reset error:", error);
-      throw error;
+      console.error("Password change error:", error);
+      throw error; // 모달에서 에러 처리
     }
   };
 
@@ -85,9 +85,9 @@ const Profile = ({ user }) => {
                   {displayName}
                 </h1>
                 <button
-                  onClick={() => setShowEditNameModal(true)}
+                  onClick={() => setShowEditProfileModal(true)}
                   className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-all"
-                  title="프로필 수정"
+                  title="이름 수정"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
@@ -267,11 +267,11 @@ const Profile = ({ user }) => {
       />
 
       <EditProfileModal
-        isOpen={showEditNameModal}
-        onClose={() => setShowEditNameModal(false)}
+        isOpen={showEditProfileModal}
+        onClose={() => setShowEditProfileModal(false)}
         onConfirm={handleUpdateDisplayName}
         currentName={user?.user_metadata?.display_name || ""}
-        onPasswordReset={handlePasswordReset}
+        onPasswordChange={handlePasswordChange} // 이 줄 추가
       />
     </div>
   );

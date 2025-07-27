@@ -1,10 +1,8 @@
 import { useState } from "react"; // useState 추가
-import { useNavigate } from "react-router";
 import supabase from "../../services/supabaseClient";
 import ConfirmationModal from "../UI/ConfirmationModal";
 
 const Header = ({ notificationCount = 0 }) => {
-  const navigate = useNavigate();
   const [showSignOutModal, setShowSignOutModal] = useState(false); // 모달 상태 추가
 
   const handleSignOut = async () => {
@@ -13,7 +11,6 @@ const Header = ({ notificationCount = 0 }) => {
       console.error("Sign-out failed:", error.message);
       return;
     }
-    navigate("/", { replace: true });
   };
 
   return (

@@ -74,13 +74,24 @@ function App() {
   // If not authenticated, show auth form
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-stone-50">
-        <AuthForm
-          onAuthSuccess={() => {
-            /* handled by onAuthStateChange */
-          }}
-        />
-      </div>
+      <BrowserRouter>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <div className="min-h-screen flex items-center justify-center bg-stone-50">
+                <AuthForm
+                  onAuthSuccess={() => {
+                    /* handled by onAuthStateChange */
+                  }}
+                />
+              </div>
+            }
+          />
+          {/* Redirect all other routes to root when not authenticated */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
     );
   }
 

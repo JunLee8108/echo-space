@@ -40,7 +40,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div
         ref={modalRef}
-        className="relative w-[90%] max-w-[380px] max-h-[70dvh] overflow-y-auto bg-white rounded-3xl shadow-2xl"
+        className="relative w-[90%] max-w-[380px] max-h-[70dvh] mb-[70px] overflow-y-auto bg-white rounded-3xl shadow-2xl"
       >
         {/* Profile Content */}
         <div className="relative px-4 pt-20 pb-4">
