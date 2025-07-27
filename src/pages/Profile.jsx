@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { useCharacters } from "../components/hooks/useCharacters";
 
-import {
-  updateDisplayName,
-  resetPasswordForEmail,
-} from "../services/authService";
+import { updateDisplayName } from "../services/authService";
 import ProfileModal from "../components/UI/ProfileModal";
 import EditProfileModal from "../components/UI/EditProfileModal";
 import { Pencil } from "lucide-react";
