@@ -18,27 +18,3 @@ export const updateDisplayName = async (displayName) => {
 
   return data;
 };
-
-export const resetPasswordForEmail = async (email) => {
-  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/account/update-password`,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
-};
-
-export const updatePassword = async (newPassword) => {
-  const { data, error } = await supabase.auth.updateUser({
-    password: newPassword,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
-};

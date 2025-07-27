@@ -1,24 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { KeyRound } from "lucide-react";
 
-const EditProfileModal = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  currentName,
-  onPasswordReset,
-}) => {
+const EditProfileModal = ({ isOpen, onClose, onConfirm, currentName }) => {
   const [name, setName] = useState(currentName);
   const [loading, setLoading] = useState(false);
-  const [passwordResetLoading, setPasswordResetLoading] = useState(false);
-  const [passwordResetSent, setPasswordResetSent] = useState(false);
   const inputRef = useRef(null);
   const modalRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
       setName(currentName);
-      setPasswordResetSent(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen, currentName]);
@@ -74,19 +64,6 @@ const EditProfileModal = ({
     }
   };
 
-  const handlePasswordReset = async () => {
-    setPasswordResetLoading(true);
-    try {
-      await onPasswordReset();
-      setPasswordResetSent(true);
-    } catch (error) {
-      console.error("Password reset error:", error);
-      alert("비밀번호 재설정 이메일 전송에 실패했습니다.");
-    } finally {
-      setPasswordResetLoading(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div
@@ -96,9 +73,7 @@ const EditProfileModal = ({
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-stone-900">
-              Edit Profile
-            </h3>
+            <h3 className="text-lg font-semibold text-stone-900">Edit Name</h3>
             <button
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-stone-100 transition-colors"
@@ -139,44 +114,6 @@ const EditProfileModal = ({
                 maxLength={50}
               />
               <p className="mt-2 text-xs text-stone-500">{name.length}/50</p>
-            </div>
-
-            {/* Password Reset Section */}
-            <div className="mb-6 p-4 bg-stone-50 rounded-xl">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-medium text-stone-700">Security</h4>
-                <KeyRound className="w-4 h-4 text-stone-400" />
-              </div>
-
-              {passwordResetSent ? (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                  <p className="text-sm text-green-700">
-                    비밀번호 재설정 이메일이 전송되었습니다. 이메일을
-                    확인해주세요.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <p className="text-xs text-stone-600 mb-3">
-                    비밀번호를 변경하려면 이메일로 재설정 링크를 받으세요.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handlePasswordReset}
-                    disabled={passwordResetLoading}
-                    className="w-full text-sm px-3 py-2 bg-white hover:bg-stone-100 text-stone-700 font-medium rounded-lg border border-stone-200 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {passwordResetLoading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-stone-700"></div>
-                    ) : (
-                      <>
-                        <KeyRound className="w-4 h-4" />
-                        비밀번호 변경하기
-                      </>
-                    )}
-                  </button>
-                </>
-              )}
             </div>
 
             {/* Actions */}

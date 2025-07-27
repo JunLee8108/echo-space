@@ -5,8 +5,6 @@ import Header from "./components/layout/Header";
 import BottomNavbar from "./components/layout/BottomNavbar";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
-import AuthConfirm from "./pages/AuthConfirm";
-import UpdatePassword from "./pages/UpdatePassword";
 import AuthForm from "./components/AuthForm";
 import supabase from "./services/supabaseClient";
 import { getCurrentUser } from "./services/authService";
@@ -111,13 +109,6 @@ function App() {
                   }
                 />
                 <Route path="/profile" element={<Profile user={user} />} />
-
-                <Route path="/auth/confirm" element={<AuthConfirm />} />
-                <Route
-                  path="/account/update-password"
-                  element={<UpdatePassword />}
-                />
-
                 {/* Redirect any unknown routes to home */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
