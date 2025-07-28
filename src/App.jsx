@@ -63,14 +63,18 @@ function App() {
   }, []);
 
   useEffect(() => {
+    let timer;
     if (showPostModal) {
-      document.body.classList.add("modal-open");
+      timer = setTimeout(() => {
+        document.body.classList.add("modal-open");
+      }, 300);
     } else {
       document.body.classList.remove("modal-open");
     }
 
     return () => {
       document.body.classList.remove("modal-open");
+      clearTimeout(timer);
     };
   }, [showPostModal]);
 
