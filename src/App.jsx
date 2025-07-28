@@ -67,7 +67,7 @@ function App() {
     if (showPostModal) {
       timer = setTimeout(() => {
         document.body.classList.add("modal-open");
-      }, 300);
+      }, 600);
     } else {
       document.body.classList.remove("modal-open");
     }
