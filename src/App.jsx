@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import ScrollToTop from "./components/utils/ScrollToTop";
 import Header from "./components/layout/Header";
@@ -38,7 +38,7 @@ function AppContent({ user }) {
   const [showPostModal, setShowPostModal] = useState(false);
 
   // Scroll position ref
-  const scrollPositionRef = useState(0);
+  const scrollPositionRef = useRef(0);
 
   // Function to increment notification count
   const incrementNotificationCount = () => {
@@ -69,6 +69,8 @@ function AppContent({ user }) {
       // Save current scroll position before fixing body
       scrollPositionRef.current = window.scrollY;
 
+      console.log(scrollPositionRef.current);
+
       // Apply fixed positioning with negative top to maintain visual position
       document.body.style.top = `-${scrollPositionRef.current}px`;
 
@@ -78,6 +80,8 @@ function AppContent({ user }) {
     } else {
       // Remove modal-open class
       document.body.classList.remove("modal-open");
+
+      console.log(scrollPositionRef.current);
 
       // Reset body styles
       document.body.style.top = "";
