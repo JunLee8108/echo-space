@@ -225,7 +225,7 @@ const BottomNavbar = ({ onAddClick }) => {
                     navigate(tab.path);
                   }
                 }}
-                className={`relative p-3 rounded-xl transition-all duration-200
+                className={`relative p-4 rounded-xl transition-all duration-200
                   ${
                     tab.special
                       ? "bg-gradient-to-br from-stone-700 to-stone-900 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
