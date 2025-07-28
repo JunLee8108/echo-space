@@ -75,7 +75,7 @@ const EditProfileModal = ({
   const handleNameSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim()) {
-      alert("이름을 입력해주세요.");
+      alert("Please enter a name.");
       return;
     }
 
@@ -101,33 +101,35 @@ const EditProfileModal = ({
 
     // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError("모든 필드를 입력해주세요.");
+      setPasswordError("Please fill in all fields.");
       return;
     }
 
     if (newPassword.length < 6) {
-      setPasswordError("새 비밀번호는 최소 6자 이상이어야 합니다.");
+      setPasswordError("New password must be at least 6 characters.");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError("새 비밀번호가 일치하지 않습니다.");
+      setPasswordError("Passwords do not match.");
       return;
     }
 
     if (currentPassword === newPassword) {
-      setPasswordError("새 비밀번호는 현재 비밀번호와 달라야 합니다.");
+      setPasswordError(
+        "New password must be different from the current password."
+      );
       return;
     }
 
     setLoading(true);
     try {
       await onPasswordChange(currentPassword, newPassword);
-      alert("비밀번호가 성공적으로 변경되었습니다.");
+      alert("Password changed successfully.");
       onClose();
       signOut();
     } catch (error) {
-      setPasswordError(error.message || "비밀번호 변경에 실패했습니다.");
+      setPasswordError(error.message || "Failed to change password.");
     } finally {
       setLoading(false);
     }
@@ -143,7 +145,7 @@ const EditProfileModal = ({
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-stone-900">
-              프로필 수정
+              Edit Profile
             </h3>
             <button
               onClick={onClose}
@@ -175,7 +177,7 @@ const EditProfileModal = ({
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              이름 변경
+              Name
             </button>
             <button
               onClick={() => setActiveTab("password")}
@@ -185,7 +187,7 @@ const EditProfileModal = ({
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              비밀번호 변경
+              Password
             </button>
           </div>
 
@@ -197,14 +199,14 @@ const EditProfileModal = ({
                   htmlFor="display-name"
                   className="block text-sm font-medium text-stone-700 mb-2"
                 >
-                  표시 이름
+                  Display Name
                 </label>
                 <input
                   id="display-name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="이름을 입력하세요"
+                  placeholder="Enter your name"
                   className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
                   maxLength={50}
                 />
@@ -219,7 +221,7 @@ const EditProfileModal = ({
                   disabled={loading}
                   className="text-sm flex-1 px-4 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  취소
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -231,7 +233,7 @@ const EditProfileModal = ({
                   {loading ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   ) : (
-                    "저장"
+                    "Save"
                   )}
                 </button>
               </div>
@@ -248,7 +250,7 @@ const EditProfileModal = ({
                     htmlFor="current-password"
                     className="block text-sm font-medium text-stone-700 mb-2"
                   >
-                    현재 비밀번호
+                    Current Password
                   </label>
                   <div className="relative">
                     <input
@@ -256,7 +258,7 @@ const EditProfileModal = ({
                       type={showCurrentPassword ? "text" : "password"}
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="현재 비밀번호 입력"
+                      placeholder="Enter current password"
                       className="w-full px-4 py-3 pr-12 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
                     />
                     <button
@@ -281,7 +283,7 @@ const EditProfileModal = ({
                     htmlFor="new-password"
                     className="block text-sm font-medium text-stone-700 mb-2"
                   >
-                    새 비밀번호
+                    New Password
                   </label>
                   <div className="relative">
                     <input
@@ -289,7 +291,7 @@ const EditProfileModal = ({
                       type={showNewPassword ? "text" : "password"}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="새 비밀번호 입력 (최소 6자)"
+                      placeholder="Enter new password"
                       className="w-full px-4 py-3 pr-12 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
                     />
                     <button
@@ -312,7 +314,7 @@ const EditProfileModal = ({
                     htmlFor="confirm-password"
                     className="block text-sm font-medium text-stone-700 mb-2"
                   >
-                    새 비밀번호 확인
+                    Confirm New Password
                   </label>
                   <div className="relative">
                     <input
@@ -320,7 +322,7 @@ const EditProfileModal = ({
                       type={showConfirmPassword ? "text" : "password"}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="새 비밀번호 다시 입력"
+                      placeholder="Re-enter new password"
                       className="w-full px-4 py-3 pr-12 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
                     />
                     <button
@@ -355,7 +357,7 @@ const EditProfileModal = ({
                   disabled={loading}
                   className="text-sm flex-1 px-4 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  취소
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -365,7 +367,7 @@ const EditProfileModal = ({
                   {loading ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   ) : (
-                    "변경"
+                    "Update"
                   )}
                 </button>
               </div>
