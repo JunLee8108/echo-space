@@ -200,6 +200,18 @@ function App() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (showPostModal) {
+      document.body.classList.add("modal-open");
+    } else {
+      document.body.classList.remove("modal-open");
+    }
+
+    return () => {
+      document.body.classList.remove("modal-open");
+    };
+  }, [showPostModal]);
+
   // Function to increment notification count
   const incrementNotificationCount = () => {
     setNotificationCount((prev) => prev + 1);

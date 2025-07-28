@@ -43,6 +43,19 @@ body {
     "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
 }
 
+/* Prevent body scroll when modal is open */
+body.modal-open {
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
+}
+
+/* For iOS devices */
+body.modal-open,
+body.modal-open #root {
+  -webkit-overflow-scrolling: touch;
+}
+
 h1,
 h2,
 h3,
