@@ -17,7 +17,6 @@ import { Smile, Meh, Frown } from "lucide-react";
 import ConfirmationModal from "../components/UI/ConfirmationModal";
 import ProfileModal from "../components/UI/ProfileModal";
 
-import PostForm from "../components/PostForm";
 import { useCharacters } from "../components/hooks/useCharacters";
 import { fetchAIComment } from "../services/openaiService";
 import {
@@ -435,16 +434,6 @@ const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
     return (
       <div className="min-h-screen bg-white">
         <div className="max-w-2xl mx-auto px-6 py-8">
-          {/* <div className="mb-8">
-            <div className="bg-stone-50 rounded-2xl p-1">
-              <div className="bg-white rounded-xl shadow-sm">
-                <PostForm
-                  onPostSubmit={handlePostSubmit}
-                  isSubmitting={false}
-                />
-              </div>
-            </div>
-          </div> */}
           <div className="space-y-6">
             {[...Array(3)].map((_, i) => (
               <PostSkeleton key={i} />
@@ -475,18 +464,6 @@ const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-2xl mx-auto px-6 py-8 min-h-[70dvh]">
-        {/* Enhanced Post Form */}
-        {/* <div className="mb-8">
-          <div className="bg-stone-50 rounded-2xl p-1">
-            <div className="bg-white rounded-xl shadow-sm">
-              <PostForm
-                onPostSubmit={handlePostSubmit}
-                isSubmitting={createPostMutation.isLoading}
-              />
-            </div>
-          </div>
-        </div> */}
-
         {/* Posts Feed */}
         <div className="space-y-6">
           {posts.length === 0 ? (
@@ -860,13 +837,13 @@ const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
               )}
 
               {/* Intersection Observer 타겟 */}
-              <div ref={loadMoreRef} className="h-10" />
+              <div ref={loadMoreRef} className="h-10 mb-0" />
 
               {/* 더 이상 포스트가 없을 때 */}
               {!hasNextPage && posts.length > 0 && (
                 <div className="text-center py-8">
                   <p className="text-stone-400 text-sm mb-4">
-                    모든 포스트를 확인했습니다
+                    You're all caught up
                   </p>
                   <button
                     onClick={() =>
@@ -887,7 +864,7 @@ const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
                         d="M5 10l7-7m0 0l7 7m-7-7v18"
                       />
                     </svg>
-                    <span className="text-sm font-medium">맨 위로</span>
+                    <span className="text-sm font-medium">Back to top</span>
                   </button>
                 </div>
               )}
