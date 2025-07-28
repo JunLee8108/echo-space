@@ -597,9 +597,13 @@ const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
                       <h2 className="text-lg font-semibold text-stone-900 mb-2">
                         {post.title}
                       </h2>
-                      <p className="text-stone-700 leading-relaxed whitespace-pre-wrap">
+                      {/* <p className="text-stone-700 leading-relaxed whitespace-pre-wrap">
                         {post.content}
-                      </p>
+                      </p> */}
+                      <div
+                        className="text-stone-700 leading-relaxed prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ __html: post.content }}
+                      />
                     </div>
 
                     {/* Loading indicator for AI responses */}

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Smile, Meh, Frown } from "lucide-react";
+import TipTapEditor from "../utils/TipTapEditor";
 import "./PostFormModal.css";
 
 const MOODS = [
@@ -97,7 +98,11 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
+
+    // Strip HTML tags to check if content is empty
+    const plainText = content.replace(/<[^>]*>/g, "").trim();
+
+    if (!title.trim() || !plainText) return;
 
     setIsSubmitting(true);
 
@@ -131,7 +136,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
       // 페이드아웃 애니메이션 시작
       setIsClosing(false);
       onClose();
-    }, 400); // 600ms 로딩 표시
+    }, 400); // 400ms 애니메이션
   };
 
   const handleMoodSelect = (mood) => {
@@ -139,14 +144,16 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
     setShowMoodModal(false);
   };
 
-  const isButtonDisabled = !title.trim() || !content.trim();
+  // Check if content has actual text (not just HTML tags)
+  const plainTextContent = content.replace(/<[^>]*>/g, "").trim();
+  const isButtonDisabled = !title.trim() || !plainTextContent;
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div className={`absolute inset-0 bg-black/50 backdrop-blur-xs `} />
+      <div className={`absolute inset-0 bg-black/50 backdrop-blur-xs`} />
 
       {/* Modal */}
       <div
@@ -194,14 +201,12 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
               />
             </div>
 
-            {/* Content Textarea - Flex grow to fill remaining space */}
-            <div className="relative flex-1 flex">
-              <textarea
+            {/* TipTap Rich Text Editor - Flex grow to fill remaining space */}
+            <div className="relative flex-1 flex flex-col">
+              <TipTapEditor
+                content={content}
+                onChange={setContent}
                 placeholder="Share your thoughts..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full h-full px-0 py-2 text-stone-700 placeholder-stone-400 border-0 focus:outline-none resize-none bg-transparent"
-                required
               />
             </div>
 
@@ -210,7 +215,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
               <div className="flex items-center space-x-2">
                 <button
                   type="button"
-                  className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-colors"
+                  className="p-3 text-stone-500 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-colors"
                   title="Add image"
                 >
                   <svg
@@ -233,7 +238,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
                   <button
                     ref={moodButtonRef}
                     type="button"
-                    className={`p-2 rounded-lg transition-all duration-200 ${
+                    className={`p-3 rounded-lg transition-all duration-200 ${
                       selectedMood
                         ? `${selectedMood.bgColor} ${selectedMood.hoverColor}`
                         : "text-stone-500 hover:text-stone-700 hover:bg-stone-50"
@@ -333,7 +338,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
 
                 <button
                   type="button"
-                  className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-colors"
+                  className="p-3 text-stone-500 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-colors"
                   title="Add location"
                 >
                   <svg
@@ -359,9 +364,9 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
 
               <div className="flex items-center space-x-3">
                 {/* Character count */}
-                {content && (
+                {plainTextContent && (
                   <span className="text-xs text-stone-400">
-                    {content.length} / 500
+                    {plainTextContent.length} / 5000
                   </span>
                 )}
 

@@ -1,0 +1,209 @@
+/* TipTap Editor Styles */
+.tiptap-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Editor Content Area */
+.tiptap-editor .ProseMirror {
+  flex: 1;
+  padding: 1rem;
+  outline: none;
+  min-height: 200px;
+  overflow-y: auto;
+}
+
+/* Placeholder */
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #a8a29e;
+  pointer-events: none;
+  height: 0;
+}
+
+/* Typography */
+.tiptap-editor .ProseMirror {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: #44403c;
+}
+
+.tiptap-editor .ProseMirror h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 1.5rem 0 1rem;
+  line-height: 1.2;
+}
+
+.tiptap-editor .ProseMirror h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.75rem;
+  line-height: 1.3;
+}
+
+.tiptap-editor .ProseMirror h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  line-height: 1.4;
+}
+
+.tiptap-editor .ProseMirror p {
+  margin: 0.75rem 0;
+}
+
+/* Lists */
+.tiptap-editor .ProseMirror ul,
+.tiptap-editor .ProseMirror ol {
+  padding-left: 1.5rem;
+  margin: 0.75rem 0;
+}
+
+.tiptap-editor .ProseMirror ul {
+  list-style-type: disc;
+}
+
+.tiptap-editor .ProseMirror ol {
+  list-style-type: decimal;
+}
+
+.tiptap-editor .ProseMirror li {
+  margin: 0.25rem 0;
+}
+
+.tiptap-editor .ProseMirror li > p {
+  margin: 0;
+}
+
+/* Blockquote */
+.tiptap-editor .ProseMirror blockquote {
+  border-left: 3px solid #d4d4d8;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #52525b;
+  font-style: italic;
+}
+
+/* Code */
+.tiptap-editor .ProseMirror code {
+  background-color: #f5f5f4;
+  color: #dc2626;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 0.875em;
+}
+
+.tiptap-editor .ProseMirror pre {
+  background-color: #1c1917;
+  color: #fafaf9;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.tiptap-editor .ProseMirror pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: 0.875rem;
+}
+
+/* Links */
+.tiptap-editor .ProseMirror a {
+  color: #3b82f6;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tiptap-editor .ProseMirror a:hover {
+  color: #2563eb;
+}
+
+/* Images */
+.tiptap-editor .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+  display: block;
+}
+
+.tiptap-editor .ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Text Alignment */
+.tiptap-editor .ProseMirror p[style*="text-align: center"],
+.tiptap-editor .ProseMirror h1[style*="text-align: center"],
+.tiptap-editor .ProseMirror h2[style*="text-align: center"],
+.tiptap-editor .ProseMirror h3[style*="text-align: center"] {
+  text-align: center;
+}
+
+.tiptap-editor .ProseMirror p[style*="text-align: right"],
+.tiptap-editor .ProseMirror h1[style*="text-align: right"],
+.tiptap-editor .ProseMirror h2[style*="text-align: right"],
+.tiptap-editor .ProseMirror h3[style*="text-align: right"] {
+  text-align: right;
+}
+
+/* Highlight */
+.tiptap-editor .ProseMirror mark {
+  background-color: #fef08a;
+  padding: 0.125rem 0;
+  border-radius: 0.125rem;
+}
+
+/* Horizontal Rule */
+.tiptap-editor .ProseMirror hr {
+  border: none;
+  border-top: 2px solid #e7e5e4;
+  margin: 2rem 0;
+}
+
+/* Focus styles */
+.tiptap-editor .ProseMirror:focus {
+  outline: none;
+}
+
+/* Selection */
+.tiptap-editor .ProseMirror ::selection {
+  background-color: #bfdbfe;
+}
+
+/* Toolbar scrollbar for mobile */
+.editor-toolbar {
+  scrollbar-width: thin;
+  scrollbar-color: #d4d4d8 #f5f5f4;
+}
+
+.editor-toolbar::-webkit-scrollbar {
+  height: 6px;
+}
+
+.editor-toolbar::-webkit-scrollbar-track {
+  background: #f5f5f4;
+}
+
+.editor-toolbar::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 3px;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .editor-toolbar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .tiptap-editor .ProseMirror {
+    font-size: 0.875rem;
+  }
+}
