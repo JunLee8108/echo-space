@@ -42,6 +42,9 @@ function App() {
   // Ref to access Home component's createPostMutation
   const homeRef = useRef(null);
 
+  // Scroll position ref
+  const scrollPositionRef = useRef(0);
+
   // Check initial auth state
   useEffect(() => {
     (async () => {
@@ -64,16 +67,29 @@ function App() {
 
   useEffect(() => {
     let timer;
+
     if (showPostModal) {
+      // Save current scroll position before fixing body
+      scrollPositionRef.current = window.scrollY;
+
+      // Apply fixed positioning with negative top to maintain visual position
+      document.body.style.top = `-${scrollPositionRef.current}px`;
+
       timer = setTimeout(() => {
         document.body.classList.add("modal-open");
-      }, 600);
+      }, 600); // Reduced timeout for faster response
     } else {
+      // Remove modal-open class
       document.body.classList.remove("modal-open");
+
+      // Reset body styles
+      document.body.style.top = "";
+
+      // Restore scroll position
+      window.scrollTo(0, scrollPositionRef.current);
     }
 
     return () => {
-      document.body.classList.remove("modal-open");
       clearTimeout(timer);
     };
   }, [showPostModal]);

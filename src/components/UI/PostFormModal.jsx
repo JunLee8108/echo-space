@@ -55,6 +55,14 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
 
   // Handle escape key and body scroll
   useEffect(() => {
+    const handleModalClose = () => {
+      setIsClosing(true);
+      setTimeout(() => {
+        setIsClosing(false);
+        onClose();
+      }, 400);
+    };
+
     const handleEscape = (e) => {
       if (e.key === "Escape") {
         handleModalClose();
