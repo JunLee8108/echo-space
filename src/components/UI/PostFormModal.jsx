@@ -153,42 +153,34 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
         </div>
 
         {/* Form Content */}
-        <div className="flex-1 overflow-y-auto">
-          <form onSubmit={handleSubmit} className="p-6">
-            <div className="space-y-4">
-              {/* Title Input */}
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="What's on your mind?"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-0 py-2 text-lg font-medium text-stone-900 placeholder-stone-400 border-0 border-b border-stone-300 focus:border-stone-500 focus:outline-none transition-colors bg-transparent"
-                  autoFocus
-                  required
-                />
-              </div>
+        <div className="flex-1 overflow-hidden flex">
+          <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-6">
+            {/* Title Input */}
+            <div className="relative mb-4">
+              <input
+                type="text"
+                placeholder="What's on your mind?"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-0 py-2 text-lg font-medium text-stone-900 placeholder-stone-400 border-0 border-b border-stone-300 focus:border-stone-500 focus:outline-none transition-colors bg-transparent"
+                autoFocus
+                required
+              />
+            </div>
 
-              {/* Content Textarea */}
-              <div className="relative">
-                <textarea
-                  placeholder="Share your thoughts..."
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  className="w-full px-0 py-2 text-stone-700 placeholder-stone-400 border-0 focus:outline-none resize-none bg-transparent min-h-[120px]"
-                  style={{ height: content ? "auto" : "150px" }}
-                  onInput={(e) => {
-                    e.target.style.height = "auto";
-                    e.target.style.height =
-                      Math.min(e.target.scrollHeight, 400) + "px";
-                  }}
-                  required
-                />
-              </div>
+            {/* Content Textarea - Flex grow to fill remaining space */}
+            <div className="relative flex-1 flex">
+              <textarea
+                placeholder="Share your thoughts..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="w-full h-full px-0 py-2 text-stone-700 placeholder-stone-400 border-0 focus:outline-none resize-none bg-transparent"
+                required
+              />
             </div>
 
             {/* Actions Bar */}
-            <div className="mt-6 flex items-center justify-between">
+            <div className="mt-4 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <button
                   type="button"
