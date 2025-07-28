@@ -1,4 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import {
   useInfiniteQuery,
   useMutation,
@@ -45,7 +51,7 @@ const MOODS = {
   },
 };
 
-const Home = ({ user, incrementNotificationCount }) => {
+const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
   const queryClient = useQueryClient();
   const { getRandomCharacters } = useCharacters();
 
@@ -329,6 +335,11 @@ const Home = ({ user, incrementNotificationCount }) => {
     createPostMutation.mutate(post);
   };
 
+  // ref를 통해 handlePostSubmit 함수 노출
+  useImperativeHandle(ref, () => ({
+    handlePostSubmit,
+  }));
+
   const formatRelativeTime = (isoString) => {
     const now = new Date();
     const created = new Date(isoString);
@@ -424,7 +435,7 @@ const Home = ({ user, incrementNotificationCount }) => {
     return (
       <div className="min-h-screen bg-white">
         <div className="max-w-2xl mx-auto px-6 py-8">
-          <div className="mb-8">
+          {/* <div className="mb-8">
             <div className="bg-stone-50 rounded-2xl p-1">
               <div className="bg-white rounded-xl shadow-sm">
                 <PostForm
@@ -433,7 +444,7 @@ const Home = ({ user, incrementNotificationCount }) => {
                 />
               </div>
             </div>
-          </div>
+          </div> */}
           <div className="space-y-6">
             {[...Array(3)].map((_, i) => (
               <PostSkeleton key={i} />
@@ -465,7 +476,7 @@ const Home = ({ user, incrementNotificationCount }) => {
     <div className="min-h-screen bg-white">
       <div className="max-w-2xl mx-auto px-6 py-8 min-h-[70dvh]">
         {/* Enhanced Post Form */}
-        <div className="mb-8">
+        {/* <div className="mb-8">
           <div className="bg-stone-50 rounded-2xl p-1">
             <div className="bg-white rounded-xl shadow-sm">
               <PostForm
@@ -474,7 +485,7 @@ const Home = ({ user, incrementNotificationCount }) => {
               />
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Posts Feed */}
         <div className="space-y-6">
@@ -906,6 +917,6 @@ const Home = ({ user, incrementNotificationCount }) => {
       />
     </div>
   );
-};
+});
 
 export default Home;

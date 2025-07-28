@@ -77,6 +77,7 @@ const PostForm = ({ onPostSubmit }) => {
   };
 
   const handleFormBlur = (e) => {
+    console.log(e.relatedTarget);
     // Check if the new focus target is still within the form
     if (!e.currentTarget.contains(e.relatedTarget)) {
       // Only close if both fields are empty
