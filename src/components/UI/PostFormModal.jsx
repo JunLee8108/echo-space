@@ -112,8 +112,19 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
         setIsSubmitting(false);
         setIsClosing(false);
         onClose();
-      }, 800);
+      }, 400);
     }, 600); // 600ms 로딩 표시
+  };
+
+  const handleModalClose = () => {
+    setIsClosing(true);
+
+    setTimeout(() => {
+      // 페이드아웃 애니메이션 시작
+
+      setIsClosing(false);
+      onClose();
+    }, 400); // 600ms 로딩 표시
   };
 
   const handleMoodSelect = (mood) => {
@@ -128,11 +139,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
-        className={`absolute inset-0 bg-black/50 backdrop-blur-xs ${
-          isClosing ? "animate-fadeOut" : "animate-fadeIn"
-        }`}
-      />
+      <div className={`absolute inset-0 bg-black/50 backdrop-blur-xs `} />
 
       {/* Modal */}
       <div
@@ -145,7 +152,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
         <div className="flex items-center justify-between px-6 pt-5 pb-2 border-b border-stone-100">
           <h2 className="text-lg font-semibold text-stone-900">Create Post</h2>
           <button
-            onClick={onClose}
+            onClick={handleModalClose}
             className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg transition-colors"
           >
             <svg

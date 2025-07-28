@@ -837,7 +837,7 @@ const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
               )}
 
               {/* Intersection Observer 타겟 */}
-              <div ref={loadMoreRef} className="h-10 mb-0" />
+              <div ref={loadMoreRef} className="h-10" />
 
               {/* 더 이상 포스트가 없을 때 */}
               {!hasNextPage && posts.length > 0 && (

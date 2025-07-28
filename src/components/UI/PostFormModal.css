@@ -60,10 +60,10 @@
   }
   to {
     opacity: 0;
-    transform: translateY(-10px); /* 살짝 위로 사라짐 */
+    transform: translateY(-20px); /* 살짝 위로 사라짐 */
   }
 }
 
 .animate-fadeOut {
-  animation: fadeOut 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: fadeOut 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
