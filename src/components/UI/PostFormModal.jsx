@@ -161,7 +161,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full px-0 py-2 text-lg font-medium text-stone-900 placeholder-stone-400 border-0 border-b border-stone-300 focus:border-stone-500 focus:outline-none transition-colors bg-transparent"
-                autoFocus
+                // autoFocus
                 required
               />
             </div>
