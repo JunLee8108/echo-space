@@ -57,7 +57,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape") {
-        onClose();
+        handleModalClose();
       }
     };
 
@@ -121,7 +121,6 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
 
     setTimeout(() => {
       // 페이드아웃 애니메이션 시작
-
       setIsClosing(false);
       onClose();
     }, 400); // 600ms 로딩 표시
@@ -145,7 +144,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
       <div
         ref={modalRef}
         className={`relative w-[100%] max-w-[500px] h-[100dvh] mx-auto bg-white shadow-2xl overflow-hidden flex flex-col ${
-          isClosing ? "animate-fadeOut" : "animate-scaleIn sm:animate-scaleIn"
+          isClosing ? "animate-fadeOut" : "animate-slideDown"
         } ${isSubmitting ? "pointer-events-none" : ""}`}
       >
         {/* Modal Header */}
