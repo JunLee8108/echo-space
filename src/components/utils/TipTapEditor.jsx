@@ -10,7 +10,6 @@ import { Color } from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import {
   Bold,
-  Italic,
   Underline as UnderlineIcon,
   Strikethrough,
   Code,
@@ -54,7 +53,7 @@ const Divider = () => <div className="w-px h-6 bg-stone-300 mx-1" />;
 
 // 색상 팔레트
 const COLORS = [
-  { name: "Default", color: null },
+  { name: "Default", color: "var(--color-stone-700)" },
   { name: "Red", color: "#dc2626" },
   { name: "Orange", color: "#ea580c" },
   { name: "Amber", color: "#f59e0b" },
@@ -62,7 +61,7 @@ const COLORS = [
   { name: "Blue", color: "#2563eb" },
   { name: "Purple", color: "#9333ea" },
   { name: "Pink", color: "#ec4899" },
-  { name: "Gray", color: "#6b7280" },
+  { name: "White", color: "#ffffff" },
 ];
 
 const TipTapEditor = ({ content, onChange, placeholder }) => {
@@ -148,9 +147,9 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
   }
 
   return (
-    <div className="tiptap-editor flex-1 flex flex-col border border-stone-200 rounded-lg overflow-hidden">
+    <div className="tiptap-editor flex flex-col h-full min-h-0 border border-stone-200 rounded-lg overflow-hidden">
       {/* Toolbar */}
-      <div className="editor-toolbar flex items-center flex-wrap gap-1 p-2 border-b border-stone-200 bg-stone-50">
+      <div className="editor-toolbar flex items-center flex-wrap gap-1 p-2 border-b border-stone-200 bg-stone-50 flex-shrink-0">
         {/* Text Style */}
         <div className="flex items-center">
           <MenuButton
@@ -159,13 +158,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
             title="Bold (Ctrl+B)"
           >
             <Bold className="w-4 h-4" />
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            isActive={editor.isActive("italic")}
-            title="Italic (Ctrl+I)"
-          >
-            <Italic className="w-4 h-4" />
           </MenuButton>
           <MenuButton
             onClick={() => editor.chain().focus().toggleUnderline().run()}
@@ -181,20 +173,8 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
           >
             <Strikethrough className="w-4 h-4" />
           </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleHighlight().run()}
-            isActive={editor.isActive("highlight")}
-            title="Highlight"
-          >
-            <Highlighter className="w-4 h-4" />
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleCode().run()}
-            isActive={editor.isActive("code")}
-            title="Code"
-          >
-            <Code className="w-4 h-4" />
-          </MenuButton>
+
+          <Divider />
 
           {/* Color Picker Button */}
           <div className="relative">
@@ -208,7 +188,7 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
 
             {/* Color Picker Dropdown */}
             {showColorPicker && (
-              <div className="absolute w-[100px] top-full right-0 sm:left-0 mt-1 p-2 bg-white border border-stone-200 rounded-lg shadow-lg z-10">
+              <div className="absolute w-[100px] top-full left-0 mt-1 p-2 bg-white border border-stone-200 rounded-lg shadow-lg z-10">
                 <div className="grid grid-cols-3 gap-1">
                   {COLORS.map((colorOption) => (
                     <button
@@ -216,7 +196,7 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
                       type="button"
                       onClick={() => setColor(colorOption.color)}
                       className={`w-6 h-6 rounded border-2 transition-all ${
-                        colorOption.color === null
+                        colorOption.color === "#ffffff"
                           ? "border-stone-300 bg-white hover:border-stone-400"
                           : "border-transparent hover:scale-110"
                       }`}
@@ -225,8 +205,8 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
                       }}
                       title={colorOption.name}
                     >
-                      {colorOption.color === null && (
-                        <span className="text-xs text-stone-400">A</span>
+                      {colorOption.name === "Default" && (
+                        <span className="text-xs text-white">A</span>
                       )}
                     </button>
                   ))}
@@ -235,6 +215,27 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
             )}
           </div>
         </div>
+        <MenuButton
+          onClick={() => editor.chain().focus().toggleHighlight().run()}
+          isActive={editor.isActive("highlight")}
+          title="Highlight"
+        >
+          <Highlighter className="w-4 h-4" />
+        </MenuButton>
+        <MenuButton
+          onClick={() => editor.chain().focus().toggleCode().run()}
+          isActive={editor.isActive("code")}
+          title="Code"
+        >
+          <Code className="w-4 h-4" />
+        </MenuButton>
+        <MenuButton
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          isActive={editor.isActive("blockquote")}
+          title="Quote"
+        >
+          <Quote className="w-4 h-4" />
+        </MenuButton>
 
         <Divider />
 
@@ -286,13 +287,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
             title="Numbered List"
           >
             <ListOrdered className="w-4 h-4" />
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            isActive={editor.isActive("blockquote")}
-            title="Quote"
-          >
-            <Quote className="w-4 h-4" />
           </MenuButton>
         </div>
 

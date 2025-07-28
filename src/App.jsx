@@ -69,8 +69,6 @@ function AppContent({ user }) {
       // Save current scroll position before fixing body
       scrollPositionRef.current = window.scrollY;
 
-      console.log(scrollPositionRef.current);
-
       // Apply fixed positioning with negative top to maintain visual position
       document.body.style.top = `-${scrollPositionRef.current}px`;
 
@@ -80,8 +78,6 @@ function AppContent({ user }) {
     } else {
       // Remove modal-open class
       document.body.classList.remove("modal-open");
-
-      console.log(scrollPositionRef.current);
 
       // Reset body styles
       document.body.style.top = "";

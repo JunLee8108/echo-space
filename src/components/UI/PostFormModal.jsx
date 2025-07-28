@@ -163,12 +163,12 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
       {/* Modal */}
       <div
         ref={modalRef}
-        className={`relative w-[100%] max-w-[500px] h-[100dvh] mx-auto bg-white shadow-2xl overflow-hidden flex flex-col ${
+        className={`relative w-[100%] max-w-[600px] h-[100dvh] mx-auto bg-white shadow-2xl overflow-hidden flex flex-col ${
           isClosing ? "animate-fadeOut" : "animate-slideDown"
         } ${isSubmitting ? "pointer-events-none" : ""}`}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-2 border-b border-stone-100">
+        <div className="flex items-center justify-between px-6 pt-3 pb-2 border-b border-stone-100">
           <h2 className="text-lg font-semibold text-stone-900">Create Post</h2>
           <button
             onClick={handleModalClose}
@@ -194,7 +194,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
         <div className="flex-1 overflow-hidden flex">
           <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-6">
             {/* Title Input */}
-            <div className="relative mb-4">
+            <div className="relative mb-4 flex-shrink-0">
               <input
                 type="text"
                 placeholder="What's on your mind?"
@@ -207,7 +207,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
             </div>
 
             {/* TipTap Rich Text Editor - Flex grow to fill remaining space */}
-            <div className="relative flex-1 flex flex-col">
+            <div className="relative flex-1 flex flex-col overflow-y-auto editor-scrollbar">
               <TipTapEditor
                 content={content}
                 onChange={setContent}
@@ -216,7 +216,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
             </div>
 
             {/* Actions Bar */}
-            <div className="mt-4 flex items-center justify-between">
+            <div className="mt-4 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center space-x-2">
                 <button
                   type="button"
