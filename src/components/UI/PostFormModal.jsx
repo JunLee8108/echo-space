@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Smile, Meh, Frown } from "lucide-react";
+import { useNavigate } from "react-router";
 import TipTapEditor from "../utils/TipTapEditor";
 import "./PostFormModal.css";
 
@@ -41,6 +42,8 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
   const modalRef = useRef(null);
   const moodButtonRef = useRef(null);
   const moodModalRef = useRef(null);
+
+  const navigate = useNavigate();
 
   // Reset form when modal closes
   useEffect(() => {
@@ -103,6 +106,8 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
     const plainText = content.replace(/<[^>]*>/g, "").trim();
 
     if (!title.trim() || !plainText) return;
+
+    navigate("/");
 
     setIsSubmitting(true);
 

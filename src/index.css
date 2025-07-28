@@ -1,6 +1,28 @@
 @import "tailwindcss";
 @plugin '@tailwindcss/typography';
 
+@layer utilities {
+  .prose p {
+    margin-top: 0;
+    margin-bottom: 0;
+    /* 원하는 스타일 */
+  }
+
+  .prose p:empty {
+    min-height: 1em;
+  }
+
+  .prose strong {
+    color: unset;
+  }
+
+  .prose mark {
+    background: #fef08a;
+    padding: 0.125rem 0;
+    color: inherit;
+  }
+}
+
 html {
   overflow-y: scroll;
 }

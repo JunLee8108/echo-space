@@ -84,6 +84,7 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
           class: "text-blue-600 underline hover:text-blue-800",
         },
       }),
+      Color,
       Placeholder.configure({
         placeholder: placeholder || "Write something amazing...",
       }),
@@ -97,7 +98,7 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
       Highlight.configure({
         multicolor: true,
       }),
-      Color,
+
       TextStyle,
     ],
     content: content,
@@ -207,14 +208,14 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
 
             {/* Color Picker Dropdown */}
             {showColorPicker && (
-              <div className="absolute min-w-[120px] top-full left-0 mt-1 p-2 bg-white border border-stone-200 rounded-lg shadow-lg z-10">
+              <div className="absolute w-[100px] top-full right-0 sm:left-0 mt-1 p-2 bg-white border border-stone-200 rounded-lg shadow-lg z-10">
                 <div className="grid grid-cols-3 gap-1">
                   {COLORS.map((colorOption) => (
                     <button
                       key={colorOption.name}
                       type="button"
                       onClick={() => setColor(colorOption.color)}
-                      className={`w-8 h-8 rounded border-2 transition-all ${
+                      className={`w-6 h-6 rounded border-2 transition-all ${
                         colorOption.color === null
                           ? "border-stone-300 bg-white hover:border-stone-400"
                           : "border-transparent hover:scale-110"

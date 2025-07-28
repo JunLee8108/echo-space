@@ -1,10 +1,4 @@
-import {
-  useState,
-  useEffect,
-  useRef,
-  forwardRef,
-  useImperativeHandle,
-} from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   useInfiniteQuery,
   useMutation,
@@ -17,10 +11,7 @@ import { Smile, Meh, Frown } from "lucide-react";
 import ConfirmationModal from "../components/UI/ConfirmationModal";
 import ProfileModal from "../components/UI/ProfileModal";
 
-import { useCharacters } from "../components/hooks/useCharacters";
-import { fetchAIComment } from "../services/openaiService";
 import {
-  savePostWithCommentsAndLikes,
   deletePostById,
   fetchPostsWithCommentsAndLikes,
 } from "../services/postService";
@@ -50,9 +41,8 @@ const MOODS = {
   },
 };
 
-const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
+const Home = ({ user }) => {
   const queryClient = useQueryClient();
-  const { getRandomCharacters } = useCharacters();
 
   /* ──────────────────────── Modal state ──────────────────────────── */
   const [likeModal, setLikeModal] = useState({
@@ -95,7 +85,7 @@ const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
     queryFn: async ({ pageParam = null }) => {
       const result = await fetchPostsWithCommentsAndLikes(user.id, {
         limit: POSTS_PER_PAGE,
-        cursor: pageParam, // cursor 사용 (null이면 처음부터)
+        cursor: pageParam,
       });
 
       return {
@@ -105,7 +95,6 @@ const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
       };
     },
     getNextPageParam: (lastPage) => {
-      // 다음 페이지의 cursor 반환
       return lastPage.hasMore ? lastPage.nextCursor : undefined;
     },
     enabled: !!user,
@@ -147,126 +136,6 @@ const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  /* ───────── React Query: Create Post Mutation ───────── */
-  const createPostMutation = useMutation({
-    mutationFn: async (post) => {
-      const tempId = `temp-${Date.now()}-${Math.random()}`;
-      const commentCharacters = getRandomCharacters(2);
-      const likeCharacters = getRandomCharacters(
-        Math.floor(Math.random() * 5) + 1
-      );
-
-      const comments = await Promise.all(
-        commentCharacters.map(async (char) => {
-          const reply = await fetchAIComment(char, post.title, post.content);
-          return {
-            character: char,
-            message: reply,
-          };
-        })
-      );
-
-      const savedPost = await savePostWithCommentsAndLikes(
-        post,
-        comments,
-        likeCharacters
-      );
-
-      return {
-        tempId,
-        savedPost,
-      };
-    },
-    onMutate: async (post) => {
-      await queryClient.cancelQueries({ queryKey: ["posts", user?.id] });
-
-      const previousData = queryClient.getQueryData(["posts", user?.id]);
-
-      const tempId = `temp-${Date.now()}-${Math.random()}`;
-      const optimisticPost = {
-        ...post,
-        id: tempId,
-        mood: post.mood || null, // mood 추가
-        Comment: [],
-        Post_Like: [],
-        like: 0,
-        created_at: new Date().toISOString(),
-        user_id: user.id,
-        isLoading: true,
-      };
-
-      queryClient.setQueryData(["posts", user?.id], (old) => {
-        if (!old) {
-          return {
-            pages: [
-              {
-                posts: [optimisticPost],
-                nextCursor: null,
-                hasMore: false,
-              },
-            ],
-            pageParams: [null],
-          };
-        }
-
-        const newPages = [...old.pages];
-        if (!newPages[0]) {
-          newPages[0] = {
-            posts: [],
-            nextCursor: null,
-            hasMore: false,
-          };
-        }
-
-        newPages[0] = {
-          ...newPages[0],
-          posts: [optimisticPost, ...(newPages[0].posts || [])],
-        };
-
-        return {
-          ...old,
-          pages: newPages,
-        };
-      });
-
-      return { tempId, previousData };
-    },
-    onSuccess: (data, variables, context) => {
-      queryClient.setQueryData(["posts", user?.id], (old) => {
-        if (!old) return old;
-
-        const newPages = [...old.pages];
-        if (newPages[0] && newPages[0].posts) {
-          const postIndex = newPages[0].posts.findIndex(
-            (post) => post.id === context.tempId
-          );
-
-          if (postIndex !== -1) {
-            newPages[0].posts[postIndex] = {
-              ...data.savedPost,
-              isLoading: false,
-            };
-          }
-        }
-
-        return {
-          ...old,
-          pages: newPages,
-        };
-      });
-
-      incrementNotificationCount();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    },
-    onError: (error, variables, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(["posts", user?.id], context.previousData);
-      }
-      console.error("Error creating post:", error);
-      alert("포스트 작성 중 오류가 발생했습니다.");
-    },
-  });
-
   /* ───────── React Query: Delete Post Mutation ───────── */
   const deletePostMutation = useMutation({
     mutationFn: ({ postId }) => deletePostById(postId, user.id),
@@ -299,7 +168,6 @@ const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
       alert("삭제 중 오류가 발생했습니다.");
     },
     onSuccess: () => {
-      // 삭제 성공 후 전체 데이터 다시 동기화
       queryClient.invalidateQueries({ queryKey: ["posts", user?.id] });
     },
   });
@@ -329,15 +197,6 @@ const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [likeModal.show, optionsModal.show]);
-
-  const handlePostSubmit = (post) => {
-    createPostMutation.mutate(post);
-  };
-
-  // ref를 통해 handlePostSubmit 함수 노출
-  useImperativeHandle(ref, () => ({
-    handlePostSubmit,
-  }));
 
   const formatRelativeTime = (isoString) => {
     const now = new Date();
@@ -597,11 +456,8 @@ const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
                       <h2 className="text-lg font-semibold text-stone-900 mb-2">
                         {post.title}
                       </h2>
-                      {/* <p className="text-stone-700 leading-relaxed whitespace-pre-wrap">
-                        {post.content}
-                      </p> */}
                       <div
-                        className="text-stone-700 leading-relaxed prose prose-sm max-w-none"
+                        className="text-stone-700 leading-relaxed prose max-w-none"
                         dangerouslySetInnerHTML={{ __html: post.content }}
                       />
                     </div>
@@ -898,6 +754,6 @@ const Home = forwardRef(({ user, incrementNotificationCount }, ref) => {
       />
     </div>
   );
-});
+};
 
 export default Home;

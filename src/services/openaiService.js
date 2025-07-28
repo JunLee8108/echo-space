@@ -1,4 +1,14 @@
 export async function fetchAIComment(character, postTitle, postContent) {
+  const cleanContent = postContent
+    .replace(/<\/?(p|div|h[1-6]|li|br)[^>]*>/gi, "\n")
+    // 나머지 태그 제거
+    .replace(/<[^>]*>/g, "")
+    // 연속된 줄바꿈을 하나의 공백으로
+    .replace(/\n+/g, " ")
+    // 연속된 공백을 하나로
+    .replace(/\s+/g, " ")
+    .trim();
+
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -17,7 +27,7 @@ export async function fetchAIComment(character, postTitle, postContent) {
         },
         {
           role: "user",
-          content: `Title: ${postTitle}\nContent: ${postContent}`,
+          content: `Title: ${postTitle}\nContent: ${cleanContent}`,
         },
       ],
       temperature: 0.8,
