@@ -24,7 +24,7 @@ export const useCreatePost = (user, options = {}) => {
       // AI 댓글 생성
       const comments = await Promise.all(
         commentCharacters.map(async (char) => {
-          const reply = await fetchAIComment(char, post.title, post.content);
+          const reply = await fetchAIComment(char, post.content);
           return {
             character: char,
             message: reply,
@@ -32,11 +32,12 @@ export const useCreatePost = (user, options = {}) => {
         })
       );
 
-      // DB에 저장
+      // DB에 저장 (해시태그 포함)
       const savedPost = await savePostWithCommentsAndLikes(
         post,
         comments,
-        likeCharacters
+        likeCharacters,
+        post.hashtags || [] // 해시태그 추가
       );
 
       return {
@@ -56,6 +57,11 @@ export const useCreatePost = (user, options = {}) => {
         mood: post.mood || null,
         Comment: [],
         Post_Like: [],
+        Post_Hashtag:
+          post.hashtags?.map((tag) => ({
+            hashtag_id: `temp-${tag}`,
+            name: tag,
+          })) || [], // 임시 해시태그 표시
         like: 0,
         created_at: new Date().toISOString(),
         user_id: user.id,

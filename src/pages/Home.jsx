@@ -42,6 +42,9 @@ const MOODS = {
 };
 
 const Home = ({ user }) => {
+  const extractText = (html) =>
+    new DOMParser().parseFromString(html, "text/html").body.textContent.trim();
+
   const queryClient = useQueryClient();
 
   /* ──────────────────────── Modal state ──────────────────────────── */
@@ -362,16 +365,16 @@ const Home = ({ user }) => {
                     }`}
                   >
                     {/* Post Header */}
-                    <div className="px-6 pt-6 pb-2 flex items-center justify-between mb-2">
+                    <div className="px-6 pt-6 pb-2 flex items-center justify-between mb-5">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-gradient-to-br from-stone-600 to-stone-800 rounded-full flex items-center justify-center">
                           <span className="text-xs text-white font-medium">
-                            {post.title.charAt(0).toUpperCase()}
+                            {extractText(post.content).charAt(0).toUpperCase()}
                           </span>
                         </div>
                         <div>
                           <div className="flex items-center space-x-2">
-                            <h3 className="font-medium text-stone-900">
+                            <h3 className="font-medium text-stone-900 text-sm">
                               {user.user_metadata.display_name}
                             </h3>
                             {/* Mood indicator */}
@@ -452,10 +455,7 @@ const Home = ({ user }) => {
                     </div>
 
                     {/* Post Content */}
-                    <div className="px-6 pb-4">
-                      <h2 className="text-lg font-semibold text-stone-900 mb-2">
-                        {post.title}
-                      </h2>
+                    <div className="px-6 pb-6">
                       <div
                         className="text-stone-700 leading-relaxed prose max-w-none"
                         dangerouslySetInnerHTML={{ __html: post.content }}
@@ -464,8 +464,8 @@ const Home = ({ user }) => {
 
                     {/* Loading indicator for AI responses */}
                     {isLoading && post.Comment.length === 0 && (
-                      <div className="px-6 pb-3">
-                        <div className="border-t border-stone-100 pt-4">
+                      <div className="px-6 pb-4">
+                        <div className="border-t border-stone-100 pt-5">
                           <div className="flex items-center space-x-2 text-stone-400">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-stone-400"></div>
                             <span className="text-sm">
@@ -535,7 +535,7 @@ const Home = ({ user }) => {
                     )}
 
                     {/* Post Actions */}
-                    <div className="px-6 py-3 border-t border-stone-100 flex items-center justify-between">
+                    <div className="px-6 py-2 border-t border-stone-100 flex items-center justify-between">
                       <div className="flex items-center space-x-1">
                         <div className="relative">
                           <button

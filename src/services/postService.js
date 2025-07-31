@@ -1,10 +1,12 @@
 import supabase from "./supabaseClient";
+import { createOrGetHashtags, attachHashtagsToPost } from "./hashtagService";
 
-// 게시글 + 댓글 + 좋아요 캐릭터 저장 (SAVE)
+// 게시글 + 댓글 + 좋아요 캐릭터 + 해시태그 저장 (SAVE)
 export async function savePostWithCommentsAndLikes(
   post,
   comments,
-  likeCharacters
+  likeCharacters,
+  hashtags = []
 ) {
   const {
     data: { user },
@@ -17,7 +19,6 @@ export async function savePostWithCommentsAndLikes(
     .from("Post")
     .insert([
       {
-        title: post.title,
         content: post.content,
         mood: post.mood || null, // mood 추가
         like: likeCharacters.length,
@@ -65,13 +66,25 @@ export async function savePostWithCommentsAndLikes(
     throw likeError;
   }
 
-  // 4. 저장된 전체 데이터를 다시 조회하여 반환
+  console.log(hashtags);
+
+  // 4. 해시태그 저장
+  if (hashtags.length > 0) {
+    try {
+      const hashtagIds = await createOrGetHashtags(hashtags);
+      await attachHashtagsToPost(postId, hashtagIds);
+    } catch (hashtagError) {
+      console.error("❌ 해시태그 저장 실패:", hashtagError.message);
+      throw hashtagError;
+    }
+  }
+
+  // 5. 저장된 전체 데이터를 다시 조회하여 반환
   const { data: savedPost, error: fetchError } = await supabase
     .from("Post")
     .select(
       `
       id,
-      title,
       content,
       mood,
       like,
@@ -96,6 +109,13 @@ export async function savePostWithCommentsAndLikes(
           name,
           avatar_url,
           prompt_description
+        )
+      ),
+      Post_Hashtag (
+        hashtag_id,
+        Hashtag (
+          id,
+          name
         )
       )
     `
@@ -127,6 +147,11 @@ export async function savePostWithCommentsAndLikes(
         character: like.Character?.name || "Unknown",
         avatar_url: like.Character?.avatar_url || null,
         prompt_description: like.Character?.prompt_description || "",
+      })) || [],
+    Post_Hashtag:
+      savedPost.Post_Hashtag?.map((ph) => ({
+        hashtag_id: ph.hashtag_id,
+        name: ph.Hashtag?.name || "",
       })) || [],
   };
 
@@ -162,7 +187,6 @@ export async function fetchPostsWithCommentsAndLikes(
       .select(
         `
         id,
-        title,
         content,
         mood,
         like,
@@ -187,6 +211,13 @@ export async function fetchPostsWithCommentsAndLikes(
             name,
             avatar_url,
             prompt_description
+          )
+        ),
+        Post_Hashtag (
+          hashtag_id,
+          Hashtag (
+            id,
+            name
           )
         )
       `
@@ -243,6 +274,11 @@ export async function fetchPostsWithCommentsAndLikes(
           character: like.Character?.name || "Unknown",
           avatar_url: like.Character?.avatar_url || null,
           prompt_description: like.Character?.prompt_description || "",
+        })) || [],
+      Post_Hashtag:
+        post.Post_Hashtag?.map((ph) => ({
+          hashtag_id: ph.hashtag_id,
+          name: ph.Hashtag?.name || "",
         })) || [],
     }));
 

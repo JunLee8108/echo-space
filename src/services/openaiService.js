@@ -1,4 +1,4 @@
-export async function fetchAIComment(character, postTitle, postContent) {
+export async function fetchAIComment(character, postContent) {
   const cleanContent = postContent
     .replace(/<\/?(p|div|h[1-6]|li|br)[^>]*>/gi, "\n")
     // 나머지 태그 제거
@@ -27,7 +27,7 @@ export async function fetchAIComment(character, postTitle, postContent) {
         },
         {
           role: "user",
-          content: `Title: ${postTitle}\nContent: ${cleanContent}`,
+          content: `Content: ${cleanContent}`,
         },
       ],
       temperature: 0.8,

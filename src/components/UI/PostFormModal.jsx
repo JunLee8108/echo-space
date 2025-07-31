@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { Smile, Meh, Frown } from "lucide-react";
+import { Smile, Meh, Frown, Hash } from "lucide-react";
 import { useNavigate } from "react-router";
 import TipTapEditor from "../utils/TipTapEditor";
+import { searchHashtags } from "../../services/hashtagService";
 import "./PostFormModal.css";
 
 const MOODS = [
@@ -32,26 +33,38 @@ const MOODS = [
 ];
 
 const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
-  const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [showMoodModal, setShowMoodModal] = useState(false);
   const [selectedMood, setSelectedMood] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
+  // 해시태그 관련 상태
+  const [showHashtagModal, setShowHashtagModal] = useState(false);
+  const [hashtagInput, setHashtagInput] = useState("");
+  const [selectedHashtags, setSelectedHashtags] = useState([]);
+  const [hashtagSuggestions, setHashtagSuggestions] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   const modalRef = useRef(null);
   const moodButtonRef = useRef(null);
   const moodModalRef = useRef(null);
+  const hashtagButtonRef = useRef(null);
+  const hashtagModalRef = useRef(null);
+  const hashtagInputRef = useRef(null);
 
   const navigate = useNavigate();
 
   // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
-      setTitle("");
       setContent("");
       setSelectedMood(null);
       setShowMoodModal(false);
+      setShowHashtagModal(false);
+      setSelectedHashtags([]);
+      setHashtagInput("");
+      setHashtagSuggestions([]);
       setIsClosing(false);
       setIsSubmitting(false);
     }
@@ -69,7 +82,13 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
 
     const handleEscape = (e) => {
       if (e.key === "Escape") {
-        handleModalClose();
+        if (showHashtagModal) {
+          setShowHashtagModal(false);
+        } else if (showMoodModal) {
+          setShowMoodModal(false);
+        } else {
+          handleModalClose();
+        }
       }
     };
 
@@ -80,9 +99,9 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
     return () => {
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, showHashtagModal, showMoodModal]);
 
-  // Close mood modal when clicking outside
+  // Close modals when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -93,11 +112,49 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
       ) {
         setShowMoodModal(false);
       }
+
+      if (
+        showHashtagModal &&
+        hashtagModalRef.current &&
+        !hashtagModalRef.current.contains(e.target) &&
+        !hashtagButtonRef.current.contains(e.target)
+      ) {
+        setShowHashtagModal(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showMoodModal]);
+  }, [showMoodModal, showHashtagModal]);
+
+  // 해시태그 자동완성
+  useEffect(() => {
+    const searchDelay = setTimeout(async () => {
+      if (hashtagInput.length > 0) {
+        setIsSearching(true);
+        try {
+          const suggestions = await searchHashtags(hashtagInput);
+          setHashtagSuggestions(suggestions);
+        } catch (error) {
+          console.error("해시태그 검색 실패:", error);
+          setHashtagSuggestions([]);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setHashtagSuggestions([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(searchDelay);
+  }, [hashtagInput]);
+
+  // 해시태그 모달이 열릴 때 input에 focus
+  useEffect(() => {
+    if (showHashtagModal && hashtagInputRef.current) {
+      hashtagInputRef.current.focus();
+    }
+  }, [showHashtagModal]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -105,7 +162,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
     // Strip HTML tags to check if content is empty
     const plainText = content.replace(/<[^>]*>/g, "").trim();
 
-    if (!title.trim() || !plainText) return;
+    if (!plainText) return;
 
     navigate("/");
 
@@ -113,9 +170,9 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
 
     const newPost = {
       id: Date.now(),
-      title,
       content,
       mood: selectedMood?.id || null,
+      hashtags: selectedHashtags,
       created_at: new Date().toISOString(),
     };
 
@@ -149,22 +206,65 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
     setShowMoodModal(false);
   };
 
+  const handleHashtagAdd = () => {
+    const trimmedInput = hashtagInput.trim().toLowerCase();
+    if (trimmedInput && !selectedHashtags.includes(trimmedInput)) {
+      setSelectedHashtags([...selectedHashtags, trimmedInput]);
+      setHashtagInput("");
+      setHashtagSuggestions([]);
+    }
+  };
+
+  const handleHashtagKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleHashtagAdd();
+    } else if (
+      e.key === "Backspace" &&
+      !hashtagInput &&
+      selectedHashtags.length > 0
+    ) {
+      // 입력창이 비어있을 때 백스페이스를 누르면 마지막 해시태그 삭제
+      setSelectedHashtags(selectedHashtags.slice(0, -1));
+    }
+  };
+
+  const handleHashtagRemove = (hashtagToRemove) => {
+    setSelectedHashtags(
+      selectedHashtags.filter((tag) => tag !== hashtagToRemove)
+    );
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    const tagName = suggestion.name.toLowerCase();
+    if (!selectedHashtags.includes(tagName)) {
+      setSelectedHashtags([...selectedHashtags, tagName]);
+    }
+    setHashtagInput("");
+    setHashtagSuggestions([]);
+    hashtagInputRef.current?.focus();
+  };
+
   // Check if content has actual text (not just HTML tags)
   const plainTextContent = content.replace(/<[^>]*>/g, "").trim();
-  const isButtonDisabled = !title.trim() || !plainTextContent;
+  const isButtonDisabled = !plainTextContent;
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div className={`absolute inset-0 bg-black/50 backdrop-blur-xs`} />
+      <div
+        className={`absolute inset-0 bg-black/50 backdrop-blur-xs ${
+          isClosing ? "animate-fadeOut" : "animate-fadeIn"
+        }`}
+      />
 
       {/* Modal */}
       <div
         ref={modalRef}
         className={`relative w-[100%] max-w-[600px] h-[100dvh] mx-auto bg-white shadow-2xl overflow-hidden flex flex-col ${
-          isClosing ? "animate-fadeOut" : "animate-slideDown"
+          isClosing ? "animate-scaleOut" : "animate-scaleIn"
         } ${isSubmitting ? "pointer-events-none" : ""}`}
       >
         {/* Modal Header */}
@@ -193,19 +293,6 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
         {/* Form Content */}
         <div className="flex-1 overflow-hidden flex">
           <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-6">
-            {/* Title Input */}
-            <div className="relative mb-4 flex-shrink-0">
-              <input
-                type="text"
-                placeholder="What's on your mind?"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-0 py-2 text-lg font-medium text-stone-900 placeholder-stone-400 border-0 border-b border-stone-300 focus:border-stone-500 focus:outline-none transition-colors bg-transparent"
-                // autoFocus
-                required
-              />
-            </div>
-
             {/* TipTap Rich Text Editor - Flex grow to fill remaining space */}
             <div className="relative flex-1 flex flex-col overflow-y-auto editor-scrollbar">
               <TipTapEditor
@@ -215,9 +302,181 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
               />
             </div>
 
+            {/* Selected Hashtags Display */}
+            {selectedHashtags.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedHashtags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-stone-100 text-stone-700 rounded-full text-sm"
+                  >
+                    <Hash className="w-3 h-3" />
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => handleHashtagRemove(tag)}
+                      className="ml-1 hover:text-stone-900"
+                    >
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
             {/* Actions Bar */}
             <div className="mt-4 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center space-x-2">
+                {/* Hashtag Button */}
+                <div className="relative">
+                  <button
+                    ref={hashtagButtonRef}
+                    type="button"
+                    className={`p-3 rounded-lg transition-all duration-200 ${
+                      selectedHashtags.length > 0
+                        ? "bg-stone-100 text-stone-700 hover:bg-stone-200"
+                        : "text-stone-500 hover:text-stone-700 hover:bg-stone-50"
+                    }`}
+                    title="Add hashtags"
+                    onClick={() => setShowHashtagModal(!showHashtagModal)}
+                  >
+                    <Hash className="w-5 h-5" />
+                    {selectedHashtags.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-stone-700 text-white text-xs rounded-full flex items-center justify-center">
+                        {selectedHashtags.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Hashtag Modal */}
+                  {showHashtagModal && (
+                    <div
+                      ref={hashtagModalRef}
+                      className="absolute bottom-full mb-2 left-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 p-4 min-w-[200px] max-w-[350px]"
+                    >
+                      <h3 className="text-sm font-medium text-stone-900 mb-3">
+                        Add Hashtags
+                      </h3>
+
+                      {/* Selected Tags */}
+                      {selectedHashtags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-3 max-h-24 overflow-y-auto">
+                          {selectedHashtags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-stone-100 text-stone-700 rounded text-xs"
+                            >
+                              #{tag}
+                              <button
+                                type="button"
+                                onClick={() => handleHashtagRemove(tag)}
+                                className="ml-0.5 hover:text-stone-900"
+                              >
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M6 18L18 6M6 6l12 12"
+                                  />
+                                </svg>
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Input */}
+                      <div className="relative">
+                        <input
+                          ref={hashtagInputRef}
+                          type="text"
+                          value={hashtagInput}
+                          onChange={(e) =>
+                            setHashtagInput(
+                              e.target.value.replace(/[^a-zA-Z0-9가-힣]/g, "")
+                            )
+                          }
+                          onKeyDown={handleHashtagKeyDown}
+                          placeholder="Type hashtag..."
+                          className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:border-stone-500"
+                          maxLength={30}
+                        />
+                        {hashtagInput && (
+                          <button
+                            type="button"
+                            onClick={handleHashtagAdd}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M12 4v16m8-8H4"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Suggestions */}
+                      {hashtagInput && (
+                        <div className="mt-2 max-h-32 overflow-y-auto">
+                          {isSearching ? (
+                            <div className="text-center py-2 text-sm text-stone-400">
+                              Searching...
+                            </div>
+                          ) : hashtagSuggestions.length > 0 ? (
+                            <div className="space-y-1">
+                              {hashtagSuggestions.map((suggestion) => (
+                                <button
+                                  key={suggestion.id}
+                                  type="button"
+                                  onClick={() =>
+                                    handleSuggestionClick(suggestion)
+                                  }
+                                  className="w-full text-left px-2 py-1.5 text-sm text-stone-600 hover:bg-stone-50 rounded transition-colors"
+                                >
+                                  #{suggestion.name}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-stone-400 py-2">
+                              Press Enter to add "#{hashtagInput}"
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="absolute -bottom-2 left-6 w-4 h-4 bg-white border-b border-r border-stone-200 transform rotate-45"></div>
+                    </div>
+                  )}
+                </div>
+
                 <button
                   type="button"
                   className="p-3 text-stone-500 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-colors"
