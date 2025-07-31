@@ -5,7 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { Smile, Meh, Frown } from "lucide-react";
+import { Smile, Meh, Frown, Hash } from "lucide-react";
 
 // Modal
 import ConfirmationModal from "../components/UI/ConfirmationModal";
@@ -365,7 +365,7 @@ const Home = ({ user }) => {
                     }`}
                   >
                     {/* Post Header */}
-                    <div className="px-6 pt-6 pb-2 flex items-center justify-between mb-5">
+                    <div className="px-6 pt-6 pb-2 flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-gradient-to-br from-stone-600 to-stone-800 rounded-full flex items-center justify-center">
                           <span className="text-xs text-white font-medium">
@@ -455,12 +455,29 @@ const Home = ({ user }) => {
                     </div>
 
                     {/* Post Content */}
-                    <div className="px-6 pb-6">
+                    <div className="px-6 pb-5">
                       <div
                         className="text-stone-700 leading-relaxed prose max-w-none"
                         dangerouslySetInnerHTML={{ __html: post.content }}
                       />
                     </div>
+
+                    {/* Hashtags Display */}
+                    {post.Post_Hashtag && post.Post_Hashtag.length > 0 && (
+                      <div className="px-6 pb-2">
+                        <div className="flex flex-wrap gap-1.5">
+                          {post.Post_Hashtag.map((hashtag) => (
+                            <span
+                              key={hashtag.hashtag_id}
+                              className="inline-flex items-center gap-0.5 px-2.5 py-1 bg-stone-50 hover:bg-stone-100 text-stone-600 rounded-full text-xs cursor-pointer transition-colors"
+                            >
+                              <Hash className="w-3 h-3" />
+                              {hashtag.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Loading indicator for AI responses */}
                     {isLoading && post.Comment.length === 0 && (
@@ -483,14 +500,14 @@ const Home = ({ user }) => {
                           {post.Comment.map((c, idx) => (
                             <div
                               key={c.id}
-                              className="flex items-start space-x-3 animate-slideIn"
+                              className="flex items-start space-x-2 animate-slideIn flex-wrap"
                               style={{ animationDelay: `${idx * 100}ms` }}
                             >
                               {c.avatar_url ? (
                                 <img
                                   src={c.avatar_url}
                                   alt={c.character}
-                                  className="w-10 h-10 cursor-pointer rounded-2xl object-cover flex-shrink-0"
+                                  className="w-9 h-9 cursor-pointer rounded-2xl object-cover flex-shrink-0"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setProfileModal({
@@ -567,7 +584,7 @@ const Home = ({ user }) => {
                               />
                             </svg>
                             <span
-                              className={`text-sm ${
+                              className={`text-xs ${
                                 isLoading ? "text-stone-300" : "text-stone-600"
                               }`}
                             >

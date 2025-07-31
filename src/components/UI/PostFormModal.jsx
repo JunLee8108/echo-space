@@ -45,6 +45,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
   const [selectedHashtags, setSelectedHashtags] = useState([]);
   const [hashtagSuggestions, setHashtagSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isComposing, setIsComposing] = useState(false); // 한글 조합 상태 추가
 
   const modalRef = useRef(null);
   const moodButtonRef = useRef(null);
@@ -67,6 +68,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
       setHashtagSuggestions([]);
       setIsClosing(false);
       setIsSubmitting(false);
+      setIsComposing(false);
     }
   }, [isOpen]);
 
@@ -168,9 +170,21 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
 
     setIsSubmitting(true);
 
+    // p태그 안 마지막에 br이 있으면 빈 p태그 추가
+    let processedContent = content.replace(
+      /<br\s*\/?>\s*<\/p>/g,
+      "</p><p></p>"
+    );
+
+    // 끝에 있는 빈 p태그들 제거
+    processedContent = processedContent.replace(
+      /(<p>(\s|&nbsp;)*<\/p>)+$/g,
+      ""
+    );
+
     const newPost = {
       id: Date.now(),
-      content,
+      content: processedContent,
       mood: selectedMood?.id || null,
       hashtags: selectedHashtags,
       created_at: new Date().toISOString(),
@@ -206,6 +220,19 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
     setShowMoodModal(false);
   };
 
+  // 해시태그 입력 처리 함수
+  const handleHashtagInputChange = (e) => {
+    const value = e.target.value;
+
+    // 한글 조합 중일 때는 정규표현식 필터링을 하지 않음
+    if (isComposing) {
+      setHashtagInput(value);
+    } else {
+      // 조합이 완료되었거나 영문/숫자 입력 시에만 필터링
+      setHashtagInput(value.replace(/[^a-zA-Z0-9가-힣]/g, ""));
+    }
+  };
+
   const handleHashtagAdd = () => {
     const trimmedInput = hashtagInput.trim().toLowerCase();
     if (trimmedInput && !selectedHashtags.includes(trimmedInput)) {
@@ -216,16 +243,10 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
   };
 
   const handleHashtagKeyDown = (e) => {
-    if (e.key === "Enter") {
+    // 한글 조합 중일 때는 Enter 키 무시
+    if (e.key === "Enter" && !isComposing) {
       e.preventDefault();
       handleHashtagAdd();
-    } else if (
-      e.key === "Backspace" &&
-      !hashtagInput &&
-      selectedHashtags.length > 0
-    ) {
-      // 입력창이 비어있을 때 백스페이스를 누르면 마지막 해시태그 삭제
-      setSelectedHashtags(selectedHashtags.slice(0, -1));
     }
   };
 
@@ -264,12 +285,12 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
       <div
         ref={modalRef}
         className={`relative w-[100%] max-w-[600px] h-[100dvh] mx-auto bg-white shadow-2xl overflow-hidden flex flex-col ${
-          isClosing ? "animate-scaleOut" : "animate-scaleIn"
+          isClosing ? "animate-slideUp" : "animate-slideDown"
         } ${isSubmitting ? "pointer-events-none" : ""}`}
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 pt-3 pb-2 border-b border-stone-100">
-          <h2 className="text-lg font-semibold text-stone-900">Create Post</h2>
+          <h2 className="text-base font-semibold text-stone-900">Post</h2>
           <button
             onClick={handleModalClose}
             className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg transition-colors"
@@ -409,14 +430,20 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
                           ref={hashtagInputRef}
                           type="text"
                           value={hashtagInput}
-                          onChange={(e) =>
-                            setHashtagInput(
-                              e.target.value.replace(/[^a-zA-Z0-9가-힣]/g, "")
-                            )
-                          }
+                          onChange={handleHashtagInputChange}
+                          onCompositionStart={() => setIsComposing(true)}
+                          onCompositionEnd={(e) => {
+                            setIsComposing(false);
+                            // 조합이 끝나면 최종 값을 필터링
+                            const finalValue = e.target.value.replace(
+                              /[^a-zA-Z0-9가-힣]/g,
+                              ""
+                            );
+                            setHashtagInput(finalValue);
+                          }}
                           onKeyDown={handleHashtagKeyDown}
                           placeholder="Type hashtag..."
-                          className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:border-stone-500"
+                          className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none"
                           maxLength={30}
                         />
                         {hashtagInput && (

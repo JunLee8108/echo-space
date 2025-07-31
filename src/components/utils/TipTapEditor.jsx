@@ -360,7 +360,7 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
       </div>
 
       {/* Editor Content */}
-      <EditorContent editor={editor} className="flex-1 overflow-y-auto" />
+      <EditorContent editor={editor} className="flex-1 overflow-y-auto prose" />
 
       {/* Link Modal */}
       {showLinkModal && (

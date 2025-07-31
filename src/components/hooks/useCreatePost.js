@@ -24,7 +24,12 @@ export const useCreatePost = (user, options = {}) => {
       // AI 댓글 생성
       const comments = await Promise.all(
         commentCharacters.map(async (char) => {
-          const reply = await fetchAIComment(char, post.content);
+          const reply = await fetchAIComment(
+            char,
+            post.content,
+            post.hashtags || [], // 해시태그 배열 전달
+            post.mood || null
+          );
           return {
             character: char,
             message: reply,

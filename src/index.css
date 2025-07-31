@@ -103,3 +103,8 @@ img {
   -webkit-user-select: none;
   user-select: none;
 }
+
+br {
+  display: block;
+  content: "";
+}

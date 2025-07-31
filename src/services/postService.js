@@ -66,8 +66,6 @@ export async function savePostWithCommentsAndLikes(
     throw likeError;
   }
 
-  console.log(hashtags);
-
   // 4. 해시태그 저장
   if (hashtags.length > 0) {
     try {

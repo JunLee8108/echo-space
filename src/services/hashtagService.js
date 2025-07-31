@@ -46,7 +46,7 @@ export async function createOrGetHashtags(hashtagNames) {
       .from("Hashtag")
       .select("id")
       .eq("name", cleanName)
-      .single();
+      .maybeSingle();
 
     if (searchError && searchError.code !== "PGRST116") {
       console.error("❌ 해시태그 검색 실패:", searchError.message);
