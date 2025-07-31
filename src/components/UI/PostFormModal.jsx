@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router";
 import { Smile, Meh, Frown, Hash } from "lucide-react";
-import { useNavigate } from "react-router";
 import TipTapEditor from "../utils/TipTapEditor";
 import { searchHashtags } from "../../services/hashtagService";
 import "./PostFormModal.css";
@@ -45,7 +45,6 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
   const [selectedHashtags, setSelectedHashtags] = useState([]);
   const [hashtagSuggestions, setHashtagSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [isComposing, setIsComposing] = useState(false); // 한글 조합 상태 추가
 
   const modalRef = useRef(null);
   const moodButtonRef = useRef(null);
@@ -55,6 +54,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
   const hashtagInputRef = useRef(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Reset form when modal closes
   useEffect(() => {
@@ -68,7 +68,6 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
       setHashtagSuggestions([]);
       setIsClosing(false);
       setIsSubmitting(false);
-      setIsComposing(false);
     }
   }, [isOpen]);
 
@@ -166,7 +165,10 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
 
     if (!plainText) return;
 
-    navigate("/");
+    // 다른 페이지에서 작성한 경우 Home으로 이동
+    if (location.pathname !== "/") {
+      navigate("/");
+    }
 
     setIsSubmitting(true);
 
@@ -220,19 +222,6 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
     setShowMoodModal(false);
   };
 
-  // 해시태그 입력 처리 함수
-  const handleHashtagInputChange = (e) => {
-    const value = e.target.value;
-
-    // 한글 조합 중일 때는 정규표현식 필터링을 하지 않음
-    if (isComposing) {
-      setHashtagInput(value);
-    } else {
-      // 조합이 완료되었거나 영문/숫자 입력 시에만 필터링
-      setHashtagInput(value.replace(/[^a-zA-Z0-9가-힣]/g, ""));
-    }
-  };
-
   const handleHashtagAdd = () => {
     const trimmedInput = hashtagInput.trim().toLowerCase();
     if (trimmedInput && !selectedHashtags.includes(trimmedInput)) {
@@ -243,8 +232,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
   };
 
   const handleHashtagKeyDown = (e) => {
-    // 한글 조합 중일 때는 Enter 키 무시
-    if (e.key === "Enter" && !isComposing) {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleHashtagAdd();
     }
@@ -430,17 +418,11 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
                           ref={hashtagInputRef}
                           type="text"
                           value={hashtagInput}
-                          onChange={handleHashtagInputChange}
-                          onCompositionStart={() => setIsComposing(true)}
-                          onCompositionEnd={(e) => {
-                            setIsComposing(false);
-                            // 조합이 끝나면 최종 값을 필터링
-                            const finalValue = e.target.value.replace(
-                              /[^a-zA-Z0-9가-힣]/g,
-                              ""
-                            );
-                            setHashtagInput(finalValue);
-                          }}
+                          onChange={(e) =>
+                            setHashtagInput(
+                              e.target.value.replace(/[^a-zA-Z0-9가-힣]/g, "")
+                            )
+                          }
                           onKeyDown={handleHashtagKeyDown}
                           placeholder="Type hashtag..."
                           className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none"

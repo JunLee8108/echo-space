@@ -1,14 +1,17 @@
 // hooks/useCreatePost.js
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useLocation } from "react-router";
 import { useCharacters } from "./useCharacters";
-import { savePostWithCommentsAndLikes } from "../../services/postService";
+import {
+  savePostWithCommentsAndLikes,
+  fetchPostsWithCommentsAndLikes,
+} from "../../services/postService";
 import { fetchAIComment } from "../../services/openaiService";
 
 export const useCreatePost = (user, options = {}) => {
+  // 페이지당 포스트 개수
+  const POSTS_PER_PAGE = 5;
+
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const location = useLocation();
   const { getRandomCharacters } = useCharacters();
 
   return useMutation({
@@ -66,12 +69,14 @@ export const useCreatePost = (user, options = {}) => {
           post.hashtags?.map((tag) => ({
             hashtag_id: `temp-${tag}`,
             name: tag,
-          })) || [], // 임시 해시태그 표시
+          })) || [],
         like: 0,
         created_at: new Date().toISOString(),
         user_id: user.id,
         isLoading: true,
       };
+
+      const isEmptyCache = !previousData;
 
       queryClient.setQueryData(["posts", user?.id], (old) => {
         if (!old) {
@@ -107,9 +112,13 @@ export const useCreatePost = (user, options = {}) => {
         };
       });
 
-      return { tempId, previousData };
+      return { tempId, previousData, isEmptyCache };
     },
-    onSuccess: (data, variables, context) => {
+
+    onSuccess: async (data, variables, context) => {
+      const savedPostId = data.savedPost.id;
+
+      // 먼저 임시 포스트를 실제 포스트로 교체
       queryClient.setQueryData(["posts", user?.id], (old) => {
         if (!old) return old;
 
@@ -133,9 +142,59 @@ export const useCreatePost = (user, options = {}) => {
         };
       });
 
-      // Profile 페이지에서 작성한 경우 Home으로 이동
-      if (location.pathname === "/profile") {
-        navigate("/");
+      // 캐시가 비어있었다면, 이제 기존 posts를 fetch
+      if (context.isEmptyCache) {
+        setTimeout(async () => {
+          try {
+            // 기존 posts를 직접 fetch
+            const result = await fetchPostsWithCommentsAndLikes(user.id, {
+              limit: POSTS_PER_PAGE,
+              cursor: null,
+            });
+
+            queryClient.setQueryData(["posts", user?.id], (old) => {
+              if (!old) return old;
+
+              // 방금 저장한 post를 제외한 나머지 posts만 추가
+              const filteredPosts = result.posts.filter(
+                (post) => post.id !== savedPostId
+              );
+
+              // 첫 페이지에 기존 posts 추가
+              const newPages = [...old.pages];
+              if (newPages[0] && newPages[0].posts) {
+                // 현재 posts 중에서 방금 저장한 post 찾기
+                const savedPost = newPages[0].posts.find(
+                  (post) => post.id === savedPostId
+                );
+
+                if (savedPost) {
+                  // 저장된 post를 맨 앞에 유지하고 나머지 추가
+                  newPages[0] = {
+                    posts: [savedPost, ...filteredPosts],
+                    nextCursor: result.nextCursor,
+                    hasMore: result.hasMore,
+                  };
+                } else {
+                  // 예외 상황: 저장된 post가 없다면 그냥 추가
+                  newPages[0] = {
+                    posts: [...newPages[0].posts, ...filteredPosts],
+                    nextCursor: result.nextCursor,
+                    hasMore: result.hasMore,
+                  };
+                }
+              }
+
+              return {
+                ...old,
+                pages: newPages,
+              };
+            });
+          } catch (error) {
+            console.error("Error fetching existing posts:", error);
+            // 에러가 발생해도 새로 작성한 post는 유지됨
+          }
+        }, 100);
       }
 
       // 콜백 실행 (incrementNotificationCount 등)
