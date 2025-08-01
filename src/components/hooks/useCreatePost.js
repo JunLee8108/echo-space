@@ -1,18 +1,24 @@
-// hooks/useCreatePost.js
+import { useNavigate, useLocation } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCharacters } from "./useCharacters";
+import { useCharacterActions } from "../../stores/characterStore";
+import { useUserId } from "../../stores/userStore";
+import { incrementNotification } from "../../stores/notificationStore";
 import {
   savePostWithCommentsAndLikes,
   fetchPostsWithCommentsAndLikes,
 } from "../../services/postService";
 import { fetchAIComment } from "../../services/openaiService";
 
-export const useCreatePost = (user, options = {}) => {
-  // 페이지당 포스트 개수
-  const POSTS_PER_PAGE = 5;
+// 페이지당 포스트 개수
+const POSTS_PER_PAGE = 5;
+
+export const useCreatePost = (options = {}) => {
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const queryClient = useQueryClient();
-  const { getRandomCharacters } = useCharacters();
+  const userId = useUserId();
+  const { getRandomCharacters } = useCharacterActions();
 
   return useMutation({
     mutationFn: async (post) => {
@@ -54,9 +60,9 @@ export const useCreatePost = (user, options = {}) => {
       };
     },
     onMutate: async (post) => {
-      await queryClient.cancelQueries({ queryKey: ["posts", user?.id] });
+      await queryClient.cancelQueries({ queryKey: ["posts", userId] });
 
-      const previousData = queryClient.getQueryData(["posts", user?.id]);
+      const previousData = queryClient.getQueryData(["posts", userId]);
 
       const tempId = `temp-${Date.now()}-${Math.random()}`;
       const optimisticPost = {
@@ -72,13 +78,13 @@ export const useCreatePost = (user, options = {}) => {
           })) || [],
         like: 0,
         created_at: new Date().toISOString(),
-        user_id: user.id,
+        user_id: userId,
         isLoading: true,
       };
 
       const isEmptyCache = !previousData;
 
-      queryClient.setQueryData(["posts", user?.id], (old) => {
+      queryClient.setQueryData(["posts", userId], (old) => {
         if (!old) {
           return {
             pages: [
@@ -118,23 +124,30 @@ export const useCreatePost = (user, options = {}) => {
     onSuccess: async (data, variables, context) => {
       const savedPostId = data.savedPost.id;
 
-      // 먼저 임시 포스트를 실제 포스트로 교체
-      queryClient.setQueryData(["posts", user?.id], (old) => {
+      incrementNotification();
+
+      // 첫 번째 setQueryData는 이미 잘 작성됨
+      queryClient.setQueryData(["posts", userId], (old) => {
         if (!old) return old;
 
-        const newPages = [...old.pages];
-        if (newPages[0] && newPages[0].posts) {
-          const postIndex = newPages[0].posts.findIndex(
-            (post) => post.id === context.tempId
-          );
+        const newPages = old.pages.map((page, pageIndex) => {
+          if (pageIndex !== 0) return page;
 
-          if (postIndex !== -1) {
-            newPages[0].posts[postIndex] = {
-              ...data.savedPost,
-              isLoading: false,
-            };
-          }
-        }
+          const updatedPosts = page.posts.map((post) => {
+            if (post.id === context.tempId) {
+              return {
+                ...data.savedPost,
+                isLoading: false,
+              };
+            }
+            return post;
+          });
+
+          return {
+            ...page,
+            posts: updatedPosts,
+          };
+        });
 
         return {
           ...old,
@@ -142,48 +155,45 @@ export const useCreatePost = (user, options = {}) => {
         };
       });
 
-      // 캐시가 비어있었다면, 이제 기존 posts를 fetch
+      // 캐시가 비어있었다면, 기존 posts를 fetch
       if (context.isEmptyCache) {
         setTimeout(async () => {
           try {
-            // 기존 posts를 직접 fetch
-            const result = await fetchPostsWithCommentsAndLikes(user.id, {
+            const result = await fetchPostsWithCommentsAndLikes(userId, {
               limit: POSTS_PER_PAGE,
               cursor: null,
             });
 
-            queryClient.setQueryData(["posts", user?.id], (old) => {
+            // 두 번째 setQueryData - map으로 개선
+            queryClient.setQueryData(["posts", userId], (old) => {
               if (!old) return old;
 
-              // 방금 저장한 post를 제외한 나머지 posts만 추가
               const filteredPosts = result.posts.filter(
                 (post) => post.id !== savedPostId
               );
 
-              // 첫 페이지에 기존 posts 추가
-              const newPages = [...old.pages];
-              if (newPages[0] && newPages[0].posts) {
-                // 현재 posts 중에서 방금 저장한 post 찾기
-                const savedPost = newPages[0].posts.find(
+              // map을 사용하여 불변성 유지
+              const newPages = old.pages.map((page, pageIndex) => {
+                if (pageIndex !== 0) return page;
+
+                const savedPost = page.posts.find(
                   (post) => post.id === savedPostId
                 );
 
                 if (savedPost) {
-                  // 저장된 post를 맨 앞에 유지하고 나머지 추가
-                  newPages[0] = {
+                  return {
                     posts: [savedPost, ...filteredPosts],
                     nextCursor: result.nextCursor,
                     hasMore: result.hasMore,
                   };
                 } else {
-                  // 예외 상황: 저장된 post가 없다면 그냥 추가
-                  newPages[0] = {
-                    posts: [...newPages[0].posts, ...filteredPosts],
+                  return {
+                    posts: [...page.posts, ...filteredPosts],
                     nextCursor: result.nextCursor,
                     hasMore: result.hasMore,
                   };
                 }
-              }
+              });
 
               return {
                 ...old,
@@ -192,21 +202,24 @@ export const useCreatePost = (user, options = {}) => {
             });
           } catch (error) {
             console.error("Error fetching existing posts:", error);
-            // 에러가 발생해도 새로 작성한 post는 유지됨
           }
         }, 100);
       }
 
-      // 콜백 실행 (incrementNotificationCount 등)
       if (options.onSuccess) {
         options.onSuccess(data);
+      }
+
+      // 다른 페이지에서 작성한 경우 Home으로 이동
+      if (location.pathname !== "/") {
+        navigate("/");
       }
 
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
     onError: (error, variables, context) => {
       if (context?.previousData) {
-        queryClient.setQueryData(["posts", user?.id], context.previousData);
+        queryClient.setQueryData(["posts", userId], context.previousData);
       }
       console.error("Error creating post:", error);
 

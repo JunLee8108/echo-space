@@ -1,11 +1,11 @@
-// src/components/AuthForm.jsx - Enhanced with Display Name
+// src/components/AuthForm.jsx - Enhanced with Display Name and userStore
 import { useState, useEffect } from "react";
-import supabase from "../services/supabaseClient";
+import supabase from "../../services/supabaseClient";
 
-const AuthForm = ({ onAuthSuccess }) => {
+const AuthForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState(""); // 새로 추가
+  const [displayName, setDisplayName] = useState("");
   const [mode, setMode] = useState("signIn");
   const [isLoading, setIsLoading] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -58,9 +58,7 @@ const AuthForm = ({ onAuthSuccess }) => {
 
     setIsLoading(false);
     if (error) return alert(error.message);
-    if (mode === "signIn" && !error) {
-      onAuthSuccess(); // 로그인 후 App 갱신
-    }
+    // onAuthStateChange가 자동으로 처리하므로 별도 콜백 불필요
   };
 
   const handleModeToggle = (newMode) => {

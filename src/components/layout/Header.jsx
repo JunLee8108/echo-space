@@ -1,15 +1,17 @@
 import { useState } from "react"; // useState 추가
-import supabase from "../../services/supabaseClient";
 import ConfirmationModal from "../UI/ConfirmationModal";
+import { useNotificationCount } from "../../stores/notificationStore";
+import { signOut } from "../../services/authService";
 
-const Header = ({ notificationCount = 0 }) => {
+const Header = () => {
   const [showSignOutModal, setShowSignOutModal] = useState(false); // 모달 상태 추가
+  const notificationCount = useNotificationCount();
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    try {
+      await signOut(); // ✅ 공통 signOut 함수 사용
+    } catch (error) {
       console.error("Sign-out failed:", error.message);
-      return;
     }
   };
 

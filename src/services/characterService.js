@@ -1,21 +1,15 @@
-// /services/characterService.js
 import supabase from "./supabaseClient";
 
-/**
- * “사용 가능한” 캐릭터만 바로 가져온다.
- * - 시스템 기본(is_system_default = true)
- * - 내가 팔로우한 캐릭터(user_characters.is_following = true)
- */
-export async function fetchAvailableCharacters(uid) {
-  if (!uid) throw new Error("user_id가 없습니다.");
+// export async function fetchAvailableCharacters(uid) {
+//   if (!uid) throw new Error("user_id가 없습니다.");
 
-  const { data, error } = await supabase.rpc("get_user_characters", {
-    user_id_param: uid,
-  });
+//   const { data, error } = await supabase.rpc("get_user_characters", {
+//     user_id_param: uid,
+//   });
 
-  if (error) throw error;
-  return data; // 👉 이미 필터링 끝!
-}
+//   if (error) throw error;
+//   return data; // 👉 이미 필터링 끝!
+// }
 
 export async function fetchUserCreatedAndSystemCharacters(userId) {
   const { data, error } = await supabase
@@ -30,7 +24,8 @@ export async function fetchUserCreatedAndSystemCharacters(userId) {
       avatar_url,
       User_Character (
         id,
-        is_following
+        is_following,
+        affinity
       )
     `
     )
@@ -55,6 +50,7 @@ export async function fetchUserCreatedAndSystemCharacters(userId) {
       // User_Character 관계 데이터
       user_character_id: character.User_Character?.[0]?.id || null,
       is_following: character.User_Character?.[0]?.is_following || false,
+      affinity: character.User_Character?.[0]?.affinity || 0,
     })) || [];
 
   return formattedData;
@@ -67,7 +63,7 @@ export async function switchUserCharacterFollow(userId, character) {
     .select("id, is_following")
     .eq("user_id", userId)
     .eq("character_id", character.id)
-    .single();
+    .maybeSingle();
 
   if (checkError && checkError.code !== "PGRST116") {
     // PGRST116 = no rows returned

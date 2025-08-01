@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router";
 import { Smile, Meh, Frown, Hash } from "lucide-react";
 import TipTapEditor from "../utils/TipTapEditor";
 import { searchHashtags } from "../../services/hashtagService";
+import { useCreatePost } from "../hooks/useCreatePost";
+import { useIsPostModalOpen, useClosePostModal } from "../../stores/modalStore";
 import "./PostFormModal.css";
 
 const MOODS = [
@@ -32,7 +33,11 @@ const MOODS = [
   },
 ];
 
-const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
+const PostFormModal = () => {
+  const createPostMutation = useCreatePost();
+  const isOpen = useIsPostModalOpen();
+  const closePostModal = useClosePostModal();
+
   const [content, setContent] = useState("");
   const [showMoodModal, setShowMoodModal] = useState(false);
   const [selectedMood, setSelectedMood] = useState(null);
@@ -45,6 +50,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
   const [selectedHashtags, setSelectedHashtags] = useState([]);
   const [hashtagSuggestions, setHashtagSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isComposing, setIsComposing] = useState(false);
 
   const modalRef = useRef(null);
   const moodButtonRef = useRef(null);
@@ -52,9 +58,6 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
   const hashtagButtonRef = useRef(null);
   const hashtagModalRef = useRef(null);
   const hashtagInputRef = useRef(null);
-
-  const navigate = useNavigate();
-  const location = useLocation();
 
   // Reset form when modal closes
   useEffect(() => {
@@ -77,7 +80,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
       setIsClosing(true);
       setTimeout(() => {
         setIsClosing(false);
-        onClose();
+        closePostModal();
       }, 400);
     };
 
@@ -100,7 +103,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
     return () => {
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [isOpen, onClose, showHashtagModal, showMoodModal]);
+  }, [isOpen, closePostModal, showHashtagModal, showMoodModal]);
 
   // Close modals when clicking outside
   useEffect(() => {
@@ -162,13 +165,12 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
 
     // Strip HTML tags to check if content is empty
     const plainText = content.replace(/<[^>]*>/g, "").trim();
-
     if (!plainText) return;
 
-    // 다른 페이지에서 작성한 경우 Home으로 이동
-    if (location.pathname !== "/") {
-      navigate("/");
-    }
+    // // 다른 페이지에서 작성한 경우 Home으로 이동
+    // if (location.pathname !== "/") {
+    //   navigate("/");
+    // }
 
     setIsSubmitting(true);
 
@@ -192,7 +194,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
       created_at: new Date().toISOString(),
     };
 
-    onPostSubmit(newPost);
+    createPostMutation.mutate(newPost);
 
     setTimeout(() => {
       // 페이드아웃 애니메이션 시작
@@ -202,7 +204,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
       setTimeout(() => {
         setIsSubmitting(false);
         setIsClosing(false);
-        onClose();
+        closePostModal();
       }, 400);
     }, 600); // 600ms 로딩 표시
   };
@@ -213,7 +215,7 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
     setTimeout(() => {
       // 페이드아웃 애니메이션 시작
       setIsClosing(false);
-      onClose();
+      closePostModal();
     }, 400); // 400ms 애니메이션
   };
 
@@ -232,9 +234,28 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
   };
 
   const handleHashtagKeyDown = (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !isComposing) {
       e.preventDefault();
       handleHashtagAdd();
+    }
+  };
+
+  const handleCompositionStart = () => {
+    setIsComposing(true);
+  };
+
+  const handleCompositionEnd = () => {
+    setIsComposing(false);
+  };
+
+  const handleChange = (e) => {
+    const raw = e.target.value;
+    if (isComposing) {
+      // 조합 중엔 그대로 저장
+      setHashtagInput(raw);
+    } else {
+      // 조합이 끝난 후만 필터링 적용
+      setHashtagInput(raw.replace(/[^a-zA-Z0-9가-힣]/g, ""));
     }
   };
 
@@ -418,11 +439,9 @@ const PostFormModal = ({ isOpen, onClose, onPostSubmit }) => {
                           ref={hashtagInputRef}
                           type="text"
                           value={hashtagInput}
-                          onChange={(e) =>
-                            setHashtagInput(
-                              e.target.value.replace(/[^a-zA-Z0-9가-힣]/g, "")
-                            )
-                          }
+                          onChange={handleChange}
+                          onCompositionStart={handleCompositionStart}
+                          onCompositionEnd={handleCompositionEnd}
                           onKeyDown={handleHashtagKeyDown}
                           placeholder="Type hashtag..."
                           className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none"

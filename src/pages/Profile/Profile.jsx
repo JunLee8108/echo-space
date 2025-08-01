@@ -1,21 +1,37 @@
 import { useState } from "react";
-import { useCharacters } from "../components/hooks/useCharacters";
+// Zustand hooks
+import {
+  useCharacters,
+  useFollowedCharacterIds,
+  useCharacterLoading,
+  useCharacterActions,
+} from "../../stores/characterStore";
 
-import { updateDisplayName, updatePassword } from "../services/authService";
-import ProfileModal from "../components/UI/ProfileModal";
-import EditProfileModal from "../components/UI/EditProfileModal";
+// userStore imports
+import {
+  useUser,
+  useDisplayName,
+  useUserActions,
+} from "../../stores/userStore";
+
+import ProfileModal from "../../components/UI/ProfileModal";
+import EditProfileModal from "./EditProfileModal";
 import { Pencil } from "lucide-react";
 
-const Profile = ({ user }) => {
-  const {
-    characters,
-    followedCharacterIds,
-    toggleFollow,
-    loading: contextLoading,
-  } = useCharacters();
+const Profile = () => {
+  // userStore hooks
+  const user = useUser();
+  const displayName = useDisplayName();
+  const { updateDisplayName, updatePassword } = useUserActions();
+
+  // characterStore hooks
+  const characters = useCharacters();
+  const followedCharacterIds = useFollowedCharacterIds();
+  const contextLoading = useCharacterLoading();
+  const { toggleFollow } = useCharacterActions();
 
   const [localLoading, setLocalLoading] = useState(false);
-  const [showEditProfileModal, setShowEditProfileModal] = useState(false); // 모달 상태 추가
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
 
   const handleToggleFollow = async (character) => {
     setLocalLoading(true);
@@ -31,8 +47,7 @@ const Profile = ({ user }) => {
   const handleUpdateDisplayName = async (newName) => {
     try {
       await updateDisplayName(newName);
-      // 성공 시 페이지 새로고침하여 업데이트된 정보 반영
-      window.location.reload();
+      // userStore가 자동으로 업데이트되므로 페이지 새로고침 불필요
     } catch (error) {
       alert("이름 변경에 실패했습니다.");
       console.error("Error updating display name:", error);
@@ -49,9 +64,6 @@ const Profile = ({ user }) => {
       throw error; // 모달에서 에러 처리
     }
   };
-
-  const displayName =
-    user?.user_metadata?.display_name || user?.email || "User";
 
   /* ──────────────────────── Modal state ──────────────────────────── */
   const [profileModal, setProfileModal] = useState({
@@ -135,12 +147,7 @@ const Profile = ({ user }) => {
                               e.stopPropagation();
                               setProfileModal({
                                 show: true,
-                                character: {
-                                  name: character.name,
-                                  avatar_url: character.avatar_url,
-                                  prompt_description:
-                                    character.prompt_description,
-                                },
+                                character: character,
                               });
                             }}
                             onError={(e) => {
@@ -271,7 +278,7 @@ const Profile = ({ user }) => {
         onClose={() => setShowEditProfileModal(false)}
         onConfirm={handleUpdateDisplayName}
         currentName={user?.user_metadata?.display_name || ""}
-        onPasswordChange={handlePasswordChange} // 이 줄 추가
+        onPasswordChange={handlePasswordChange}
       />
     </div>
   );

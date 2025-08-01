@@ -1,8 +1,10 @@
 import { useNavigate, useLocation } from "react-router";
+import { useOpenPostModal } from "../../stores/modalStore";
 
-const BottomNavbar = ({ onAddClick }) => {
+const BottomNavbar = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const openPostModal = useOpenPostModal();
 
   const tabs = [
     {
@@ -61,7 +63,7 @@ const BottomNavbar = ({ onAddClick }) => {
         </svg>
       ),
       special: true,
-      onClick: onAddClick,
+      onClick: openPostModal,
     },
     {
       id: "profile",

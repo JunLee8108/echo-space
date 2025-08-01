@@ -28,7 +28,7 @@ export async function fetchAIComment(
     character.prompt_description
   }\nStay fully immersed in this persona at all times.\nRespond in the user's language.\nUse short 1-2 witty sentences that preserve your unique style and divine tone.${
     contextInfo
-      ? "\nAlways consider the post's mood and hashtags to understand the emotional context before crafting a response."
+      ? "\nConsider the post's mood and hashtags to understand the emotional context."
       : ""
   }`;
 

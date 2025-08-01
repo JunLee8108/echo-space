@@ -97,7 +97,10 @@ export async function savePostWithCommentsAndLikes(
           id,
           name,
           avatar_url,
-          prompt_description
+          prompt_description,
+          User_Character (
+            affinity
+          )
         )
       ),
       Post_Like (
@@ -106,7 +109,10 @@ export async function savePostWithCommentsAndLikes(
           id,
           name,
           avatar_url,
-          prompt_description
+          prompt_description,
+          User_Character (
+            affinity
+          )
         )
       ),
       Post_Hashtag (
@@ -138,6 +144,7 @@ export async function savePostWithCommentsAndLikes(
         character: comment.Character?.name || "Unknown",
         avatar_url: comment.Character?.avatar_url || null,
         prompt_description: comment.Character?.prompt_description || "",
+        affinity: comment.Character?.User_Character[0]?.affinity || 0,
       })) || [],
     Post_Like:
       savedPost.Post_Like?.map((like) => ({
@@ -145,6 +152,7 @@ export async function savePostWithCommentsAndLikes(
         character: like.Character?.name || "Unknown",
         avatar_url: like.Character?.avatar_url || null,
         prompt_description: like.Character?.prompt_description || "",
+        affinity: like.Character?.User_Character[0]?.affinity || 0,
       })) || [],
     Post_Hashtag:
       savedPost.Post_Hashtag?.map((ph) => ({
@@ -199,7 +207,10 @@ export async function fetchPostsWithCommentsAndLikes(
             id,
             name,
             avatar_url,
-            prompt_description
+            prompt_description,
+            User_Character (
+            affinity
+            )
           )
         ),
         Post_Like (
@@ -208,7 +219,10 @@ export async function fetchPostsWithCommentsAndLikes(
             id,
             name,
             avatar_url,
-            prompt_description
+            prompt_description,
+            User_Character (
+            affinity
+            )
           )
         ),
         Post_Hashtag (
@@ -265,6 +279,7 @@ export async function fetchPostsWithCommentsAndLikes(
           character: comment.Character?.name || "Unknown",
           avatar_url: comment.Character?.avatar_url || null,
           prompt_description: comment.Character?.prompt_description || "",
+          affinity: comment.Character?.User_Character[0]?.affinity || 0,
         })) || [],
       Post_Like:
         post.Post_Like?.map((like) => ({
@@ -272,6 +287,7 @@ export async function fetchPostsWithCommentsAndLikes(
           character: like.Character?.name || "Unknown",
           avatar_url: like.Character?.avatar_url || null,
           prompt_description: like.Character?.prompt_description || "",
+          affinity: like.Character?.User_Character[0]?.affinity || 0,
         })) || [],
       Post_Hashtag:
         post.Post_Hashtag?.map((ph) => ({

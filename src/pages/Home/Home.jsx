@@ -8,14 +8,17 @@ import {
 import { Smile, Meh, Frown, Hash } from "lucide-react";
 
 // Modal
-import ConfirmationModal from "../components/UI/ConfirmationModal";
-import ProfileModal from "../components/UI/ProfileModal";
+import ConfirmationModal from "../../components/UI/ConfirmationModal";
+import ProfileModal from "../../components/UI/ProfileModal";
 
 import {
   deletePostById,
   fetchPostsWithCommentsAndLikes,
-} from "../services/postService";
+} from "../../services/postService";
 import "./Home.css";
+
+// userStore imports
+import { useUserId, useDisplayName } from "../../stores/userStore";
 
 // 페이지당 포스트 개수
 const POSTS_PER_PAGE = 5;
@@ -41,7 +44,10 @@ const MOODS = {
   },
 };
 
-const Home = ({ user }) => {
+const Home = () => {
+  const userId = useUserId();
+  const displayName = useDisplayName();
+
   const extractText = (html) =>
     new DOMParser().parseFromString(html, "text/html").body.textContent.trim();
 
@@ -84,9 +90,9 @@ const Home = ({ user }) => {
     error,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ["posts", user?.id],
+    queryKey: ["posts", userId],
     queryFn: async ({ pageParam = null }) => {
-      const result = await fetchPostsWithCommentsAndLikes(user.id, {
+      const result = await fetchPostsWithCommentsAndLikes(userId, {
         limit: POSTS_PER_PAGE,
         cursor: pageParam,
       });
@@ -100,7 +106,7 @@ const Home = ({ user }) => {
     getNextPageParam: (lastPage) => {
       return lastPage.hasMore ? lastPage.nextCursor : undefined;
     },
-    enabled: !!user,
+    enabled: !!userId,
   });
 
   // 모든 페이지의 포스트를 평면화 (중복 제거를 위해 Map 사용)
@@ -141,13 +147,13 @@ const Home = ({ user }) => {
 
   /* ───────── React Query: Delete Post Mutation ───────── */
   const deletePostMutation = useMutation({
-    mutationFn: ({ postId }) => deletePostById(postId, user.id),
+    mutationFn: ({ postId }) => deletePostById(postId, userId),
     onMutate: async ({ postId }) => {
-      await queryClient.cancelQueries({ queryKey: ["posts", user?.id] });
+      await queryClient.cancelQueries({ queryKey: ["posts", userId] });
 
-      const previousData = queryClient.getQueryData(["posts", user?.id]);
+      const previousData = queryClient.getQueryData(["posts", userId]);
 
-      queryClient.setQueryData(["posts", user?.id], (old) => {
+      queryClient.setQueryData(["posts", userId], (old) => {
         if (!old) return old;
 
         const newPages = old.pages.map((page) => ({
@@ -165,13 +171,13 @@ const Home = ({ user }) => {
     },
     onError: (error, variables, context) => {
       if (context?.previousData) {
-        queryClient.setQueryData(["posts", user?.id], context.previousData);
+        queryClient.setQueryData(["posts", userId], context.previousData);
       }
       console.error("Error deleting post:", error);
       alert("삭제 중 오류가 발생했습니다.");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["posts", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["posts", userId] });
     },
   });
 
@@ -360,7 +366,7 @@ const Home = ({ user }) => {
                 return (
                   <article
                     key={post.id}
-                    className={`bg-white rounded-2xl border border-stone-100 overflow-hidden hover:border-stone-200 transition-all duration-200 ${
+                    className={`bg-white rounded-2xl border border-stone-200 overflow-hidden hover:border-stone-200 transition-all duration-200 ${
                       isLoading ? "animate-pulse" : ""
                     }`}
                   >
@@ -375,7 +381,7 @@ const Home = ({ user }) => {
                         <div>
                           <div className="flex items-center space-x-2">
                             <h3 className="font-medium text-stone-900 text-sm">
-                              {user.user_metadata.display_name}
+                              {displayName}
                             </h3>
                             {/* Mood indicator */}
                             {post.mood && MOODS[post.mood] && (
@@ -509,15 +515,11 @@ const Home = ({ user }) => {
                                   alt={c.character}
                                   className="w-9 h-9 cursor-pointer rounded-2xl object-cover flex-shrink-0"
                                   onClick={(e) => {
+                                    console.log(c);
                                     e.stopPropagation();
                                     setProfileModal({
                                       show: true,
-                                      character: {
-                                        name: c.character,
-                                        avatar_url: c.avatar_url,
-                                        prompt_description:
-                                          c.prompt_description,
-                                      },
+                                      character: c,
                                     });
                                   }}
                                   onError={(e) => {
@@ -621,12 +623,7 @@ const Home = ({ user }) => {
                                           e.stopPropagation();
                                           setProfileModal({
                                             show: true,
-                                            character: {
-                                              name: like.character,
-                                              avatar_url: like.avatar_url,
-                                              prompt_description:
-                                                like.prompt_description,
-                                            },
+                                            character: like,
                                           });
                                           if (likeModal.show) {
                                             setLikeModal({
@@ -717,7 +714,7 @@ const Home = ({ user }) => {
               <div ref={loadMoreRef} className="h-10" />
 
               {/* 더 이상 포스트가 없을 때 */}
-              {!hasNextPage && posts.length > 0 && (
+              {!hasNextPage && posts.length > 5 && (
                 <div className="text-center py-8">
                   <p className="text-stone-400 text-sm mb-4">
                     You're all caught up
