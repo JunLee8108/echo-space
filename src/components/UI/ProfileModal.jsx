@@ -55,7 +55,10 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
         {/* Profile Content */}
         <div className="relative">
           {/* Avatar */}
-          <div className="relative -mt-2 rounded-t-3xl">
+          <div
+            className="relative -mt-1 rounded-t-3xl"
+            style={{ paddingLeft: "0.1px" }}
+          >
             <button
               onClick={onClose}
               className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors"
