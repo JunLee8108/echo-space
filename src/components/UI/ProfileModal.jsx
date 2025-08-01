@@ -50,12 +50,12 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div
         ref={modalRef}
-        className="relative w-[90%] max-w-[380px] max-h-[70dvh] mb-[70px] overflow-y-auto bg-white rounded-3xl shadow-2xl"
+        className="relative w-[90%] max-w-[380px] h-auto max-h-[70dvh] mb-[70px] overflow-y-auto bg-white rounded-3xl shadow-2xl"
       >
         {/* Profile Content */}
-        <div className="relative px-0 pt-16 pb-4">
+        <div className="relative">
           {/* Avatar */}
-          <div className="relative -mt-16 mb-2">
+          <div className="relative mb-2">
             <button
               onClick={onClose}
               className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors"
@@ -74,7 +74,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
                 />
               </svg>
             </button>
-            <div className="w-full h-48 mx-auto shadow-xl overflow-hidden bg-white">
+            <div className="w-full h-50 mx-auto shadow-xl overflow-hidden bg-white">
               {character.avatar_url ? (
                 <img
                   src={character.avatar_url}
