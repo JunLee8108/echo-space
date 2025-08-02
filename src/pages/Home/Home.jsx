@@ -515,7 +515,6 @@ const Home = () => {
                                   alt={c.character}
                                   className="w-9 h-9 cursor-pointer rounded-2xl object-cover flex-shrink-0"
                                   onClick={(e) => {
-                                    console.log(c);
                                     e.stopPropagation();
                                     setProfileModal({
                                       show: true,

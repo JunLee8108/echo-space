@@ -157,21 +157,47 @@ export const useUserActions = () => {
 };
 
 // Supabase Auth Listener Setup
+let activeListener = null;
+let characterStoreInitialized = false;
+
 export const setupAuthListener = () => {
+  // 이미 리스너가 있으면 기존 것을 반환
+  if (activeListener) {
+    return () => {};
+  }
+
   const { data: listener } = supabase.auth.onAuthStateChange(
     async (event, session) => {
+      // TOKEN_REFRESHED 이벤트는 무시 (429 에러의 주요 원인)
+      if (event === "TOKEN_REFRESHED") {
+        return;
+      }
+
       const user = session?.user ?? null;
       useUserStore.getState().setUser(user);
+      useUserStore.getState().setLoading(false);
 
-      // Character store 초기화
-      if (user?.id) {
+      // Character store 초기화 - SIGNED_IN 이벤트이고 아직 초기화 안된 경우만
+      if (event === "SIGNED_IN" && user?.id && !characterStoreInitialized) {
+        characterStoreInitialized = true;
         const { initializeCharacterStore } = await import("./characterStore");
         await initializeCharacterStore(user.id);
+      }
+
+      // SIGNED_OUT 시 플래그 리셋
+      if (event === "SIGNED_OUT") {
+        characterStoreInitialized = false;
       }
     }
   );
 
-  return () => listener.subscription.unsubscribe();
+  activeListener = listener;
+
+  return () => {
+    activeListener = null;
+    characterStoreInitialized = false;
+    listener.subscription.unsubscribe();
+  };
 };
 
 export default useUserStore;

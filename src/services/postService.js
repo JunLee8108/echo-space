@@ -96,7 +96,9 @@ export async function savePostWithCommentsAndLikes(
         Character (
           id,
           name,
+          personality,
           avatar_url,
+          description,
           prompt_description,
           User_Character (
             affinity
@@ -108,7 +110,9 @@ export async function savePostWithCommentsAndLikes(
         Character (
           id,
           name,
+          personality,
           avatar_url,
+          description,
           prompt_description,
           User_Character (
             affinity
@@ -142,7 +146,9 @@ export async function savePostWithCommentsAndLikes(
         message: comment.message,
         created_at: comment.created_at,
         character: comment.Character?.name || "Unknown",
+        personality: comment.Character?.personality || [],
         avatar_url: comment.Character?.avatar_url || null,
+        description: comment.Character?.description || "",
         prompt_description: comment.Character?.prompt_description || "",
         affinity: comment.Character?.User_Character[0]?.affinity || 0,
       })) || [],
@@ -150,7 +156,9 @@ export async function savePostWithCommentsAndLikes(
       savedPost.Post_Like?.map((like) => ({
         character_id: like.character_id,
         character: like.Character?.name || "Unknown",
+        personality: like.Character?.personality || [],
         avatar_url: like.Character?.avatar_url || null,
+        description: like.Character?.description || "",
         prompt_description: like.Character?.prompt_description || "",
         affinity: like.Character?.User_Character[0]?.affinity || 0,
       })) || [],
@@ -206,7 +214,9 @@ export async function fetchPostsWithCommentsAndLikes(
           Character (
             id,
             name,
+            personality,
             avatar_url,
+            description,
             prompt_description,
             User_Character (
             affinity
@@ -218,7 +228,9 @@ export async function fetchPostsWithCommentsAndLikes(
           Character (
             id,
             name,
+            personality,
             avatar_url,
+            description,
             prompt_description,
             User_Character (
             affinity
@@ -277,7 +289,9 @@ export async function fetchPostsWithCommentsAndLikes(
           message: comment.message,
           created_at: comment.created_at,
           character: comment.Character?.name || "Unknown",
+          personality: comment.Character?.personality || [],
           avatar_url: comment.Character?.avatar_url || null,
+          description: comment.Character?.description || "",
           prompt_description: comment.Character?.prompt_description || "",
           affinity: comment.Character?.User_Character[0]?.affinity || 0,
         })) || [],
@@ -285,7 +299,9 @@ export async function fetchPostsWithCommentsAndLikes(
         post.Post_Like?.map((like) => ({
           character_id: like.character_id,
           character: like.Character?.name || "Unknown",
+          personality: like.Character?.personality || [],
           avatar_url: like.Character?.avatar_url || null,
+          description: like.Character?.description || "",
           prompt_description: like.Character?.prompt_description || "",
           affinity: like.Character?.User_Character[0]?.affinity || 0,
         })) || [],

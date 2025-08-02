@@ -18,8 +18,10 @@ export async function fetchUserCreatedAndSystemCharacters(userId) {
       `
       id,
       name,
+      personality,
       visibility,
       is_system_default,
+      description,
       prompt_description,
       avatar_url,
       User_Character (
@@ -43,8 +45,10 @@ export async function fetchUserCreatedAndSystemCharacters(userId) {
     data?.map((character) => ({
       id: character.id,
       name: character.name,
+      personality: character.personality,
       visibility: character.visibility,
       is_system_default: character.is_system_default,
+      description: character.description,
       prompt_description: character.prompt_description,
       avatar_url: character.avatar_url,
       // User_Character 관계 데이터

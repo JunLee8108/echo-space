@@ -3,11 +3,75 @@ import { useEffect, useRef } from "react";
 // Affinity 레벨별 설정
 const getAffinityTier = (affinity) => {
   const value = affinity || 0;
-  if (value >= 80) return { label: "Soulmate", stars: 5 };
-  if (value >= 60) return { label: "Best Friend", stars: 4 };
-  if (value >= 40) return { label: "Good Friend", stars: 3 };
-  if (value >= 20) return { label: "Acquaintance", stars: 2 };
-  return { label: "Stranger", stars: 1 };
+  if (value >= 80)
+    return {
+      label: "Soulmate",
+      stars: 5,
+      colors: {
+        bg: "from-pink-50 to-red-50",
+        icon: "from-pink-400 to-red-400",
+        text: "from-pink-600 to-red-600",
+        star: "text-pink-400",
+        starEmpty: "text-pink-200",
+        label: "text-pink-600",
+        divider: "bg-pink-200",
+      },
+    };
+  if (value >= 60)
+    return {
+      label: "Bond",
+      stars: 4,
+      colors: {
+        bg: "from-purple-50 to-pink-50",
+        icon: "from-purple-400 to-pink-400",
+        text: "from-purple-600 to-pink-600",
+        star: "text-purple-400",
+        starEmpty: "text-purple-200",
+        label: "text-purple-600",
+        divider: "bg-purple-200",
+      },
+    };
+  if (value >= 40)
+    return {
+      label: "Warmth",
+      stars: 3,
+      colors: {
+        bg: "from-blue-50 to-indigo-50",
+        icon: "from-blue-400 to-indigo-400",
+        text: "from-blue-600 to-indigo-600",
+        star: "text-blue-400",
+        starEmpty: "text-blue-200",
+        label: "text-blue-600",
+        divider: "bg-blue-200",
+      },
+    };
+  if (value >= 20)
+    return {
+      label: "Spark",
+      stars: 2,
+      colors: {
+        bg: "from-teal-50 to-cyan-50",
+        icon: "from-teal-400 to-cyan-400",
+        text: "from-teal-600 to-cyan-600",
+        star: "text-teal-400",
+        starEmpty: "text-teal-200",
+        label: "text-teal-600",
+        divider: "bg-teal-200",
+      },
+    };
+  return {
+    label: "Stranger",
+    stars: 1,
+    colors: {
+      bg: "from-gray-50 to-slate-50",
+      icon: "from-gray-400 to-slate-400",
+      text: "from-gray-600 to-slate-600",
+      star: "text-gray-400",
+      starEmpty: "text-gray-200",
+      label: "text-gray-600",
+      divider: "bg-gray-200",
+    },
+  };
 };
 
 const ProfileModal = ({ isOpen, onClose, character }) => {
@@ -45,6 +109,8 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
   }, [isOpen, onClose]);
 
   if (!isOpen || !character) return null;
+
+  const affinityTier = getAffinityTier(character.affinity);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -108,11 +174,30 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
               AI Character
             </p>
 
+            {/* Array personality - 이름 바로 아래에 배치 */}
+            {Array.isArray(character.personality) &&
+              character.personality.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 justify-center mb-4">
+                  {character.personality.map((trait, idx) => (
+                    <span
+                      key={idx}
+                      className="text-xs min-w-[80px] font-medium text-stone-600 px-2.5 py-1 bg-stone-100/60 backdrop-blur-sm rounded-md border border-stone-200/50"
+                    >
+                      {trait}
+                    </span>
+                  ))}
+                </div>
+              )}
+
             {/* Compact Affinity */}
             {character.affinity !== undefined && (
-              <div className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-50 to-pink-50 px-4 py-2 rounded-full">
+              <div
+                className={`inline-flex items-center gap-3 bg-gradient-to-r ${affinityTier.colors.bg} px-6 py-2 rounded-full`}
+              >
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center">
+                  <div
+                    className={`w-6 h-6 bg-gradient-to-br ${affinityTier.colors.icon} rounded-full flex items-center justify-center`}
+                  >
                     <svg
                       className="w-3 h-3 text-white"
                       fill="currentColor"
@@ -121,19 +206,21 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
                       <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
                     </svg>
                   </div>
-                  <span className="text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  <span
+                    className={`text-sm font-semibold bg-gradient-to-r ${affinityTier.colors.text} bg-clip-text text-transparent`}
+                  >
                     {character.affinity || 0}
                   </span>
                 </div>
-                <div className="w-px h-4 bg-purple-200" />
+                <div className={`w-px h-4 ${affinityTier.colors.divider}`} />
                 <div className="flex items-center gap-1">
                   {[...Array(5)].map((_, i) => (
                     <svg
                       key={i}
                       className={`w-3 h-3 ${
-                        i < getAffinityTier(character.affinity).stars
-                          ? "text-purple-400"
-                          : "text-purple-200"
+                        i < affinityTier.stars
+                          ? affinityTier.colors.star
+                          : affinityTier.colors.starEmpty
                       }`}
                       fill="currentColor"
                       viewBox="0 0 20 20"
@@ -142,41 +229,31 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
                     </svg>
                   ))}
                 </div>
-                <span className="text-xs text-purple-600 font-medium">
-                  {getAffinityTier(character.affinity).label}
+                <span
+                  className={`text-xs font-medium ${affinityTier.colors.label}`}
+                >
+                  {affinityTier.label}
                 </span>
               </div>
             )}
           </div>
 
-          {/* Stats */}
-          {(character.personality || character.expertise) && (
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              {character.personality && (
-                <div className="bg-stone-50 rounded-2xl p-4">
-                  <p className="text-xs text-stone-500 font-medium mb-1">
-                    Personality
-                  </p>
-                  <p className="text-sm text-stone-800 font-semibold">
-                    {character.personality}
-                  </p>
-                </div>
-              )}
-              {character.expertise && (
-                <div className="bg-stone-50 rounded-2xl p-4">
-                  <p className="text-xs text-stone-500 font-medium mb-1">
-                    Expertise
-                  </p>
-                  <p className="text-sm text-stone-800 font-semibold">
-                    {character.expertise}
-                  </p>
-                </div>
-              )}
+          {/* Stats - string personality용만 남김 */}
+          {typeof character.personality === "string" && (
+            <div className="px-4 mb-6">
+              <div className="bg-stone-50 rounded-2xl p-4">
+                <p className="text-xs text-stone-500 font-medium mb-1">
+                  Personality
+                </p>
+                <p className="text-sm text-stone-800 font-semibold">
+                  {character.personality}
+                </p>
+              </div>
             </div>
           )}
 
           {/* Description */}
-          {character.prompt_description && (
+          {character.description && (
             <div className="px-4 mb-4 mt-6">
               <h3 className="text-sm font-semibold text-stone-900 mb-1 flex items-center">
                 <svg
@@ -196,7 +273,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
               </h3>
               <div className="bg-stone-50 rounded-2xl p-4">
                 <p className="text-sm text-stone-700 leading-relaxed">
-                  {character.prompt_description}
+                  {character.description}
                 </p>
               </div>
             </div>

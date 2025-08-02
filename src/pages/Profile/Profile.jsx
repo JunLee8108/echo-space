@@ -26,6 +26,7 @@ const Profile = () => {
 
   // characterStore hooks
   const characters = useCharacters();
+
   const followedCharacterIds = useFollowedCharacterIds();
   const contextLoading = useCharacterLoading();
   const { toggleFollow } = useCharacterActions();
@@ -177,7 +178,7 @@ const Profile = () => {
                           {character.name}
                         </h3>
                         <p className="text-stone-600 text-sm leading-relaxed line-clamp-2">
-                          {character.prompt_description.split(".")[0]}.
+                          {character.description}.
                         </p>
                       </div>
                     </div>
