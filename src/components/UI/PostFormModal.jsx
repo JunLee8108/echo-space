@@ -64,7 +64,7 @@ const PostFormModal = () => {
   const hashtagButtonRef = useRef(null);
   const hashtagModalRef = useRef(null);
   const hashtagInputRef = useRef(null);
-  const headerRef = useRef(null);
+  const bottomBarRef = useRef(null);
 
   // 스와이프 상수
   const DRAG_THRESHOLD = 100; // 닫기 위한 최소 드래그 거리
@@ -178,8 +178,8 @@ const PostFormModal = () => {
     // 서브 모달이 열려있거나 제출 중이면 무시
     if (showHashtagModal || showMoodModal || isSubmitting) return;
 
-    // 헤더 영역이 아니면 무시
-    if (!headerRef.current?.contains(e.target)) return;
+    // 하단 액션바 영역이 아니면 무시 (bottomBarRef)
+    if (!bottomBarRef.current?.contains(e.target)) return;
 
     // 버튼 클릭은 무시
     if (e.target.closest("button")) return;
@@ -384,23 +384,8 @@ const PostFormModal = () => {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Drag Handle Indicator */}
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
-          <div
-            className="w-10 h-1 bg-stone-400 rounded-full"
-            style={{
-              opacity: isDragging ? 0.8 : 0.4,
-              transform: `scaleX(${isDragging ? 1.2 : 1})`,
-              transition: "all 0.2s ease-out",
-            }}
-          />
-        </div>
-
         {/* Modal Header */}
-        <div
-          ref={headerRef}
-          className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-stone-100 cursor-grab active:cursor-grabbing"
-        >
+        <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-stone-100 cursor-grab active:cursor-grabbing">
           <h2 className="text-base font-semibold text-stone-900">Post</h2>
           <button
             onClick={handleModalClose}
@@ -468,8 +453,23 @@ const PostFormModal = () => {
               </div>
             )}
 
+            {/* Drag Handle Indicator */}
+            <div className="flex justify-center py-2">
+              <div
+                className="w-10 h-1 bg-stone-300 rounded-full"
+                style={{
+                  opacity: isDragging ? 0.8 : 0.4,
+                  transform: `scaleX(${isDragging ? 1.2 : 1})`,
+                  transition: "all 0.2s ease-out",
+                }}
+              />
+            </div>
+
             {/* Actions Bar */}
-            <div className="mt-4 flex items-center justify-between flex-shrink-0">
+            <div
+              ref={bottomBarRef}
+              className="mt-4 flex items-center justify-between flex-shrink-0"
+            >
               <div className="flex items-center space-x-2">
                 {/* Hashtag Button */}
                 <div className="relative">
