@@ -557,7 +557,7 @@ const PostFormModal = () => {
                           onCompositionEnd={handleCompositionEnd}
                           onKeyDown={handleHashtagKeyDown}
                           placeholder="Type hashtag..."
-                          className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none"
+                          className="w-full px-3 py-2 text-base border border-stone-300 rounded-lg focus:outline-none"
                           maxLength={30}
                         />
                         {hashtagInput && (
@@ -606,7 +606,7 @@ const PostFormModal = () => {
                               ))}
                             </div>
                           ) : (
-                            <div className="text-sm text-stone-400 py-2">
+                            <div className="text-xs text-stone-400 py-2">
                               Press Enter to add "#{hashtagInput}"
                             </div>
                           )}
