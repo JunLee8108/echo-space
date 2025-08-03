@@ -505,7 +505,7 @@ const PostFormModal = () => {
             {/* Actions Bar */}
             <div
               ref={bottomBarRef}
-              className="flex items-center justify-between flex-shrink-0 cursor-grab active:cursor-grabbing touch-none"
+              className="flex items-center justify-between flex-shrink-0 cursor-grab active:cursor-grabbing touch-none mb-5 md:mb-0"
             >
               <div className="flex items-center space-x-2">
                 {/* Hashtag Button */}
@@ -772,7 +772,7 @@ const PostFormModal = () => {
                 {/* Character count */}
                 {plainTextContent && (
                   <span className="text-xs text-stone-400">
-                    {plainTextContent.length} / 5000
+                    {plainTextContent.length} / 500
                   </span>
                 )}
 
