@@ -12,18 +12,12 @@ import {
   Bold,
   Underline as UnderlineIcon,
   Strikethrough,
-  Code,
   List,
   ListOrdered,
   Quote,
-  Undo,
-  Redo,
   Link as LinkIcon,
   Unlink,
   Image as ImageIcon,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
   Highlighter,
   Heading1,
   Heading2,
@@ -86,9 +80,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
       Color,
       Placeholder.configure({
         placeholder: placeholder || "Write something amazing...",
-      }),
-      TextAlign.configure({
-        types: ["heading", "paragraph"],
       }),
       Image.configure({
         inline: true,
@@ -223,13 +214,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
           <Highlighter className="w-4 h-4" />
         </MenuButton>
         <MenuButton
-          onClick={() => editor.chain().focus().toggleCode().run()}
-          isActive={editor.isActive("code")}
-          title="Code"
-        >
-          <Code className="w-4 h-4" />
-        </MenuButton>
-        <MenuButton
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
           isActive={editor.isActive("blockquote")}
           title="Quote"
@@ -292,33 +276,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
 
         <Divider />
 
-        {/* Alignment */}
-        <div className="flex items-center">
-          <MenuButton
-            onClick={() => editor.chain().focus().setTextAlign("left").run()}
-            isActive={editor.isActive({ textAlign: "left" })}
-            title="Align Left"
-          >
-            <AlignLeft className="w-4 h-4" />
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().setTextAlign("center").run()}
-            isActive={editor.isActive({ textAlign: "center" })}
-            title="Align Center"
-          >
-            <AlignCenter className="w-4 h-4" />
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().setTextAlign("right").run()}
-            isActive={editor.isActive({ textAlign: "right" })}
-            title="Align Right"
-          >
-            <AlignRight className="w-4 h-4" />
-          </MenuButton>
-        </div>
-
-        <Divider />
-
         {/* Links & Images */}
         <div className="flex items-center">
           <MenuButton
@@ -339,24 +296,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
         </div>
 
         <Divider />
-
-        {/* History */}
-        <div className="flex items-center">
-          <MenuButton
-            onClick={() => editor.chain().focus().undo().run()}
-            disabled={!editor.can().undo()}
-            title="Undo (Ctrl+Z)"
-          >
-            <Undo className="w-4 h-4" />
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().redo().run()}
-            disabled={!editor.can().redo()}
-            title="Redo (Ctrl+Y)"
-          >
-            <Redo className="w-4 h-4" />
-          </MenuButton>
-        </div>
       </div>
 
       {/* Editor Content */}
