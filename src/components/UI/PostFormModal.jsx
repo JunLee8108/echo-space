@@ -52,12 +52,23 @@ const PostFormModal = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
 
+  // 스와이프 관련 상태
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const [startTime, setStartTime] = useState(0);
+
   const modalRef = useRef(null);
   const moodButtonRef = useRef(null);
   const moodModalRef = useRef(null);
   const hashtagButtonRef = useRef(null);
   const hashtagModalRef = useRef(null);
   const hashtagInputRef = useRef(null);
+  const headerRef = useRef(null);
+
+  // 스와이프 상수
+  const DRAG_THRESHOLD = 100; // 닫기 위한 최소 드래그 거리
+  const VELOCITY_THRESHOLD = 0.5; // 빠른 스와이프 감지
 
   // Reset form when modal closes
   useEffect(() => {
@@ -71,6 +82,8 @@ const PostFormModal = () => {
       setHashtagSuggestions([]);
       setIsClosing(false);
       setIsSubmitting(false);
+      setDragOffset(0);
+      setIsDragging(false);
     }
   }, [isOpen]);
 
@@ -160,17 +173,68 @@ const PostFormModal = () => {
     }
   }, [showHashtagModal]);
 
+  // 터치 이벤트 핸들러
+  const handleTouchStart = (e) => {
+    // 서브 모달이 열려있거나 제출 중이면 무시
+    if (showHashtagModal || showMoodModal || isSubmitting) return;
+
+    // 헤더 영역이 아니면 무시
+    if (!headerRef.current?.contains(e.target)) return;
+
+    // 버튼 클릭은 무시
+    if (e.target.closest("button")) return;
+
+    setIsDragging(true);
+    setStartY(e.touches[0].clientY);
+    setStartTime(Date.now());
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging) return;
+
+    const currentY = e.touches[0].clientY;
+    const deltaY = startY - currentY;
+
+    // 위로 드래그만 허용 (deltaY > 0)
+    if (deltaY > 0) {
+      setDragOffset(deltaY);
+
+      // 드래그 중 스크롤 방지
+      e.preventDefault();
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isDragging) return;
+
+    const endTime = Date.now();
+    const velocity = dragOffset / (endTime - startTime);
+
+    // 임계값 또는 빠른 스와이프로 닫기
+    if (dragOffset > DRAG_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
+      // 닫기 애니메이션
+      setIsClosing(true);
+      setDragOffset(window.innerHeight);
+
+      setTimeout(() => {
+        setIsClosing(false);
+        setDragOffset(0);
+        closePostModal();
+      }, 300);
+    } else {
+      // 원위치로 복귀
+      setDragOffset(0);
+    }
+
+    setIsDragging(false);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
     // Strip HTML tags to check if content is empty
     const plainText = content.replace(/<[^>]*>/g, "").trim();
     if (!plainText) return;
-
-    // // 다른 페이지에서 작성한 경우 Home으로 이동
-    // if (location.pathname !== "/") {
-    //   navigate("/");
-    // }
 
     setIsSubmitting(true);
 
@@ -281,6 +345,17 @@ const PostFormModal = () => {
 
   if (!isOpen) return null;
 
+  // 모달 스타일 계산
+  const modalStyle = {
+    transform: `translateY(${isClosing ? -window.innerHeight : -dragOffset}px)`,
+    transition: isDragging
+      ? "none"
+      : "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+  };
+
+  // 배경 투명도 계산
+  const backdropOpacity = Math.max(0.1, 1 - dragOffset / 400);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
@@ -288,17 +363,44 @@ const PostFormModal = () => {
         className={`absolute inset-0 bg-black/50 backdrop-blur-xs ${
           isClosing ? "animate-fadeOut" : "animate-fadeIn"
         }`}
+        style={{
+          opacity: isDragging ? backdropOpacity : undefined,
+          transition: isDragging ? "none" : "opacity 0.3s ease-out",
+        }}
       />
 
       {/* Modal */}
       <div
         ref={modalRef}
         className={`relative w-[100%] max-w-[600px] h-[100dvh] mx-auto bg-white shadow-2xl overflow-hidden flex flex-col ${
-          isClosing ? "animate-slideUp" : "animate-slideDown"
+          isClosing && !isDragging
+            ? "animate-slideUp"
+            : !isClosing && !isDragging
+            ? "animate-slideDown"
+            : ""
         } ${isSubmitting ? "pointer-events-none" : ""}`}
+        style={modalStyle}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
+        {/* Drag Handle Indicator */}
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
+          <div
+            className="w-10 h-1 bg-stone-400 rounded-full"
+            style={{
+              opacity: isDragging ? 0.8 : 0.4,
+              transform: `scaleX(${isDragging ? 1.2 : 1})`,
+              transition: "all 0.2s ease-out",
+            }}
+          />
+        </div>
+
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 pt-3 pb-2 border-b border-stone-100">
+        <div
+          ref={headerRef}
+          className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-stone-100 cursor-grab active:cursor-grabbing"
+        >
           <h2 className="text-base font-semibold text-stone-900">Post</h2>
           <button
             onClick={handleModalClose}
