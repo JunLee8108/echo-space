@@ -58,6 +58,7 @@ const PostFormModal = () => {
   const [startY, setStartY] = useState(0);
   const [startTime, setStartTime] = useState(0);
   const [isSwipeClosing, setIsSwipeClosing] = useState(false);
+  const [initialTouch, setInitialTouch] = useState(null); // 터치 시작 지점 저장
 
   const modalRef = useRef(null);
   const moodButtonRef = useRef(null);
@@ -70,6 +71,7 @@ const PostFormModal = () => {
   // 스와이프 상수
   const DRAG_THRESHOLD = 100; // 닫기 위한 최소 드래그 거리
   const VELOCITY_THRESHOLD = 0.5; // 빠른 스와이프 감지
+  const DRAG_START_THRESHOLD = 10; // 드래그 시작을 위한 최소 이동 거리
 
   // Reset form when modal closes
   useEffect(() => {
@@ -86,6 +88,7 @@ const PostFormModal = () => {
       setDragOffset(0);
       setIsDragging(false);
       setIsSwipeClosing(false);
+      setInitialTouch(null);
     }
   }, [isOpen]);
 
@@ -186,49 +189,72 @@ const PostFormModal = () => {
     // 버튼 클릭은 무시
     if (e.target.closest("button")) return;
 
-    setIsDragging(true);
-    setStartY(e.touches[0].clientY);
-    setStartTime(Date.now());
+    // 터치 시작점만 저장 (아직 드래그 시작 안 함)
+    setInitialTouch({
+      y: e.touches[0].clientY,
+      time: Date.now(),
+    });
   };
 
   const handleTouchMove = (e) => {
-    if (!isDragging) return;
+    if (!initialTouch && !isDragging) return;
 
     const currentY = e.touches[0].clientY;
-    const deltaY = startY - currentY;
 
-    // 위로 드래그만 허용 (deltaY > 0)
-    if (deltaY > 0) {
-      setDragOffset(deltaY);
+    // 아직 드래그 시작 안 했으면 임계값 체크
+    if (!isDragging && initialTouch) {
+      const deltaY = initialTouch.y - currentY;
 
-      // 드래그 중 스크롤 방지
-      e.preventDefault();
+      // 위로 일정 거리 이상 움직였을 때만 드래그 시작
+      if (deltaY > DRAG_START_THRESHOLD) {
+        setIsDragging(true);
+        setStartY(initialTouch.y);
+        setStartTime(initialTouch.time);
+        setDragOffset(deltaY);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    // 드래그 중인 경우
+    if (isDragging) {
+      const deltaY = startY - currentY;
+
+      // 위로 드래그만 허용 (deltaY > 0)
+      if (deltaY > 0) {
+        setDragOffset(deltaY);
+        e.preventDefault();
+      }
     }
   };
 
   const handleTouchEnd = () => {
-    if (!isDragging) return;
+    // 드래그 중이었을 때만 처리
+    if (isDragging) {
+      const endTime = Date.now();
+      const velocity = dragOffset / (endTime - startTime);
 
-    const endTime = Date.now();
-    const velocity = dragOffset / (endTime - startTime);
+      // 임계값 또는 빠른 스와이프로 닫기
+      if (dragOffset > DRAG_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
+        // 스와이프 닫기 플래그 설정
+        setIsSwipeClosing(true);
+        setDragOffset(window.innerHeight);
 
-    // 임계값 또는 빠른 스와이프로 닫기
-    if (dragOffset > DRAG_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
-      // 스와이프 닫기 플래그 설정
-      setIsSwipeClosing(true);
-      setDragOffset(window.innerHeight);
-
-      setTimeout(() => {
-        setIsSwipeClosing(false);
+        setTimeout(() => {
+          setIsSwipeClosing(false);
+          setDragOffset(0);
+          closePostModal();
+        }, 300);
+      } else {
+        // 원위치로 복귀
         setDragOffset(0);
-        closePostModal();
-      }, 300);
-    } else {
-      // 원위치로 복귀
-      setDragOffset(0);
+      }
+
+      setIsDragging(false);
     }
 
-    setIsDragging(false);
+    // 초기 터치 정보 리셋
+    setInitialTouch(null);
   };
 
   const handleSubmit = (e) => {
