@@ -57,6 +57,7 @@ const PostFormModal = () => {
   const [dragOffset, setDragOffset] = useState(0);
   const [startY, setStartY] = useState(0);
   const [startTime, setStartTime] = useState(0);
+  const [isSwipeClosing, setIsSwipeClosing] = useState(false);
 
   const modalRef = useRef(null);
   const moodButtonRef = useRef(null);
@@ -84,6 +85,7 @@ const PostFormModal = () => {
       setIsSubmitting(false);
       setDragOffset(0);
       setIsDragging(false);
+      setIsSwipeClosing(false);
     }
   }, [isOpen]);
 
@@ -178,7 +180,7 @@ const PostFormModal = () => {
     // 서브 모달이 열려있거나 제출 중이면 무시
     if (showHashtagModal || showMoodModal || isSubmitting) return;
 
-    // 하단 액션바 영역이 아니면 무시 (bottomBarRef)
+    // 하단 액션바 영역이 아니면 무시
     if (!bottomBarRef.current?.contains(e.target)) return;
 
     // 버튼 클릭은 무시
@@ -212,12 +214,12 @@ const PostFormModal = () => {
 
     // 임계값 또는 빠른 스와이프로 닫기
     if (dragOffset > DRAG_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
-      // 닫기 애니메이션
-      setIsClosing(true);
+      // 스와이프 닫기 플래그 설정
+      setIsSwipeClosing(true);
       setDragOffset(window.innerHeight);
 
       setTimeout(() => {
-        setIsClosing(false);
+        setIsSwipeClosing(false);
         setDragOffset(0);
         closePostModal();
       }, 300);
@@ -261,26 +263,29 @@ const PostFormModal = () => {
     createPostMutation.mutate(newPost);
 
     setTimeout(() => {
-      // 페이드아웃 애니메이션 시작
-      setIsClosing(true);
+      // 스와이프로 닫는 중이 아닐 때만 페이드아웃 애니메이션
+      if (!isSwipeClosing) {
+        setIsClosing(true);
+      }
 
       // 애니메이션 완료 후 모달 닫기
       setTimeout(() => {
         setIsSubmitting(false);
-        setIsClosing(false);
+        if (!isSwipeClosing) {
+          setIsClosing(false);
+        }
         closePostModal();
       }, 400);
-    }, 600); // 600ms 로딩 표시
+    }, 600);
   };
 
   const handleModalClose = () => {
     setIsClosing(true);
 
     setTimeout(() => {
-      // 페이드아웃 애니메이션 시작
       setIsClosing(false);
       closePostModal();
-    }, 400); // 400ms 애니메이션
+    }, 400);
   };
 
   const handleMoodSelect = (mood) => {
@@ -347,7 +352,13 @@ const PostFormModal = () => {
 
   // 모달 스타일 계산
   const modalStyle = {
-    transform: `translateY(${isClosing ? -window.innerHeight : -dragOffset}px)`,
+    transform: `translateY(${
+      isSwipeClosing
+        ? -dragOffset
+        : isClosing && !isSwipeClosing
+        ? 0
+        : -dragOffset
+    }px)`,
     transition: isDragging
       ? "none"
       : "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -373,9 +384,9 @@ const PostFormModal = () => {
       <div
         ref={modalRef}
         className={`relative w-[100%] max-w-[600px] h-[100dvh] mx-auto bg-white shadow-2xl overflow-hidden flex flex-col ${
-          isClosing && !isDragging
+          isClosing && !isDragging && !isSwipeClosing
             ? "animate-slideUp"
-            : !isClosing && !isDragging
+            : !isClosing && !isDragging && !isSwipeClosing
             ? "animate-slideDown"
             : ""
         } ${isSubmitting ? "pointer-events-none" : ""}`}
@@ -385,7 +396,7 @@ const PostFormModal = () => {
         onTouchEnd={handleTouchEnd}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-stone-100 cursor-grab active:cursor-grabbing">
+        <div className="flex items-center justify-between px-6 pt-3 pb-2 border-b border-stone-100">
           <h2 className="text-base font-semibold text-stone-900">Post</h2>
           <button
             onClick={handleModalClose}
@@ -468,7 +479,7 @@ const PostFormModal = () => {
             {/* Actions Bar */}
             <div
               ref={bottomBarRef}
-              className="mt-4 flex items-center justify-between flex-shrink-0"
+              className="flex items-center justify-between flex-shrink-0 cursor-grab active:cursor-grabbing touch-none"
             >
               <div className="flex items-center space-x-2">
                 {/* Hashtag Button */}
