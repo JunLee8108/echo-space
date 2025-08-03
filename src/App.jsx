@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
+import { Toaster } from "react-hot-toast";
 import ScrollToTop from "./components/utils/ScrollToTop";
 import Header from "./components/layout/Header";
 import BottomNavbar from "./components/layout/BottomNavbar";
@@ -83,6 +84,20 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <div className="min-h-screen bg-white">
+            <Toaster
+              position="top-center"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: "#1f2937",
+                  color: "#fff",
+                  padding: "16px",
+                  borderRadius: "12px",
+                  fontSize: "14px",
+                },
+              }}
+            />
+
             <ScrollToTop />
 
             {/* Global Header */}

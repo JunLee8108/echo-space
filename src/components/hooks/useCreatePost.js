@@ -8,6 +8,7 @@ import {
   fetchPostsWithCommentsAndLikes,
 } from "../../services/postService";
 import { fetchAIComment } from "../../services/openaiService";
+import { showAffinityToast } from "../utils/toastUtils";
 
 // 페이지당 포스트 개수
 const POSTS_PER_PAGE = 5;
@@ -18,7 +19,8 @@ export const useCreatePost = (options = {}) => {
 
   const queryClient = useQueryClient();
   const userId = useUserId();
-  const { getRandomCharacters } = useCharacterActions();
+  const { getRandomCharacters, updateCharacterAffinities } =
+    useCharacterActions();
 
   return useMutation({
     mutationFn: async (post) => {
@@ -53,6 +55,54 @@ export const useCreatePost = (options = {}) => {
         likeCharacters,
         post.hashtags || [] // 해시태그 추가
       );
+
+      // Affinity 업데이트 결정 (댓글 단 캐릭터만)
+      const affinityUpdates = commentCharacters
+        .map((char) => {
+          // 기본 확률 50%
+          let probability = 0.5;
+
+          // 현재 affinity에 따라 확률 조정
+          const currentAffinity = char.affinity || 0;
+          if (currentAffinity > 30) probability = 0.1;
+          else if (currentAffinity > 20) probability = 0.2;
+          else if (currentAffinity > 10) probability = 0.3;
+
+          const shouldIncrement = Math.random() < probability;
+
+          return shouldIncrement
+            ? { characterId: char.id, increment: 1 }
+            : null;
+        })
+        .filter(Boolean);
+
+      // 비동기로 affinity 업데이트 (포스트 저장과 별개로 처리)
+      if (affinityUpdates.length > 0) {
+        updateCharacterAffinities(affinityUpdates)
+          .then((results) => {
+            const successResults = results.filter((r) => r.success !== false);
+            const successCount = successResults.length;
+
+            console.log(
+              `✅ Affinity 업데이트: ${successCount}/${affinityUpdates.length} 성공`
+            );
+
+            // Toast 표시
+            console.log("success: ", successResults);
+            console.log("comment: ", commentCharacters);
+            console.log("affinity: ", affinityUpdates);
+            if (successCount > 0) {
+              showAffinityToast(
+                successResults,
+                commentCharacters,
+                affinityUpdates
+              );
+            }
+          })
+          .catch((error) => {
+            console.error("❌ Affinity 업데이트 실패:", error);
+          });
+      }
 
       return {
         tempId,

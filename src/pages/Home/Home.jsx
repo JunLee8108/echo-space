@@ -20,6 +20,8 @@ import "./Home.css";
 // userStore imports
 import { useUserId, useDisplayName } from "../../stores/userStore";
 
+import { useCharacters } from "../../stores/characterStore";
+
 // 페이지당 포스트 개수
 const POSTS_PER_PAGE = 5;
 
@@ -47,6 +49,9 @@ const MOODS = {
 const Home = () => {
   const userId = useUserId();
   const displayName = useDisplayName();
+
+  // characterStore에서 캐릭터 정보 가져오기
+  const characters = useCharacters();
 
   const extractText = (html) =>
     new DOMParser().parseFromString(html, "text/html").body.textContent.trim();
@@ -267,6 +272,35 @@ const Home = () => {
   const handleDeletePost = async () => {
     deletePostMutation.mutate({ postId: confirmDelete.postId });
     setConfirmDelete({ show: false, postId: null, postTitle: null });
+  };
+
+  // ProfileModal에 전달할 캐릭터 정보를 보강하는 함수
+  const getEnrichedCharacter = (basicCharInfo) => {
+    // character_id가 있는 경우 (댓글, 좋아요)
+    const characterId = basicCharInfo.character_id;
+
+    // characterStore에서 최신 정보 찾기
+    const latestCharInfo = characters.find((c) => c.id === characterId);
+
+    if (latestCharInfo) {
+      // 최신 정보가 있으면 병합
+      return {
+        ...basicCharInfo,
+        // characterStore의 최신 데이터로 덮어쓰기
+        id: latestCharInfo.id,
+        name: latestCharInfo.name,
+        personality: latestCharInfo.personality,
+        avatar_url: latestCharInfo.avatar_url,
+        description: latestCharInfo.description,
+        prompt_description: latestCharInfo.prompt_description,
+        affinity: latestCharInfo.affinity, // 최신 affinity
+        // ProfileModal에서 사용하는 필드명 맞추기
+        character: latestCharInfo.name,
+      };
+    }
+
+    // characterStore에 없으면 기본 정보 사용
+    return basicCharInfo;
   };
 
   // 스켈레톤 로더 컴포넌트
@@ -518,7 +552,7 @@ const Home = () => {
                                     e.stopPropagation();
                                     setProfileModal({
                                       show: true,
-                                      character: c,
+                                      character: getEnrichedCharacter(c),
                                     });
                                   }}
                                   onError={(e) => {
@@ -622,7 +656,8 @@ const Home = () => {
                                           e.stopPropagation();
                                           setProfileModal({
                                             show: true,
-                                            character: like,
+                                            character:
+                                              getEnrichedCharacter(like),
                                           });
                                           if (likeModal.show) {
                                             setLikeModal({

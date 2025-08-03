@@ -4,6 +4,7 @@ import { devtools, subscribeWithSelector } from "zustand/middleware";
 import {
   fetchUserCreatedAndSystemCharacters,
   switchUserCharacterFollow,
+  updateMultipleCharacterAffinities,
 } from "../services/characterService";
 
 // Cache configuration
@@ -224,6 +225,53 @@ const useCharacterStore = create(
         return shuffled.slice(0, count);
       },
 
+      // Affinity 업데이트 액션 추가
+      updateCharacterAffinities: async (affinityUpdates) => {
+        const { userId, characters } = get();
+        if (!userId || !affinityUpdates.length) return [];
+
+        try {
+          // 서버 업데이트
+          const results = await updateMultipleCharacterAffinities(
+            userId,
+            affinityUpdates
+          );
+
+          // 성공한 업데이트만 로컬 상태에 반영
+          const updatedCharacters = characters.map((char) => {
+            const successResult = results.find(
+              (r) => r.success !== false && r.character_id === char.id
+            );
+
+            if (successResult) {
+              return {
+                ...char,
+                affinity: successResult.affinity,
+              };
+            }
+            return char;
+          });
+
+          const updatedDerivedState =
+            get().updateDerivedState(updatedCharacters);
+
+          set({
+            characters: updatedCharacters,
+            ...updatedDerivedState,
+            cache: {
+              data: updatedCharacters,
+              timestamp: Date.now(),
+              promise: null,
+            },
+          });
+
+          return results;
+        } catch (error) {
+          console.error("Affinity 업데이트 실패:", error);
+          throw error;
+        }
+      },
+
       // Clear cache
       clearCache: () => {
         set({
@@ -264,6 +312,9 @@ export const useCharacterActions = () => {
   const getRandomCharacters = useCharacterStore(
     (state) => state.getRandomCharacters
   );
+  const updateCharacterAffinities = useCharacterStore(
+    (state) => state.updateCharacterAffinities
+  );
   const refreshCharacters = useCharacterStore(
     (state) => state.refreshCharacters
   );
@@ -274,6 +325,7 @@ export const useCharacterActions = () => {
   return {
     toggleFollow,
     getRandomCharacters,
+    updateCharacterAffinities, // 새로 추가
     refreshCharacters,
     clearCache,
     loadCharacters,
