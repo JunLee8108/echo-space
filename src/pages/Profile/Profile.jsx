@@ -112,8 +112,65 @@ const Profile = () => {
           </div>
         </div>
 
+        {/* Settings Hint */}
+        <div className="mb-4 p-4 bg-blue-50 rounded-xl">
+          <div className="flex items-start space-x-3">
+            <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg
+                className="w-3 h-3 text-white"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-blue-900 mb-1">Pro Tip</p>
+              <p className="text-sm text-blue-700">
+                Different AI companions have unique personalities and will
+                respond differently to your posts. Try following different
+                combinations!
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Section */}
+        <div className="bg-stone-50 rounded-2xl p-6 mb-8">
+          <h3 className="font-semibold text-center text-stone-900 mb-4">
+            Interaction Stats
+          </h3>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="text-center">
+              <div className="text-xl font-bold text-stone-900 mb-1">
+                {followedCharacterIds.size}
+              </div>
+              <div className="text-sm text-stone-600">Active</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl font-bold text-stone-900 mb-1">
+                {characters.length - followedCharacterIds.size}
+              </div>
+              <div className="text-sm text-stone-600">Inactive</div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-stone-200">
+            <p className="text-xs text-stone-500 leading-relaxed">
+              Only followed AI companions will comment on and like your posts.
+              You can change this anytime.
+            </p>
+          </div>
+        </div>
+
         {/* Following Section */}
-        <div className="mb-8">
+        <div>
           <div className="flex items-center justify-between mb-2 gap-4">
             <div>
               <h2 className="text-base font-semibold text-stone-900 mb-1">
@@ -121,7 +178,7 @@ const Profile = () => {
               </h2>
             </div>
             <div className="text-sm text-stone-500 flex-shrink-0">
-              {followedCharacterIds.size} following
+              {followedCharacterIds.size} Connected
             </div>
           </div>
 
@@ -207,63 +264,6 @@ const Profile = () => {
                 </div>
               );
             })}
-          </div>
-        </div>
-
-        {/* Stats Section */}
-        <div className="bg-stone-50 rounded-2xl p-6">
-          <h3 className="font-semibold text-center text-stone-900 mb-4">
-            Interaction Stats
-          </h3>
-          <div className="grid grid-cols-2 gap-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-stone-900 mb-1">
-                {followedCharacterIds.size}
-              </div>
-              <div className="text-sm text-stone-600">Active Companions</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-stone-900 mb-1">
-                {characters.length - followedCharacterIds.size}
-              </div>
-              <div className="text-sm text-stone-600">Inactive</div>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-stone-200">
-            <p className="text-xs text-stone-500 leading-relaxed">
-              Only followed AI companions will comment on and like your posts.
-              You can change this anytime.
-            </p>
-          </div>
-        </div>
-
-        {/* Settings Hint */}
-        <div className="mt-8 p-4 bg-blue-50 rounded-xl">
-          <div className="flex items-start space-x-3">
-            <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <svg
-                className="w-3 h-3 text-white"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-blue-900 mb-1">Pro Tip</p>
-              <p className="text-sm text-blue-700">
-                Different AI companions have unique personalities and will
-                respond differently to your posts. Try following different
-                combinations!
-              </p>
-            </div>
           </div>
         </div>
       </div>

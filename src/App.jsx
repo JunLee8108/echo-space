@@ -104,7 +104,7 @@ function App() {
             <Header />
 
             {/* Main Content */}
-            <main className="pb-20">
+            <main className="pb-25 md:pb-20">
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/profile" element={<Profile />} />

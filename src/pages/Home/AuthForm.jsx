@@ -72,8 +72,8 @@ const AuthForm = () => {
         {/* Logo Section */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center space-x-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-br from-stone-700 to-stone-900 rounded-xl flex items-center justify-center">
-              <img src="logo.jpg" className="rounded-lg"></img>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center">
+              <img src="logo.png" className="rounded-lg"></img>
             </div>
             <h1 className="text-2xl font-bold text-stone-900 mr-4">
               DiaryFriend
