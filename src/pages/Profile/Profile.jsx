@@ -1,3 +1,5 @@
+// Profile.jsx - 전체 Follow 기능 완벽 구현
+
 import { useState } from "react";
 // Zustand hooks
 import {
@@ -16,6 +18,7 @@ import {
 
 import ProfileModal from "../../components/UI/ProfileModal";
 import EditProfileModal from "./EditProfileModal";
+import ConfirmationModal from "../../components/UI/ConfirmationModal"; // 추가
 import { Pencil } from "lucide-react";
 
 const Profile = () => {
@@ -26,47 +29,179 @@ const Profile = () => {
 
   // characterStore hooks
   const characters = useCharacters();
-
   const followedCharacterIds = useFollowedCharacterIds();
   const contextLoading = useCharacterLoading();
-  const { toggleFollow } = useCharacterActions();
+  const { toggleFollow, batchToggleFollow } = useCharacterActions(); // batchToggleFollow 추가
 
   const [localLoading, setLocalLoading] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
 
+  // 배치 처리를 위한 상태들
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({
+    show: false,
+    type: null, // 'followAll' or 'unfollowAll'
+    title: "",
+    message: "",
+  });
+
+  // 기존 개별 토글 핸들러
   const handleToggleFollow = async (character) => {
     setLocalLoading(true);
     try {
       await toggleFollow(character);
     } catch {
-      alert("팔로우 상태 변경에 실패했습니다.");
+      alert("Failed to change follow status.");
     } finally {
       setLocalLoading(false);
     }
   };
 
+  // 전체 팔로우 확인 다이얼로그 표시
+  const handleFollowAll = () => {
+    const unfollowedCharacters = characters.filter(
+      (character) => !followedCharacterIds.has(character.id)
+    );
+
+    if (unfollowedCharacters.length === 0) {
+      alert("All AI characters are already being followed.");
+      return;
+    }
+
+    setConfirmModal({
+      show: true,
+      type: "followAll",
+      title: "Follow all AI characters?",
+      message: `This will follow ${unfollowedCharacters.length} AI characters. They will start commenting on and liking your posts.`,
+    });
+  };
+
+  // 전체 언팔로우 확인 다이얼로그 표시
+  const handleUnfollowAll = () => {
+    const followedCount = followedCharacterIds.size;
+
+    if (followedCount === 0) {
+      alert("No AI characters are currently being followed.");
+      return;
+    }
+
+    setConfirmModal({
+      show: true,
+      type: "unfollowAll",
+      title: "Unfollow all AI characters?",
+      message: `This will unfollow ${followedCount} AI characters. They will stop interacting with your posts.`,
+    });
+  };
+
+  // 실제 전체 팔로우 실행
+  const executeFollowAll = async () => {
+    setBulkLoading(true);
+    try {
+      const unfollowedCharacterIds = characters
+        .filter((character) => !followedCharacterIds.has(character.id))
+        .map((character) => character.id);
+
+      if (unfollowedCharacterIds.length === 0) {
+        alert("All AI characters are already being followed.");
+        return;
+      }
+
+      console.log("Starting bulk follow for:", unfollowedCharacterIds);
+
+      // Store의 배치 함수 호출 - 상태 자동 업데이트됨
+      const result = await batchToggleFollow(unfollowedCharacterIds, true);
+
+      // 결과에 따른 사용자 피드백
+      if (result.failCount > 0) {
+        alert(
+          `Partially completed: ${result.processedCount} followed successfully, ${result.failCount} failed, ${result.skippedCount} were already followed.`
+        );
+      } else if (result.skippedCount > 0) {
+        alert(
+          `All ${result.skippedCount} AI characters were already being followed.`
+        );
+      } else {
+        // 완전 성공 시에는 조용히 완료 (alert 없음)
+        console.log(
+          `Successfully followed ${result.processedCount} AI characters`
+        );
+      }
+    } catch (error) {
+      console.error("Bulk follow error:", error);
+      alert("Failed to follow all AI characters. Please try again.");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  // 실제 전체 언팔로우 실행
+  const executeUnfollowAll = async () => {
+    setBulkLoading(true);
+    try {
+      const followedCharacterIdsArray = Array.from(followedCharacterIds);
+
+      if (followedCharacterIdsArray.length === 0) {
+        alert("No AI characters are currently being followed.");
+        return;
+      }
+
+      console.log("Starting bulk unfollow for:", followedCharacterIdsArray);
+
+      // Store의 배치 함수 호출 - 상태 자동 업데이트됨
+      const result = await batchToggleFollow(followedCharacterIdsArray, false);
+
+      // 결과에 따른 사용자 피드백
+      if (result.failCount > 0) {
+        alert(
+          `Partially completed: ${result.processedCount} unfollowed successfully, ${result.failCount} failed, ${result.skippedCount} were already unfollowed.`
+        );
+      } else if (result.skippedCount > 0) {
+        alert(
+          `All ${result.skippedCount} AI characters were already unfollowed.`
+        );
+      } else {
+        // 완전 성공 시에는 조용히 완료 (alert 없음)
+        console.log(
+          `Successfully unfollowed ${result.processedCount} AI characters`
+        );
+      }
+    } catch (error) {
+      console.error("Bulk unfollow error:", error);
+      alert("Failed to unfollow all AI characters. Please try again.");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  // 확인 모달에서 실행할 액션 결정
+  const handleConfirmModalAction = () => {
+    if (confirmModal.type === "followAll") {
+      executeFollowAll();
+    } else if (confirmModal.type === "unfollowAll") {
+      executeUnfollowAll();
+    }
+  };
+
+  // 기존 핸들러들은 그대로 유지
   const handleUpdateDisplayName = async (newName) => {
     try {
       await updateDisplayName(newName);
-      // userStore가 자동으로 업데이트되므로 페이지 새로고침 불필요
     } catch (error) {
-      alert("이름 변경에 실패했습니다.");
+      alert("Failed to update display name.");
       console.error("Error updating display name:", error);
-      throw error; // 모달에서 로딩 상태를 관리하기 위해 에러를 다시 throw
+      throw error;
     }
   };
 
   const handlePasswordChange = async (currentPassword, newPassword) => {
     try {
       await updatePassword(currentPassword, newPassword);
-      // 비밀번호 변경 성공 시 모달에서 처리
     } catch (error) {
       console.error("Password change error:", error);
-      throw error; // 모달에서 에러 처리
+      throw error;
     }
   };
 
-  /* ──────────────────────── Modal state ──────────────────────────── */
   const [profileModal, setProfileModal] = useState({
     show: false,
     character: null,
@@ -84,7 +219,7 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-2xl mx-auto px-6 py-8">
-        {/* Profile Section */}
+        {/* Profile Section - 기존과 동일 */}
         <div className="mb-8">
           <div className="flex items-center space-x-4 mb-8">
             <div className="w-12 h-12 bg-gradient-to-br from-stone-600 to-stone-800 rounded-2xl flex items-center justify-center shadow-lg">
@@ -100,19 +235,19 @@ const Profile = () => {
                 <button
                   onClick={() => setShowEditProfileModal(true)}
                   className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-all"
-                  title="이름 수정"
+                  title="Edit name"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
               </div>
               <p className="text-stone-600 text-xs">
-                Managing your AI companions
+                Managing your AI characters
               </p>
             </div>
           </div>
         </div>
 
-        {/* Settings Hint */}
+        {/* Settings Hint - 기존과 동일 */}
         <div className="mb-4 p-4 bg-blue-50 rounded-xl">
           <div className="flex items-start space-x-3">
             <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -133,7 +268,7 @@ const Profile = () => {
             <div>
               <p className="text-sm font-medium text-blue-900 mb-1">Pro Tip</p>
               <p className="text-sm text-blue-700">
-                Different AI companions have unique personalities and will
+                Different AI characters have unique personalities and will
                 respond differently to your posts. Try following different
                 combinations!
               </p>
@@ -141,7 +276,7 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Stats Section */}
+        {/* Stats Section - 기존과 동일 */}
         <div className="bg-stone-50 rounded-2xl p-6 mb-8">
           <h3 className="font-semibold text-center text-stone-900 mb-4">
             Interaction Stats
@@ -163,26 +298,109 @@ const Profile = () => {
 
           <div className="mt-4 pt-4 border-t border-stone-200">
             <p className="text-xs text-stone-500 leading-relaxed">
-              Only followed AI companions will comment on and like your posts.
+              Only followed AI characters will comment on and like your posts.
               You can change this anytime.
             </p>
           </div>
         </div>
 
-        {/* Following Section */}
+        {/* Following Section - 업데이트된 헤더 */}
         <div>
-          <div className="flex items-center justify-between mb-2 gap-4">
-            <div>
-              <h2 className="text-base font-semibold text-stone-900 mb-1">
-                AI Companions
-              </h2>
-            </div>
-            <div className="text-sm text-stone-500 flex-shrink-0">
-              {followedCharacterIds.size} Connected
+          {/* 헤더 - 심플하게 */}
+          <div className="mb-4 flex justify-between">
+            <h2 className="text-lg font-bold text-stone-900">AI Characters</h2>
+            <div className="flex items-center gap-2 text-sm text-stone-500">
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span>{followedCharacterIds.size} followed</span>
             </div>
           </div>
 
-          {/* Characters Grid */}
+          {/* 새로운 액션 카드 - 모바일 친화적 */}
+          {(followedCharacterIds.size < characters.length ||
+            followedCharacterIds.size > 0) && (
+            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                  <svg
+                    className="w-4 h-4 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    ></path>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-stone-900 text-sm">
+                    Quick Actions
+                  </h3>
+                  <p className="text-xs text-stone-600">
+                    Manage all companions at once
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {followedCharacterIds.size < characters.length && (
+                  <button
+                    onClick={handleFollowAll}
+                    disabled={bulkLoading || localLoading || contextLoading}
+                    className="group relative overflow-hidden bg-blue-500 hover:bg-blue-600 text-white rounded-xl py-3 px-4 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                  >
+                    <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                    <div className="relative flex items-center justify-center gap-2">
+                      {bulkLoading && confirmModal.type === "followAll" ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                          <span className="font-medium text-xs">
+                            Following...
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-medium text-xs">
+                            Follow all
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </button>
+                )}
+
+                {followedCharacterIds.size > 0 && (
+                  <button
+                    onClick={handleUnfollowAll}
+                    disabled={bulkLoading || localLoading || contextLoading}
+                    className="group relative overflow-hidden bg-white hover:bg-stone-50 text-stone-700 rounded-xl py-3 px-4 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  >
+                    <div className="relative flex items-center justify-center gap-2">
+                      {bulkLoading && confirmModal.type === "unfollowAll" ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-stone-400 border-t-transparent"></div>
+                          <span className="font-medium text-xs">
+                            Unfollowing...
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-medium text-xs">
+                            Unfollow all
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Characters Grid - 기존과 동일하되 disabled 조건만 수정 */}
           <div className="space-y-3">
             {characters.map((character) => {
               const isFollowed = followedCharacterIds.has(character.id);
@@ -240,10 +458,10 @@ const Profile = () => {
                       </div>
                     </div>
 
-                    {/* Follow Button */}
+                    {/* Follow Button - bulkLoading 조건 추가 */}
                     <button
                       onClick={() => handleToggleFollow(character)}
-                      disabled={localLoading || contextLoading}
+                      disabled={localLoading || contextLoading || bulkLoading}
                       className={`px-4 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 min-w-[85px] ${
                         isFollowed
                           ? "bg-stone-900 text-white hover:bg-stone-800"
@@ -268,6 +486,7 @@ const Profile = () => {
         </div>
       </div>
 
+      {/* 기존 모달들 */}
       <ProfileModal
         isOpen={profileModal.show}
         onClose={() => setProfileModal({ show: false, character: null })}
@@ -280,6 +499,25 @@ const Profile = () => {
         onConfirm={handleUpdateDisplayName}
         currentName={user?.user_metadata?.display_name || ""}
         onPasswordChange={handlePasswordChange}
+      />
+
+      {/* 새로 추가: 확인 모달 */}
+      <ConfirmationModal
+        isOpen={confirmModal.show}
+        onClose={() =>
+          setConfirmModal({ show: false, type: null, title: "", message: "" })
+        }
+        onConfirm={handleConfirmModalAction}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Yes, Continue"
+        cancelText="Cancel"
+        confirmButtonClass={
+          confirmModal.type === "unfollowAll"
+            ? "bg-red-600 hover:bg-red-700"
+            : "bg-blue-600 hover:bg-blue-700"
+        }
+        icon={confirmModal.type === "unfollowAll" ? "warning" : "info"}
       />
     </div>
   );

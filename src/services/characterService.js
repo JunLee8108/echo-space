@@ -1,16 +1,10 @@
+// services/characterService.js
 import supabase from "./supabaseClient";
 
-// export async function fetchAvailableCharacters(uid) {
-//   if (!uid) throw new Error("user_id가 없습니다.");
-
-//   const { data, error } = await supabase.rpc("get_user_characters", {
-//     user_id_param: uid,
-//   });
-
-//   if (error) throw error;
-//   return data; // 👉 이미 필터링 끝!
-// }
-
+/**
+ * 사용자가 생성한 캐릭터와 시스템 기본 캐릭터를 모두 가져옵니다.
+ * User_Character 관계 정보도 함께 포함됩니다.
+ */
 export async function fetchUserCreatedAndSystemCharacters(userId) {
   const { data, error } = await supabase
     .from("Character")
@@ -60,6 +54,9 @@ export async function fetchUserCreatedAndSystemCharacters(userId) {
   return formattedData;
 }
 
+/**
+ * 개별 캐릭터의 팔로우 상태를 토글합니다.
+ */
 export async function switchUserCharacterFollow(userId, character) {
   // 1. 먼저 기존 레코드가 있는지 확인
   const { data: existing, error: checkError } = await supabase
@@ -71,7 +68,7 @@ export async function switchUserCharacterFollow(userId, character) {
 
   if (checkError && checkError.code !== "PGRST116") {
     // PGRST116 = no rows returned
-    throw new Error(`조회 실패: ${checkError.message}`);
+    throw new Error(`Query failed: ${checkError.message}`);
   }
 
   // 2. 레코드가 없으면 새로 생성 (is_following: true)
@@ -89,7 +86,7 @@ export async function switchUserCharacterFollow(userId, character) {
       .single();
 
     if (insertError) {
-      throw new Error(`팔로우 생성 실패: ${insertError.message}`);
+      throw new Error(`Follow creation failed: ${insertError.message}`);
     }
 
     return {
@@ -107,7 +104,7 @@ export async function switchUserCharacterFollow(userId, character) {
     .eq("id", existing.id);
 
   if (updateError) {
-    throw new Error(`업데이트 실패: ${updateError.message}`);
+    throw new Error(`Update failed: ${updateError.message}`);
   }
 
   return {
@@ -116,7 +113,146 @@ export async function switchUserCharacterFollow(userId, character) {
   };
 }
 
-// characterService.js에 추가
+/**
+ * 여러 캐릭터의 팔로우 상태를 배치로 처리합니다.
+ * @param {string} userId - 사용자 ID
+ * @param {Array<string>} characterIds - 캐릭터 ID 배열
+ * @param {boolean} followState - 설정할 팔로우 상태 (true: follow, false: unfollow)
+ * @returns {Promise<Object>} 처리 결과 객체
+ */
+export async function batchToggleFollow(userId, characterIds, followState) {
+  if (!userId || !Array.isArray(characterIds) || characterIds.length === 0) {
+    throw new Error("Invalid parameters for batch toggle follow");
+  }
+
+  console.log(
+    `Starting batch ${followState ? "follow" : "unfollow"} for ${
+      characterIds.length
+    } characters`
+  );
+
+  // 모든 요청을 병렬로 처리
+  const promises = characterIds.map(async (characterId) => {
+    try {
+      // 기존 레코드 확인
+      const { data: existing, error: checkError } = await supabase
+        .from("User_Character")
+        .select("id, is_following")
+        .eq("user_id", userId)
+        .eq("character_id", characterId)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== "PGRST116") {
+        throw new Error(
+          `Check failed for character ${characterId}: ${checkError.message}`
+        );
+      }
+
+      // 레코드가 없으면 새로 생성
+      if (!existing) {
+        const { data: newRecord, error: insertError } = await supabase
+          .from("User_Character")
+          .insert([
+            {
+              user_id: userId,
+              character_id: characterId,
+              is_following: followState,
+            },
+          ])
+          .select()
+          .single();
+
+        if (insertError) {
+          throw new Error(
+            `Insert failed for character ${characterId}: ${insertError.message}`
+          );
+        }
+
+        return {
+          characterId,
+          user_character_id: newRecord.id,
+          is_following: followState,
+          success: true,
+          action: "created",
+        };
+      }
+
+      // 이미 원하는 상태면 스킵
+      if (existing.is_following === followState) {
+        return {
+          characterId,
+          user_character_id: existing.id,
+          is_following: existing.is_following,
+          success: true,
+          skipped: true,
+          action: "skipped",
+        };
+      }
+
+      // 상태 업데이트
+      const { error: updateError } = await supabase
+        .from("User_Character")
+        .update({ is_following: followState })
+        .eq("id", existing.id);
+
+      if (updateError) {
+        throw new Error(
+          `Update failed for character ${characterId}: ${updateError.message}`
+        );
+      }
+
+      return {
+        characterId,
+        user_character_id: existing.id,
+        is_following: followState,
+        success: true,
+        action: "updated",
+      };
+    } catch (error) {
+      console.error(`Failed to process character ${characterId}:`, error);
+      return {
+        characterId,
+        success: false,
+        error: error.message,
+        action: "failed",
+      };
+    }
+  });
+
+  // 모든 요청 완료 대기
+  const results = await Promise.all(promises);
+
+  // 결과 분석
+  const successful = results.filter((r) => r.success);
+  const failed = results.filter((r) => !r.success);
+  const skipped = results.filter((r) => r.success && r.skipped);
+  const processed = results.filter((r) => r.success && !r.skipped);
+
+  console.log(`Batch ${followState ? "follow" : "unfollow"} completed:`, {
+    total: results.length,
+    successful: successful.length,
+    failed: failed.length,
+    skipped: skipped.length,
+    processed: processed.length,
+  });
+
+  return {
+    successful,
+    failed,
+    skipped,
+    processed,
+    totalRequested: characterIds.length,
+    totalProcessed: results.length,
+    successCount: successful.length,
+    failCount: failed.length,
+    skippedCount: skipped.length,
+    processedCount: processed.length,
+  };
+}
+
+/**
+ * 단일 캐릭터의 친밀도를 업데이트합니다.
+ */
 export async function updateCharacterAffinity(
   userId,
   characterId,
@@ -131,7 +267,7 @@ export async function updateCharacterAffinity(
     .maybeSingle();
 
   if (checkError && checkError.code !== "PGRST116") {
-    throw new Error(`조회 실패: ${checkError.message}`);
+    throw new Error(`Query failed: ${checkError.message}`);
   }
 
   // 2. 레코드가 없으면 새로 생성
@@ -150,7 +286,7 @@ export async function updateCharacterAffinity(
       .single();
 
     if (insertError) {
-      throw new Error(`관계 생성 실패: ${insertError.message}`);
+      throw new Error(`Relationship creation failed: ${insertError.message}`);
     }
 
     return newRecord;
@@ -167,13 +303,15 @@ export async function updateCharacterAffinity(
     .single();
 
   if (updateError) {
-    throw new Error(`업데이트 실패: ${updateError.message}`);
+    throw new Error(`Update failed: ${updateError.message}`);
   }
 
   return updated;
 }
 
-// 여러 캐릭터의 affinity를 한번에 업데이트
+/**
+ * 여러 캐릭터의 친밀도를 한번에 업데이트합니다.
+ */
 export async function updateMultipleCharacterAffinities(
   userId,
   characterUpdates

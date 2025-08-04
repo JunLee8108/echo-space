@@ -5,6 +5,7 @@ import {
   fetchUserCreatedAndSystemCharacters,
   switchUserCharacterFollow,
   updateMultipleCharacterAffinities,
+  batchToggleFollow, // 새로 추가된 배치 함수
 } from "../services/characterService";
 
 // Cache configuration
@@ -145,9 +146,34 @@ const useCharacterStore = create(
       },
 
       // Toggle follow status with optimistic updates
-      toggleFollow: async (character) => {
+      toggleFollow: async (character, skipApiCall = false) => {
         const { userId, characters, updateDerivedState } = get();
         if (!userId) return;
+
+        // skipApiCall이 true면 상태만 업데이트 (배치 처리용)
+        if (skipApiCall) {
+          const updatedCharacters = characters.map((c) =>
+            c.id === character.id
+              ? {
+                  ...c,
+                  is_following: !c.is_following,
+                }
+              : c
+          );
+
+          const updatedDerivedState = updateDerivedState(updatedCharacters);
+
+          set({
+            characters: updatedCharacters,
+            ...updatedDerivedState,
+            cache: {
+              data: updatedCharacters,
+              timestamp: Date.now(),
+              promise: null,
+            },
+          });
+          return;
+        }
 
         // Store previous state for rollback
         const previousCharacters = [...characters];
@@ -216,6 +242,68 @@ const useCharacterStore = create(
         }
       },
 
+      // 새로 추가: 배치 follow/unfollow 처리
+      batchToggleFollow: async (characterIds, followState) => {
+        const { userId, characters, updateDerivedState } = get();
+        if (!userId || !characterIds.length)
+          return { successful: [], failed: [] };
+
+        try {
+          // 배치 API 호출
+          const result = await batchToggleFollow(
+            userId,
+            characterIds,
+            followState
+          );
+
+          // 성공한 업데이트들을 store에 반영
+          if (result.successful.length > 0) {
+            const updatedCharacters = characters.map((character) => {
+              const successResult = result.successful.find(
+                (r) => r.characterId === character.id && !r.skipped
+              );
+
+              if (successResult) {
+                return {
+                  ...character,
+                  is_following: successResult.is_following,
+                  user_character_id: successResult.user_character_id,
+                };
+              }
+              return character;
+            });
+
+            const updatedDerivedState = updateDerivedState(updatedCharacters);
+
+            set({
+              characters: updatedCharacters,
+              ...updatedDerivedState,
+              cache: {
+                data: updatedCharacters,
+                timestamp: Date.now(),
+                promise: null,
+              },
+            });
+          }
+
+          return result;
+        } catch (error) {
+          console.error("Batch toggle follow failed:", error);
+
+          // 에러 발생 시 데이터 다시 로드
+          try {
+            await get().loadCharacters(true);
+          } catch (reloadError) {
+            console.error(
+              "Failed to reload characters after batch error:",
+              reloadError
+            );
+          }
+
+          throw error;
+        }
+      },
+
       // Get random characters for AI comments/likes
       getRandomCharacters: (count) => {
         const { followedCharacters } = get();
@@ -267,7 +355,7 @@ const useCharacterStore = create(
 
           return results;
         } catch (error) {
-          console.error("Affinity 업데이트 실패:", error);
+          console.error("Affinity update failed:", error);
           throw error;
         }
       },
@@ -309,6 +397,9 @@ export const useCharacterError = () =>
 // Action hooks
 export const useCharacterActions = () => {
   const toggleFollow = useCharacterStore((state) => state.toggleFollow);
+  const batchToggleFollow = useCharacterStore(
+    (state) => state.batchToggleFollow
+  ); // 새로 추가
   const getRandomCharacters = useCharacterStore(
     (state) => state.getRandomCharacters
   );
@@ -324,8 +415,9 @@ export const useCharacterActions = () => {
 
   return {
     toggleFollow,
+    batchToggleFollow, // 새로 추가
     getRandomCharacters,
-    updateCharacterAffinities, // 새로 추가
+    updateCharacterAffinities,
     refreshCharacters,
     clearCache,
     loadCharacters,
