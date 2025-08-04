@@ -36,8 +36,8 @@ const ConfirmationModal = ({
         );
       case "info":
         return (
-          <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center">
-            <Info className="w-6 h-6 text-white" />
+          <div className="w-12 h-12 bg-gradient-to-br from-sky-50 to-sky-100 rounded-full flex items-center justify-center">
+            <Info className="w-6 h-6 text-sky-600" />
           </div>
         );
       default: // warning

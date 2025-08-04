@@ -515,7 +515,7 @@ const Profile = () => {
         confirmButtonClass={
           confirmModal.type === "unfollowAll"
             ? "bg-red-600 hover:bg-red-700"
-            : "bg-gray-700 hover:bg-gray-800"
+            : "bg-sky-600 hover:bg-sky-700"
         }
         icon={confirmModal.type === "unfollowAll" ? "warning" : "info"}
       />
