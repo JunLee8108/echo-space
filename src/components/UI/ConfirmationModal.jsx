@@ -59,7 +59,7 @@ const ConfirmationModal = ({
         {/* Modal */}
 
         <div
-          className="bg-white w-[90%] max-w-[350px] rounded-2xl shadow-2xl transform transition-all duration-200 scale-100"
+          className="bg-white w-[90%] max-w-[350px] rounded-2xl shadow-2xl transform transition-all duration-200 scale-100 mb-20"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-6">
