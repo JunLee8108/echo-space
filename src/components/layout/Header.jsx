@@ -21,11 +21,11 @@ const Header = () => {
         <div className="max-w-2xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo Section */}
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-stone-700 to-stone-900 rounded-lg flex items-center justify-center">
-              <span className="text-white text-sm font-bold">AI</span>
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center">
+              <img src="logo.jpg" className="rounded-lg"></img>
             </div>
             <h1 className="text-base font-semibold text-stone-900">
-              EchoSpace
+              DiaryFriend
             </h1>
           </div>
 

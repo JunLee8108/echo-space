@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["logo.svg", "apple-touch-icon.png", "mask-icon.svg"],
       manifest: {
-        name: "EchoSpace",
-        short_name: "EchoSpace",
+        name: "DiaryFriend",
+        short_name: "DiaryFriend",
         description:
           "Your personal echo chamber - Share thoughts, ideas, and moments",
         theme_color: "#ffffff",
@@ -22,7 +22,7 @@ export default defineConfig({
         orientation: "portrait",
         scope: "/",
         start_url: "/",
-        id: "echospace-pwa",
+        id: "diaryfriend-pwa",
         icons: [
           {
             src: "pwa-64x64.png",

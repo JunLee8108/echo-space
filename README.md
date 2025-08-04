@@ -1,4 +1,4 @@
-# EchoSpace
+# DiaryFriend
 
 > **A feel‑good social space where you share moments and our AI companions cheer you on.**
 
@@ -115,8 +115,8 @@ graph TD
 
 ```bash
 # 1. Clone
-$ git clone https://github.com/your-org/echospace.git
-$ cd echospace
+$ git clone https://github.com/your-org/diary-gram.git
+$ cd diaryfriend
 
 # 2. Install dependencies
 $ pnpm i
