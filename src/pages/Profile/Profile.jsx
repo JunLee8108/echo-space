@@ -71,7 +71,7 @@ const Profile = () => {
     setConfirmModal({
       show: true,
       type: "followAll",
-      title: "Follow all AI characters?",
+      title: "Follow all?",
       message: `This will follow ${unfollowedCharacters.length} AI characters. They will start commenting on and liking your posts.`,
     });
   };
@@ -88,7 +88,7 @@ const Profile = () => {
     setConfirmModal({
       show: true,
       type: "unfollowAll",
-      title: "Unfollow all AI characters?",
+      title: "Unfollow all?",
       message: `This will unfollow ${followedCount} AI characters. They will stop interacting with your posts.`,
     });
   };
@@ -515,7 +515,7 @@ const Profile = () => {
         confirmButtonClass={
           confirmModal.type === "unfollowAll"
             ? "bg-red-600 hover:bg-red-700"
-            : "bg-blue-600 hover:bg-blue-700"
+            : "bg-gray-700 hover:bg-gray-800"
         }
         icon={confirmModal.type === "unfollowAll" ? "warning" : "info"}
       />

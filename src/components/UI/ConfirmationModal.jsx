@@ -53,12 +53,11 @@ const ConfirmationModal = ({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 transition-opacity duration-200"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 transition-opacity duration-200 flex items-center justify-center p-4"
         onClick={onClose}
-      />
+      >
+        {/* Modal */}
 
-      {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           className="bg-white w-[90%] max-w-[350px] rounded-2xl shadow-2xl transform transition-all duration-200 scale-100"
           onClick={(e) => e.stopPropagation()}
