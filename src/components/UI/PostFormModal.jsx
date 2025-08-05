@@ -244,13 +244,13 @@ const PostFormModal = () => {
       const endTime = Date.now();
       const velocity = dragOffset / (endTime - startTime);
 
+      // 드래그 종료 시 트랜지션 복원
+      setIsDragging(false);
+
       // 임계값 또는 빠른 스와이프로 닫기
       if (dragOffset > DRAG_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
         // 스와이프 닫기 플래그 설정
         setIsSwipeClosing(true);
-
-        // 부드럽게 위로 올라가도록 transition 활성화
-        setIsDragging(false);
 
         // 다음 프레임에서 최종 위치로 이동
         requestAnimationFrame(() => {
@@ -261,9 +261,10 @@ const PostFormModal = () => {
           closePostModal();
         }, 300);
       } else {
-        // 원위치로 복귀 - 부드럽게 돌아가도록
-        setIsDragging(false);
-        setDragOffset(0);
+        // 원위치로 복귀 - transition이 복원되어 부드럽게 이동
+        requestAnimationFrame(() => {
+          setDragOffset(0);
+        });
       }
     }
 
