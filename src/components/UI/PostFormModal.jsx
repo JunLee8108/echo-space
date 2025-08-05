@@ -393,7 +393,7 @@ const PostFormModal = () => {
   };
 
   // 배경 투명도 계산
-  const backdropOpacity = Math.max(0.1, 1 - dragOffset / 400);
+  // const backdropOpacity = Math.max(0.1, 1 - dragOffset / 400);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -406,10 +406,6 @@ const PostFormModal = () => {
             ? "animate-fadeIn"
             : ""
         }`}
-        style={{
-          opacity: isDragging || isSwipeClosing ? backdropOpacity : undefined,
-          transition: isDragging ? "none" : "opacity 0.3s ease-out",
-        }}
       />
 
       {/* Modal */}
