@@ -248,19 +248,23 @@ const PostFormModal = () => {
       if (dragOffset > DRAG_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
         // 스와이프 닫기 플래그 설정
         setIsSwipeClosing(true);
-        setDragOffset(window.innerHeight);
+
+        // 부드럽게 위로 올라가도록 transition 활성화
+        setIsDragging(false);
+
+        // 다음 프레임에서 최종 위치로 이동
+        requestAnimationFrame(() => {
+          setDragOffset(window.innerHeight);
+        });
 
         setTimeout(() => {
-          setIsSwipeClosing(false);
-          setDragOffset(0);
           closePostModal();
         }, 300);
       } else {
-        // 원위치로 복귀
+        // 원위치로 복귀 - 부드럽게 돌아가도록
+        setIsDragging(false);
         setDragOffset(0);
       }
-
-      setIsDragging(false);
     }
 
     // 초기 터치 정보 리셋
