@@ -248,29 +248,19 @@ const PostFormModal = () => {
       if (dragOffset > DRAG_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
         // 스와이프 닫기 플래그 설정
         setIsSwipeClosing(true);
-        // 드래그 상태는 유지 (애니메이션을 위해)
+        setDragOffset(window.innerHeight);
 
-        // 모달이 화면 위로 사라지는 애니메이션
-        const modalHeight =
-          modalRef.current?.offsetHeight || window.innerHeight;
-
-        // requestAnimationFrame을 사용하여 부드러운 애니메이션 보장
-        requestAnimationFrame(() => {
-          setDragOffset(modalHeight);
-        });
-
-        // 애니메이션 완료 후 모달 닫기
         setTimeout(() => {
+          setIsSwipeClosing(false);
+          setDragOffset(0);
           closePostModal();
         }, 300);
       } else {
         // 원위치로 복귀
         setDragOffset(0);
-        // 애니메이션 후 드래그 상태 리셋
-        setTimeout(() => {
-          setIsDragging(false);
-        }, 300);
       }
+
+      setIsDragging(false);
     }
 
     // 초기 터치 정보 리셋
@@ -391,7 +381,13 @@ const PostFormModal = () => {
 
   // 모달 스타일 계산
   const modalStyle = {
-    transform: `translateY(${-dragOffset}px)`,
+    transform: `translateY(${
+      isSwipeClosing
+        ? -dragOffset
+        : isClosing && !isSwipeClosing
+        ? 0
+        : -dragOffset
+    }px)`,
     transition: isDragging
       ? "none"
       : "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -405,10 +401,10 @@ const PostFormModal = () => {
       {/* Backdrop */}
       <div
         className={`absolute inset-0 bg-black/50 backdrop-blur-xs ${
-          isClosing && !isSwipeClosing ? "animate-fadeOut" : "animate-fadeIn"
+          isClosing ? "animate-fadeOut" : "animate-fadeIn"
         }`}
         style={{
-          opacity: isDragging || isSwipeClosing ? backdropOpacity : undefined,
+          opacity: isDragging ? backdropOpacity : undefined,
           transition: isDragging ? "none" : "opacity 0.3s ease-out",
         }}
       />
