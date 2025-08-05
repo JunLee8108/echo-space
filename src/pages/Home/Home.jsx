@@ -18,7 +18,7 @@ import {
 import "./Home.css";
 
 // userStore imports
-import { useUserId, useDisplayName } from "../../stores/userStore";
+import { useUserId } from "../../stores/userStore";
 
 import { useCharacters } from "../../stores/characterStore";
 
@@ -48,7 +48,6 @@ const MOODS = {
 
 const Home = () => {
   const userId = useUserId();
-  const displayName = useDisplayName();
 
   // characterStore에서 캐릭터 정보 가져오기
   const characters = useCharacters();
@@ -407,15 +406,45 @@ const Home = () => {
                     {/* Post Header */}
                     <div className="px-6 pt-6 pb-2 flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-stone-600 to-stone-800 rounded-full flex items-center justify-center">
-                          <span className="text-xs text-white font-medium">
-                            {extractText(post.content).charAt(0).toUpperCase()}
-                          </span>
-                        </div>
+                        {post.ai_generated ? (
+                          <img
+                            src={post.Character.avatar_url}
+                            alt={post.Character.name}
+                            className="w-9 h-9 cursor-pointer rounded-2xl object-cover flex-shrink-0"
+                            onClick={(e) => {
+                              const character = {
+                                ...post.Character,
+                                affinity:
+                                  post.Character?.User_Character?.[0]
+                                    ?.affinity ?? null,
+                              };
+                              e.stopPropagation();
+                              setProfileModal({
+                                show: true,
+                                character: getEnrichedCharacter(character),
+                              });
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                              e.target.nextSibling.style.display = "flex";
+                            }}
+                          />
+                        ) : (
+                          <div className="w-8 h-8 bg-gradient-to-br from-stone-600 to-stone-800 rounded-full flex items-center justify-center">
+                            <span className="text-xs text-white font-medium">
+                              {extractText(post.content)
+                                .charAt(0)
+                                .toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+
                         <div>
                           <div className="flex items-center space-x-2">
                             <h3 className="font-medium text-stone-900 text-sm">
-                              {displayName}
+                              {post.ai_generated
+                                ? post.Character.name || "AI"
+                                : post.User_Profile?.display_name || "User"}
                             </h3>
                             {/* Mood indicator */}
                             {post.mood && MOODS[post.mood] && (

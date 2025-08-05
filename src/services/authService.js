@@ -19,6 +19,18 @@ export const updateDisplayName = async (displayName) => {
   return data;
 };
 
+export const updateLanguage = async (language) => {
+  const { data, error } = await supabase.auth.updateUser({
+    data: { language: language },
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
 export const updatePassword = async (currentPassword, newPassword) => {
   // 먼저 현재 비밀번호로 재인증
   const {

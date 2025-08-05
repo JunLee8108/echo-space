@@ -8,12 +8,6 @@ export async function savePostWithCommentsAndLikes(
   likeCharacters,
   hashtags = []
 ) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error("User not authenticated");
-
   // 1. 게시글 저장
   const { data: postData, error: postError } = await supabase
     .from("Post")
@@ -22,7 +16,6 @@ export async function savePostWithCommentsAndLikes(
         content: post.content,
         mood: post.mood || null, // mood 추가
         like: likeCharacters.length,
-        user_id: user.id,
       },
     ])
     .select()
@@ -86,6 +79,8 @@ export async function savePostWithCommentsAndLikes(
       content,
       mood,
       like,
+      ai_generated,
+      character_id,
       created_at,
       user_id,
       Comment (
@@ -125,6 +120,18 @@ export async function savePostWithCommentsAndLikes(
           id,
           name
         )
+      ),
+      Character (
+        name,
+        avatar_url,
+        description,
+        personality,
+        User_Character (
+            affinity
+        )
+      ),
+      User_Profile (
+        display_name
       )
     `
     )
@@ -204,6 +211,8 @@ export async function fetchPostsWithCommentsAndLikes(
         content,
         mood,
         like,
+        ai_generated,
+        character_id,
         created_at,
         user_id,
         Comment (
@@ -243,6 +252,18 @@ export async function fetchPostsWithCommentsAndLikes(
             id,
             name
           )
+        ),
+        Character (
+        name,
+        avatar_url,
+        description,
+        personality,
+        User_Character (
+            affinity
+          )
+        ),
+        User_Profile (
+          display_name
         )
       `
       )
@@ -311,6 +332,8 @@ export async function fetchPostsWithCommentsAndLikes(
           name: ph.Hashtag?.name || "",
         })) || [],
     }));
+
+    console.log(formattedData);
 
     return {
       posts: formattedData,

@@ -5,6 +5,7 @@ import supabase from "../services/supabaseClient";
 import {
   getCurrentUser as getCurrentUserService,
   updateDisplayName as updateDisplayNameService,
+  updateLanguage as updateLanguageService,
   updatePassword as updatePasswordService,
   signOut as signOutService,
 } from "../services/authService";
@@ -32,6 +33,11 @@ const useUserStore = create(
       },
 
       getUserEmail: () => get().user?.email || null,
+
+      getLanguage: () => {
+        const user = get().user;
+        return user?.user_metadata?.language || "English";
+      },
 
       // Actions
       setUser: (user) => set({ user, error: null }),
@@ -90,6 +96,33 @@ const useUserStore = create(
         }
       },
 
+      // Update language
+      updateLanguage: async (language) => {
+        try {
+          set({ error: null });
+          const data = await updateLanguageService(language);
+
+          // Update local state
+          const currentUser = get().user;
+          if (currentUser) {
+            set({
+              user: {
+                ...currentUser,
+                user_metadata: {
+                  ...currentUser.user_metadata,
+                  language: language,
+                },
+              },
+            });
+          }
+
+          return data;
+        } catch (error) {
+          set({ error: error.message });
+          throw error;
+        }
+      },
+
       // Update password
       updatePassword: async (currentPassword, newPassword) => {
         try {
@@ -132,6 +165,8 @@ export const useUserId = () => useUserStore((state) => state.getUserId());
 export const useDisplayName = () =>
   useUserStore((state) => state.getDisplayName());
 export const useUserEmail = () => useUserStore((state) => state.getUserEmail());
+export const useUserLanguage = () =>
+  useUserStore((state) => state.getLanguage());
 export const useUserLoading = () => useUserStore((state) => state.loading);
 export const useUserError = () => useUserStore((state) => state.error);
 export const useIsAuthenticated = () =>
@@ -142,6 +177,7 @@ export const useUserActions = () => {
   const setUser = useUserStore((state) => state.setUser);
   const initializeUser = useUserStore((state) => state.initializeUser);
   const updateDisplayName = useUserStore((state) => state.updateDisplayName);
+  const updateLanguage = useUserStore((state) => state.updateLanguage);
   const updatePassword = useUserStore((state) => state.updatePassword);
   const signOut = useUserStore((state) => state.signOut);
   const clearError = useUserStore((state) => state.clearError);
@@ -150,6 +186,7 @@ export const useUserActions = () => {
     setUser,
     initializeUser,
     updateDisplayName,
+    updateLanguage,
     updatePassword,
     signOut,
     clearError,

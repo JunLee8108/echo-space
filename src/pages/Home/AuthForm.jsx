@@ -1,4 +1,4 @@
-// src/components/AuthForm.jsx - Enhanced with Display Name and userStore
+// src/components/AuthForm.jsx - Enhanced with Display Name, Language and userStore
 import { useState, useEffect } from "react";
 import supabase from "../../services/supabaseClient";
 
@@ -6,6 +6,7 @@ const AuthForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [language, setLanguage] = useState("English");
   const [mode, setMode] = useState("signIn");
   const [isLoading, setIsLoading] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -31,13 +32,14 @@ const AuthForm = () => {
         password,
       }));
     } else {
-      // 회원가입 시 display_name 포함
+      // 회원가입 시 display_name과 language 포함
       ({ data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             display_name: displayName.trim() || email.split("@")[0],
+            language: language,
           },
         },
       }));
@@ -48,7 +50,8 @@ const AuthForm = () => {
         setShowSuccessModal(true);
         setEmail("");
         setPassword("");
-        setDisplayName(""); // 초기화
+        setDisplayName("");
+        setLanguage("English");
         // Switch to sign in mode after a short delay
         setTimeout(() => {
           handleModeToggle("signIn");
@@ -64,6 +67,12 @@ const AuthForm = () => {
   const handleModeToggle = (newMode) => {
     setIsTransitioning(true);
     setMode(newMode);
+
+    // 모드 전환시 모든 입력값 초기화
+    setEmail("");
+    setPassword("");
+    setDisplayName("");
+    setLanguage("English");
   };
 
   return (
@@ -98,7 +107,7 @@ const AuthForm = () => {
         <div
           className={`bg-white rounded-2xl shadow-xl border border-stone-100 p-8 transition-all duration-300 `}
         >
-          <form onSubmit={handleAuth} className="space-y-5">
+          <form onSubmit={handleAuth} className="space-y-4">
             {/* Mode Indicator */}
             <div className="flex justify-center mb-6">
               <div className="bg-stone-100 p-1 rounded-xl flex">
@@ -126,40 +135,6 @@ const AuthForm = () => {
                 </button>
               </div>
             </div>
-
-            {/* Display Name Input - 회원가입 모드에서만 표시 */}
-            {mode === "signUp" && (
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">
-                  Display Name
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="How others will see you"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full px-4 py-3 pl-11 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:border-transparent transition-all"
-                  />
-                  <svg
-                    className="absolute left-4 top-3.5 w-4 h-4 text-stone-400"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                </div>
-                <p className="text-xs text-stone-500 mt-1">
-                  Leave blank to use your email username
-                </p>
-              </div>
-            )}
 
             {/* Email Input */}
             <div>
@@ -221,11 +196,89 @@ const AuthForm = () => {
               </div>
             </div>
 
+            {/* Display Name Input - 회원가입 모드에서만 표시 */}
+            {mode === "signUp" && (
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-2">
+                  Display Name
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="How others will see you"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="w-full px-4 py-3 pl-11 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:border-transparent transition-all"
+                  />
+                  <svg
+                    className="absolute left-4 top-3.5 w-4 h-4 text-stone-400"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            )}
+
+            {/* Language Selection - 회원가입 모드에서만 표시 */}
+            {mode === "signUp" && (
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-2">
+                  Language
+                </label>
+                <div className="relative">
+                  <select
+                    value={language}
+                    required
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="w-full px-4 py-3 pl-11 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:border-transparent transition-all appearance-none"
+                  >
+                    <option value="English">English</option>
+                    <option value="Korean">Korean</option>
+                  </select>
+                  <svg
+                    className="absolute left-4 top-3.5 w-4 h-4 text-stone-400"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+                    />
+                  </svg>
+                  <svg
+                    className="absolute right-4 top-3.5 w-4 h-4 text-stone-400 pointer-events-none"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
+            )}
+
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-stone-700 to-stone-900 text-white font-medium py-3 px-4 rounded-xl hover:from-stone-800 hover:to-stone-950 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-900 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              className="w-full bg-gradient-to-r from-stone-700 to-stone-900 text-white font-medium py-3 px-4 rounded-xl hover:from-stone-800 hover:to-stone-950 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-900 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 mt-6"
             >
               {isLoading ? (
                 <>
