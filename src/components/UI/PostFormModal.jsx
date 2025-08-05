@@ -58,7 +58,7 @@ const PostFormModal = () => {
   const [startY, setStartY] = useState(0);
   const [startTime, setStartTime] = useState(0);
   const [isSwipeClosing, setIsSwipeClosing] = useState(false);
-  const [initialTouch, setInitialTouch] = useState(null); // 터치 시작 지점 저장
+  const [initialTouch, setInitialTouch] = useState(null);
 
   const modalRef = useRef(null);
   const moodButtonRef = useRef(null);
@@ -66,7 +66,6 @@ const PostFormModal = () => {
   const hashtagButtonRef = useRef(null);
   const hashtagModalRef = useRef(null);
   const hashtagInputRef = useRef(null);
-  const bottomBarRef = useRef(null);
 
   // 스와이프 상수
   const DRAG_THRESHOLD = 100; // 닫기 위한 최소 드래그 거리
@@ -183,13 +182,24 @@ const PostFormModal = () => {
     // 서브 모달이 열려있거나 제출 중이면 무시
     if (showHashtagModal || showMoodModal || isSubmitting) return;
 
-    // 하단 액션바 영역이 아니면 무시
-    if (!bottomBarRef.current?.contains(e.target)) return;
+    // 버튼, input, textarea 등 인터랙티브 요소는 무시
+    const interactiveElements = ["BUTTON", "INPUT", "TEXTAREA", "A", "SELECT"];
+    if (
+      interactiveElements.includes(e.target.tagName) ||
+      e.target.closest("button")
+    ) {
+      return;
+    }
 
-    // 버튼 클릭은 무시
-    if (e.target.closest("button")) return;
+    // 에디터 내부의 편집 가능한 영역은 무시
+    if (
+      e.target.contentEditable === "true" ||
+      e.target.closest('[contenteditable="true"]')
+    ) {
+      return;
+    }
 
-    // 터치 시작점만 저장 (아직 드래그 시작 안 함)
+    // 터치 시작점 저장
     setInitialTouch({
       y: e.touches[0].clientY,
       time: Date.now(),
@@ -238,19 +248,29 @@ const PostFormModal = () => {
       if (dragOffset > DRAG_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
         // 스와이프 닫기 플래그 설정
         setIsSwipeClosing(true);
-        setDragOffset(window.innerHeight);
+        // 드래그 상태는 유지 (애니메이션을 위해)
 
+        // 모달이 화면 위로 사라지는 애니메이션
+        const modalHeight =
+          modalRef.current?.offsetHeight || window.innerHeight;
+
+        // requestAnimationFrame을 사용하여 부드러운 애니메이션 보장
+        requestAnimationFrame(() => {
+          setDragOffset(modalHeight);
+        });
+
+        // 애니메이션 완료 후 모달 닫기
         setTimeout(() => {
-          setIsSwipeClosing(false);
-          setDragOffset(0);
           closePostModal();
         }, 300);
       } else {
         // 원위치로 복귀
         setDragOffset(0);
+        // 애니메이션 후 드래그 상태 리셋
+        setTimeout(() => {
+          setIsDragging(false);
+        }, 300);
       }
-
-      setIsDragging(false);
     }
 
     // 초기 터치 정보 리셋
@@ -289,17 +309,10 @@ const PostFormModal = () => {
     createPostMutation.mutate(newPost);
 
     setTimeout(() => {
-      // 스와이프로 닫는 중이 아닐 때만 페이드아웃 애니메이션
-      if (!isSwipeClosing) {
-        setIsClosing(true);
-      }
+      setIsClosing(true);
 
       // 애니메이션 완료 후 모달 닫기
       setTimeout(() => {
-        setIsSubmitting(false);
-        if (!isSwipeClosing) {
-          setIsClosing(false);
-        }
         closePostModal();
       }, 400);
     }, 600);
@@ -378,13 +391,7 @@ const PostFormModal = () => {
 
   // 모달 스타일 계산
   const modalStyle = {
-    transform: `translateY(${
-      isSwipeClosing
-        ? -dragOffset
-        : isClosing && !isSwipeClosing
-        ? 0
-        : -dragOffset
-    }px)`,
+    transform: `translateY(${-dragOffset}px)`,
     transition: isDragging
       ? "none"
       : "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -398,10 +405,10 @@ const PostFormModal = () => {
       {/* Backdrop */}
       <div
         className={`absolute inset-0 bg-black/50 backdrop-blur-xs ${
-          isClosing ? "animate-fadeOut" : "animate-fadeIn"
+          isClosing && !isSwipeClosing ? "animate-fadeOut" : "animate-fadeIn"
         }`}
         style={{
-          opacity: isDragging ? backdropOpacity : undefined,
+          opacity: isDragging || isSwipeClosing ? backdropOpacity : undefined,
           transition: isDragging ? "none" : "opacity 0.3s ease-out",
         }}
       />
@@ -410,7 +417,7 @@ const PostFormModal = () => {
       <div
         ref={modalRef}
         className={`relative w-[100%] max-w-[600px] h-[100dvh] mx-auto bg-white shadow-2xl overflow-hidden flex flex-col ${
-          isClosing && !isDragging && !isSwipeClosing
+          isClosing && !isSwipeClosing
             ? "animate-slideUp"
             : !isClosing && !isDragging && !isSwipeClosing
             ? "animate-slideDown"
@@ -503,10 +510,7 @@ const PostFormModal = () => {
             </div>
 
             {/* Actions Bar */}
-            <div
-              ref={bottomBarRef}
-              className="flex items-center justify-between flex-shrink-0 cursor-grab active:cursor-grabbing touch-none mb-5 md:mb-0"
-            >
+            <div className="flex items-center justify-between flex-shrink-0 mb-5 md:mb-0">
               <div className="flex items-center space-x-2">
                 {/* Hashtag Button */}
                 <div className="relative">
