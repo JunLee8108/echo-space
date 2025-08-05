@@ -385,13 +385,7 @@ const PostFormModal = () => {
 
   // 모달 스타일 계산
   const modalStyle = {
-    transform: `translateY(${
-      isSwipeClosing
-        ? -dragOffset
-        : isClosing && !isSwipeClosing
-        ? 0
-        : -dragOffset
-    }px)`,
+    transform: `translateY(${-dragOffset}px)`,
     transition: isDragging
       ? "none"
       : "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -405,10 +399,14 @@ const PostFormModal = () => {
       {/* Backdrop */}
       <div
         className={`absolute inset-0 bg-black/50 backdrop-blur-xs ${
-          isClosing ? "animate-fadeOut" : "animate-fadeIn"
+          isClosing && !isSwipeClosing
+            ? "animate-fadeOut"
+            : !isClosing && !isDragging && !isSwipeClosing
+            ? "animate-fadeIn"
+            : ""
         }`}
         style={{
-          opacity: isDragging ? backdropOpacity : undefined,
+          opacity: isDragging || isSwipeClosing ? backdropOpacity : undefined,
           transition: isDragging ? "none" : "opacity 0.3s ease-out",
         }}
       />
