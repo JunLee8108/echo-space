@@ -7,6 +7,9 @@ import {
 
 import { Smile, Meh, Frown, Hash } from "lucide-react";
 
+// Toast
+import { showAffinityToast } from "../../components/utils/toastUtils";
+
 // Modal
 import ConfirmationModal from "../../components/UI/ConfirmationModal";
 import ProfileModal from "../../components/UI/ProfileModal";
@@ -21,6 +24,8 @@ import "./Home.css";
 // userStore imports
 import { useUserId } from "../../stores/userStore";
 
+// characterStore
+import { useCharacterActions } from "../../stores/characterStore";
 import { useCharacters } from "../../stores/characterStore";
 
 // 페이지당 포스트 개수
@@ -52,6 +57,7 @@ const Home = () => {
 
   // characterStore에서 캐릭터 정보 가져오기
   const characters = useCharacters();
+  const { updateLocalCharacterAffinity } = useCharacterActions();
 
   const extractText = (html) =>
     new DOMParser().parseFromString(html, "text/html").body.textContent.trim();
@@ -306,9 +312,14 @@ const Home = () => {
   // 댓글 좋아요 토글 핸들러 추가
   const handleCommentLike = async (commentId, postId) => {
     try {
+      // 댓글 정보 가져오기 (캐릭터 정보 필요)
+      const post = posts.find((p) => p.id === postId);
+      const comment = post?.Comment?.find((c) => c.id === commentId);
+
+      // 1. DB 호출 (postService)
       const result = await toggleCommentLike(commentId, userId);
 
-      // React Query 캐시 업데이트 (옵티미스틱 업데이트)
+      // 2. React Query 캐시 업데이트 (UI 즉시 반영)
       queryClient.setQueryData(["posts", userId], (old) => {
         if (!old) return old;
 
@@ -320,15 +331,19 @@ const Home = () => {
               if (post.id === postId) {
                 return {
                   ...post,
-                  Comment: post.Comment.map((comment) => {
-                    if (comment.id === commentId) {
+                  Comment: post.Comment.map((c) => {
+                    if (c.id === commentId) {
                       return {
-                        ...comment,
+                        ...c,
                         like: result.likeCount,
                         isLikedByUser: result.liked,
+                        // 친밀도 증가 시 affinity도 UI에 반영
+                        affinity: result.affinityIncreased
+                          ? (c.affinity || 0) + 1
+                          : c.affinity,
                       };
                     }
-                    return comment;
+                    return c;
                   }),
                 };
               }
@@ -337,6 +352,26 @@ const Home = () => {
           })),
         };
       });
+
+      // 3. 친밀도 증가 시 Store 업데이트 및 Toast 표시
+      if (result.affinityIncreased && comment) {
+        // characterStore의 로컬 상태만 업데이트 (DB는 이미 postService에서 업데이트됨)
+        updateLocalCharacterAffinity(comment.character_id, 1);
+
+        // 캐릭터 정보 구성
+        const characterInfo = {
+          id: comment.character_id,
+          name: comment.character,
+          avatar_url: comment.avatar_url,
+        };
+
+        // Toast 표시
+        showAffinityToast(
+          [{ character_id: comment.character_id, success: true }],
+          [characterInfo],
+          [{ characterId: comment.character_id }]
+        );
+      }
     } catch (error) {
       console.error("댓글 좋아요 처리 실패:", error);
       // 에러 시 캐시 무효화하여 서버 데이터로 복구
@@ -344,7 +379,7 @@ const Home = () => {
     }
   };
 
-  // 4. 더블 탭 핸들러 수정
+  // 4. 더블 탭 핸들러 수정 (모바일 지원)
   const handleCommentDoubleTap = (() => {
     let lastTap = 0;
     let tapTimeout = null;

@@ -50,7 +50,7 @@ export function showAffinityToast(
       </div>
       <div className="flex border-l border-gray-200">
         <button
-          onClick={() => toast.dismiss(t.id)}
+          onClick={() => toast.remove(t.id)}
           className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-xs font-medium text-pink-600 hover:text-pink-500 focus:outline-none"
         >
           Close

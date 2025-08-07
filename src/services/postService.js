@@ -1,5 +1,6 @@
 import supabase from "./supabaseClient";
 import { createOrGetHashtags, attachHashtagsToPost } from "./hashtagService";
+import { updateCharacterAffinity } from "./characterService";
 
 // 게시글 + 댓글 + 좋아요 캐릭터 + 해시태그 저장 (SAVE)
 export async function savePostWithCommentsAndLikes(
@@ -101,7 +102,8 @@ export async function savePostWithCommentsAndLikes(
           )
         ),
         Comment_Like (
-          user_id
+          user_id,
+          is_active
         )
       ),
       Post_Like (
@@ -165,7 +167,8 @@ export async function savePostWithCommentsAndLikes(
         affinity: comment.Character?.User_Character[0]?.affinity || 0,
         isLikedByUser:
           comment.Comment_Like?.some(
-            (like) => like.user_id === savedPost.user_id
+            (like) =>
+              like.user_id === savedPost.user_id && like.is_active === true
           ) || false,
       })) || [],
     Post_Like:
@@ -204,13 +207,21 @@ export async function deletePostById(postId, uid) {
   }
 }
 
-// 댓글 좋아요 토글 (like 숫자 증가/감소)
 export async function toggleCommentLike(commentId, userId) {
   if (!userId) throw new Error("user_id가 없습니다.");
   if (!commentId) throw new Error("comment_id가 없습니다.");
 
   try {
-    // 1. 기존 좋아요 확인
+    // 1. 댓글 정보 가져오기 (캐릭터 ID 필요)
+    const { data: commentData, error: commentError } = await supabase
+      .from("Comment")
+      .select("like, character_id")
+      .eq("id", commentId)
+      .single();
+
+    if (commentError) throw commentError;
+
+    // 2. 기존 좋아요 레코드 확인 (활성/비활성 모두 포함)
     const { data: existingLike, error: checkError } = await supabase
       .from("Comment_Like")
       .select("*")
@@ -219,59 +230,117 @@ export async function toggleCommentLike(commentId, userId) {
       .maybeSingle();
 
     if (checkError && checkError.code !== "PGRST116") {
-      // PGRST116은 no rows found 에러
       throw checkError;
     }
 
+    // 레코드가 있는 경우
     if (existingLike) {
-      // 2-1. 좋아요 취소
-      const { error: deleteError } = await supabase
+      const newActiveState = !existingLike.is_active;
+
+      // 3-1. is_active 상태 토글
+      const { error: updateError } = await supabase
         .from("Comment_Like")
-        .delete()
-        .eq("comment_id", commentId)
-        .eq("user_id", userId);
+        .update({ is_active: newActiveState })
+        .eq("id", existingLike.id);
 
-      if (deleteError) throw deleteError;
+      if (updateError) throw updateError;
 
-      // 3-1. Comment 테이블의 like 수 감소
-      const { data: comment } = await supabase
-        .from("Comment")
-        .select("like")
-        .eq("id", commentId)
-        .single();
+      // 4-1. Comment 테이블의 like 수 업데이트
+      if (newActiveState) {
+        // 활성화 (좋아요 추가)
+        await supabase
+          .from("Comment")
+          .update({ like: (commentData?.like || 0) + 1 })
+          .eq("id", commentId);
+      } else {
+        // 비활성화 (좋아요 취소)
+        await supabase
+          .from("Comment")
+          .update({ like: Math.max(0, (commentData?.like || 1) - 1) })
+          .eq("id", commentId);
+      }
 
-      await supabase
-        .from("Comment")
-        .update({ like: Math.max(0, (comment?.like || 1) - 1) })
-        .eq("id", commentId);
-
-      return { liked: false, likeCount: Math.max(0, (comment?.like || 1) - 1) };
+      return {
+        liked: newActiveState,
+        likeCount: newActiveState
+          ? (commentData?.like || 0) + 1
+          : Math.max(0, (commentData?.like || 1) - 1),
+        affinityIncreased: false, // 기존 레코드가 있으면 친밀도는 이미 증가했음
+      };
     } else {
-      // 2-2. 좋아요 추가
-      const { error: insertError } = await supabase
+      // 3-2. 새로운 좋아요 레코드 생성
+      const { data: newLike, error: insertError } = await supabase
         .from("Comment_Like")
         .insert([
           {
             comment_id: commentId,
             user_id: userId,
+            is_active: true,
+            affinity_increased: false, // 초기값
           },
-        ]);
+        ])
+        .select()
+        .single();
 
       if (insertError) throw insertError;
 
-      // 3-2. Comment 테이블의 like 수 증가
-      const { data: comment } = await supabase
-        .from("Comment")
-        .select("like")
-        .eq("id", commentId)
-        .single();
-
+      // 4-2. Comment 테이블의 like 수 증가
       await supabase
         .from("Comment")
-        .update({ like: (comment?.like || 0) + 1 })
+        .update({ like: (commentData?.like || 0) + 1 })
         .eq("id", commentId);
 
-      return { liked: true, likeCount: (comment?.like || 0) + 1 };
+      // 5. 처음 좋아요를 누르는 경우에만 친밀도 증가 (확률적)
+      let affinityActuallyIncreased = false;
+      if (commentData.character_id) {
+        try {
+          // 현재 캐릭터의 affinity 가져오기
+          const { data: userCharData } = await supabase
+            .from("User_Character")
+            .select("affinity")
+            .eq("user_id", userId)
+            .eq("character_id", commentData.character_id)
+            .single();
+
+          const currentAffinity = userCharData?.affinity || 0;
+
+          // affinity에 따른 확률 계산 (높을수록 확률 감소)
+          let probability = 0.5; // 기본 50%
+          if (currentAffinity > 30) probability = 0.1; // 10%
+          else if (currentAffinity > 20) probability = 0.2; // 20%
+          else if (currentAffinity > 10) probability = 0.3; // 30%
+
+          const shouldIncreaseAffinity = Math.random() < probability;
+
+          if (shouldIncreaseAffinity) {
+            await updateCharacterAffinity(userId, commentData.character_id, 1);
+
+            // 친밀도 증가 성공 시 플래그 업데이트
+            await supabase
+              .from("Comment_Like")
+              .update({ affinity_increased: true })
+              .eq("id", newLike.id);
+
+            affinityActuallyIncreased = true;
+            // console.log(
+            //   `✅ 캐릭터 ${
+            //     commentData.character_id
+            //   }의 친밀도가 증가했습니다. (확률: ${probability * 100}%)`
+            // );
+          } else {
+            // console.log(`⏭️ 친밀도 증가 스킵 (확률: ${probability * 100}%)`);
+            // affinity_increased는 false로 유지 (다음에 다시 시도 가능)
+          }
+        } catch (affinityError) {
+          console.error("❌ 친밀도 증가 실패:", affinityError);
+        }
+      }
+
+      return {
+        liked: true,
+        likeCount: (commentData?.like || 0) + 1,
+        affinityIncreased: affinityActuallyIncreased,
+      };
     }
   } catch (error) {
     console.error("❌ 댓글 좋아요 토글 실패:", error.message);
@@ -317,7 +386,8 @@ export async function fetchPostsWithCommentsAndLikes(
             )
           ),
           Comment_Like (
-            user_id
+            user_id,
+            is_active
           )
         ),
         Post_Like (
@@ -402,7 +472,9 @@ export async function fetchPostsWithCommentsAndLikes(
           affinity: comment.Character?.User_Character[0]?.affinity || 0,
           // 현재 사용자가 좋아요를 눌렀는지 확인
           isLikedByUser:
-            comment.Comment_Like?.some((like) => like.user_id === uid) || false,
+            comment.Comment_Like?.some((like) => {
+              return like.user_id === uid && like.is_active === true;
+            }) || false,
         })) || [],
       Post_Like:
         post.Post_Like?.map((like) => ({

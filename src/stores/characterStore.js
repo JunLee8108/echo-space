@@ -360,6 +360,31 @@ const useCharacterStore = create(
         }
       },
 
+      // 로컬 상태만 업데이트하는 함수 추가 (DB 호출 없음)
+      updateLocalCharacterAffinity: (characterId, increment) => {
+        const { characters, updateDerivedState } = get();
+
+        // 캐릭터 찾아서 affinity 업데이트
+        const updatedCharacters = characters.map((char) =>
+          char.id === characterId
+            ? { ...char, affinity: (char.affinity || 0) + increment }
+            : char
+        );
+
+        const updatedDerivedState = updateDerivedState(updatedCharacters);
+
+        // 로컬 상태와 캐시만 업데이트 (DB 호출 없음)
+        set({
+          characters: updatedCharacters,
+          ...updatedDerivedState,
+          cache: {
+            data: updatedCharacters,
+            timestamp: Date.now(),
+            promise: null,
+          },
+        });
+      },
+
       // Clear cache
       clearCache: () => {
         set({
@@ -399,12 +424,15 @@ export const useCharacterActions = () => {
   const toggleFollow = useCharacterStore((state) => state.toggleFollow);
   const batchToggleFollow = useCharacterStore(
     (state) => state.batchToggleFollow
-  ); // 새로 추가
+  );
   const getRandomCharacters = useCharacterStore(
     (state) => state.getRandomCharacters
   );
   const updateCharacterAffinities = useCharacterStore(
     (state) => state.updateCharacterAffinities
+  );
+  const updateLocalCharacterAffinity = useCharacterStore(
+    (state) => state.updateLocalCharacterAffinity // 추가
   );
   const refreshCharacters = useCharacterStore(
     (state) => state.refreshCharacters
@@ -415,9 +443,10 @@ export const useCharacterActions = () => {
 
   return {
     toggleFollow,
-    batchToggleFollow, // 새로 추가
+    batchToggleFollow,
     getRandomCharacters,
     updateCharacterAffinities,
+    updateLocalCharacterAffinity, // 추가
     refreshCharacters,
     clearCache,
     loadCharacters,

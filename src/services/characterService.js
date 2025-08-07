@@ -125,11 +125,11 @@ export async function batchToggleFollow(userId, characterIds, followState) {
     throw new Error("Invalid parameters for batch toggle follow");
   }
 
-  console.log(
-    `Starting batch ${followState ? "follow" : "unfollow"} for ${
-      characterIds.length
-    } characters`
-  );
+  // console.log(
+  //   `Starting batch ${followState ? "follow" : "unfollow"} for ${
+  //     characterIds.length
+  //   } characters`
+  // );
 
   // 모든 요청을 병렬로 처리
   const promises = characterIds.map(async (characterId) => {
@@ -228,13 +228,13 @@ export async function batchToggleFollow(userId, characterIds, followState) {
   const skipped = results.filter((r) => r.success && r.skipped);
   const processed = results.filter((r) => r.success && !r.skipped);
 
-  console.log(`Batch ${followState ? "follow" : "unfollow"} completed:`, {
-    total: results.length,
-    successful: successful.length,
-    failed: failed.length,
-    skipped: skipped.length,
-    processed: processed.length,
-  });
+  // console.log(`Batch ${followState ? "follow" : "unfollow"} completed:`, {
+  //   total: results.length,
+  //   successful: successful.length,
+  //   failed: failed.length,
+  //   skipped: skipped.length,
+  //   processed: processed.length,
+  // });
 
   return {
     successful,

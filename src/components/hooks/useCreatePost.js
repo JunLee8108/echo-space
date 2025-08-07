@@ -83,14 +83,14 @@ export const useCreatePost = (options = {}) => {
             const successResults = results.filter((r) => r.success !== false);
             const successCount = successResults.length;
 
-            console.log(
-              `✅ Affinity 업데이트: ${successCount}/${affinityUpdates.length} 성공`
-            );
+            // console.log(
+            //   `✅ Affinity 업데이트: ${successCount}/${affinityUpdates.length} 성공`
+            // );
 
             // Toast 표시
-            console.log("success: ", successResults);
-            console.log("comment: ", commentCharacters);
-            console.log("affinity: ", affinityUpdates);
+            // console.log("success: ", successResults);
+            // console.log("comment: ", commentCharacters);
+            // console.log("affinity: ", affinityUpdates);
             if (successCount > 0) {
               showAffinityToast(
                 successResults,

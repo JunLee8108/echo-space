@@ -106,7 +106,7 @@ const Profile = () => {
         return;
       }
 
-      console.log("Starting bulk follow for:", unfollowedCharacterIds);
+      // console.log("Starting bulk follow for:", unfollowedCharacterIds);
 
       // Store의 배치 함수 호출 - 상태 자동 업데이트됨
       const result = await batchToggleFollow(unfollowedCharacterIds, true);
@@ -122,9 +122,9 @@ const Profile = () => {
         );
       } else {
         // 완전 성공 시에는 조용히 완료 (alert 없음)
-        console.log(
-          `Successfully followed ${result.processedCount} AI characters`
-        );
+        // console.log(
+        //   `Successfully followed ${result.processedCount} AI characters`
+        // );
       }
     } catch (error) {
       console.error("Bulk follow error:", error);
@@ -145,7 +145,7 @@ const Profile = () => {
         return;
       }
 
-      console.log("Starting bulk unfollow for:", followedCharacterIdsArray);
+      // console.log("Starting bulk unfollow for:", followedCharacterIdsArray);
 
       // Store의 배치 함수 호출 - 상태 자동 업데이트됨
       const result = await batchToggleFollow(followedCharacterIdsArray, false);
@@ -161,9 +161,9 @@ const Profile = () => {
         );
       } else {
         // 완전 성공 시에는 조용히 완료 (alert 없음)
-        console.log(
-          `Successfully unfollowed ${result.processedCount} AI characters`
-        );
+        // console.log(
+        //   `Successfully unfollowed ${result.processedCount} AI characters`
+        // );
       }
     } catch (error) {
       console.error("Bulk unfollow error:", error);
