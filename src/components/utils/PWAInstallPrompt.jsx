@@ -7,15 +7,8 @@ const PWAInstallPrompt = () => {
   const [isIOS, setIsIOS] = useState(false);
   const [isInStandaloneMode, setIsInStandaloneMode] = useState(false);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Check if already dismissed
-    const isDismissed = localStorage.getItem("pwa-install-dismissed");
-    if (isDismissed) {
-      setDismissed(true);
-    }
-
     // Check if iOS
     const isIOSDevice = /iphone|ipad|ipod/.test(
       window.navigator.userAgent.toLowerCase()
@@ -29,8 +22,8 @@ const PWAInstallPrompt = () => {
       document.referrer.includes("android-app://");
     setIsInStandaloneMode(isStandalone);
 
-    // Show iOS prompt if iOS and not in standalone and not dismissed
-    if (isIOSDevice && !isStandalone && !isDismissed) {
+    // Show iOS prompt if iOS and not in standalone
+    if (isIOSDevice && !isStandalone) {
       // Delay showing iOS prompt for better UX
       setTimeout(() => {
         setShowIOSPrompt(true);
@@ -66,14 +59,12 @@ const PWAInstallPrompt = () => {
   };
 
   const handleDismiss = () => {
-    localStorage.setItem("pwa-install-dismissed", "true");
-    setDismissed(true);
     setSupportsPWA(false);
     setShowIOSPrompt(false);
   };
 
   // Don't show anything if dismissed or in standalone mode
-  if (dismissed || isInStandaloneMode) {
+  if (isInStandaloneMode) {
     return null;
   }
 
