@@ -88,7 +88,7 @@ const BottomNavbar = () => {
 
   return (
     <div className="fixed w-full max-w-[500px] mx-auto bottom-0 left-0 right-0 z-50 bg-white border-t border-stone-100">
-      <div className="max-w-2xl mx-auto py-2 pb-6 sm:pb-2">
+      <div className="max-w-2xl mx-auto py-2 pb-8 sm:pb-2">
         <nav className="flex items-center justify-around h-14 px-4">
           {tabs.map((tab) => {
             const isActive = tab.path

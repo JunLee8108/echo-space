@@ -87,6 +87,7 @@ export async function savePostWithCommentsAndLikes(
         id,
         character_id,
         message,
+        like,
         created_at,
         Character (
           id,
@@ -98,6 +99,9 @@ export async function savePostWithCommentsAndLikes(
           User_Character (
             affinity
           )
+        ),
+        Comment_Like (
+          user_id
         )
       ),
       Post_Like (
@@ -151,6 +155,7 @@ export async function savePostWithCommentsAndLikes(
         id: comment.id,
         character_id: comment.character_id,
         message: comment.message,
+        like: comment.like || 0,
         created_at: comment.created_at,
         character: comment.Character?.name || "Unknown",
         personality: comment.Character?.personality || [],
@@ -158,6 +163,10 @@ export async function savePostWithCommentsAndLikes(
         description: comment.Character?.description || "",
         prompt_description: comment.Character?.prompt_description || "",
         affinity: comment.Character?.User_Character[0]?.affinity || 0,
+        isLikedByUser:
+          comment.Comment_Like?.some(
+            (like) => like.user_id === savedPost.user_id
+          ) || false,
       })) || [],
     Post_Like:
       savedPost.Post_Like?.map((like) => ({
@@ -195,6 +204,81 @@ export async function deletePostById(postId, uid) {
   }
 }
 
+// 댓글 좋아요 토글 (like 숫자 증가/감소)
+export async function toggleCommentLike(commentId, userId) {
+  if (!userId) throw new Error("user_id가 없습니다.");
+  if (!commentId) throw new Error("comment_id가 없습니다.");
+
+  try {
+    // 1. 기존 좋아요 확인
+    const { data: existingLike, error: checkError } = await supabase
+      .from("Comment_Like")
+      .select("*")
+      .eq("comment_id", commentId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (checkError && checkError.code !== "PGRST116") {
+      // PGRST116은 no rows found 에러
+      throw checkError;
+    }
+
+    if (existingLike) {
+      // 2-1. 좋아요 취소
+      const { error: deleteError } = await supabase
+        .from("Comment_Like")
+        .delete()
+        .eq("comment_id", commentId)
+        .eq("user_id", userId);
+
+      if (deleteError) throw deleteError;
+
+      // 3-1. Comment 테이블의 like 수 감소
+      const { data: comment } = await supabase
+        .from("Comment")
+        .select("like")
+        .eq("id", commentId)
+        .single();
+
+      await supabase
+        .from("Comment")
+        .update({ like: Math.max(0, (comment?.like || 1) - 1) })
+        .eq("id", commentId);
+
+      return { liked: false, likeCount: Math.max(0, (comment?.like || 1) - 1) };
+    } else {
+      // 2-2. 좋아요 추가
+      const { error: insertError } = await supabase
+        .from("Comment_Like")
+        .insert([
+          {
+            comment_id: commentId,
+            user_id: userId,
+          },
+        ]);
+
+      if (insertError) throw insertError;
+
+      // 3-2. Comment 테이블의 like 수 증가
+      const { data: comment } = await supabase
+        .from("Comment")
+        .select("like")
+        .eq("id", commentId)
+        .single();
+
+      await supabase
+        .from("Comment")
+        .update({ like: (comment?.like || 0) + 1 })
+        .eq("id", commentId);
+
+      return { liked: true, likeCount: (comment?.like || 0) + 1 };
+    }
+  } catch (error) {
+    console.error("❌ 댓글 좋아요 토글 실패:", error.message);
+    throw error;
+  }
+}
+
 // CURSOR 기반 페이지네이션으로 포스트 가져오기
 export async function fetchPostsWithCommentsAndLikes(
   uid,
@@ -219,6 +303,7 @@ export async function fetchPostsWithCommentsAndLikes(
           id,
           character_id,
           message,
+          like,
           created_at,
           Character (
             id,
@@ -228,8 +313,11 @@ export async function fetchPostsWithCommentsAndLikes(
             description,
             prompt_description,
             User_Character (
-            affinity
+              affinity
             )
+          ),
+          Comment_Like (
+            user_id
           )
         ),
         Post_Like (
@@ -242,7 +330,7 @@ export async function fetchPostsWithCommentsAndLikes(
             description,
             prompt_description,
             User_Character (
-            affinity
+              affinity
             )
           )
         ),
@@ -254,11 +342,11 @@ export async function fetchPostsWithCommentsAndLikes(
           )
         ),
         Character (
-        name,
-        avatar_url,
-        description,
-        personality,
-        User_Character (
+          name,
+          avatar_url,
+          description,
+          personality,
+          User_Character (
             affinity
           )
         ),
@@ -269,12 +357,10 @@ export async function fetchPostsWithCommentsAndLikes(
       )
       .eq("user_id", uid)
       .order("created_at", { ascending: false })
-      .order("id", { ascending: false }) // created_at이 같을 경우를 위한 2차 정렬
-      .limit(limit + 1); // hasMore 확인을 위해 1개 더 가져옴
+      .order("id", { ascending: false })
+      .limit(limit + 1);
 
-    // cursor가 있으면 해당 지점부터 시작
     if (cursor) {
-      // cursor는 { created_at, id } 형태의 객체
       query = query.or(
         `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`
       );
@@ -287,11 +373,9 @@ export async function fetchPostsWithCommentsAndLikes(
       throw error;
     }
 
-    // hasMore 판단 및 실제 반환할 데이터 준비
     const hasMore = data.length > limit;
-    const posts = hasMore ? data.slice(0, -1) : data; // 마지막 1개 제거
+    const posts = hasMore ? data.slice(0, -1) : data;
 
-    // 다음 cursor 준비
     const nextCursor =
       posts.length > 0
         ? {
@@ -300,7 +384,7 @@ export async function fetchPostsWithCommentsAndLikes(
           }
         : null;
 
-    // 데이터 구조 평탄화
+    // 데이터 구조 평탄화 - Comment_Like 정보 포함
     const formattedData = posts.map((post) => ({
       ...post,
       Comment:
@@ -308,6 +392,7 @@ export async function fetchPostsWithCommentsAndLikes(
           id: comment.id,
           character_id: comment.character_id,
           message: comment.message,
+          like: comment.like || 0,
           created_at: comment.created_at,
           character: comment.Character?.name || "Unknown",
           personality: comment.Character?.personality || [],
@@ -315,6 +400,9 @@ export async function fetchPostsWithCommentsAndLikes(
           description: comment.Character?.description || "",
           prompt_description: comment.Character?.prompt_description || "",
           affinity: comment.Character?.User_Character[0]?.affinity || 0,
+          // 현재 사용자가 좋아요를 눌렀는지 확인
+          isLikedByUser:
+            comment.Comment_Like?.some((like) => like.user_id === uid) || false,
         })) || [],
       Post_Like:
         post.Post_Like?.map((like) => ({
@@ -332,8 +420,6 @@ export async function fetchPostsWithCommentsAndLikes(
           name: ph.Hashtag?.name || "",
         })) || [],
     }));
-
-    console.log(formattedData);
 
     return {
       posts: formattedData,

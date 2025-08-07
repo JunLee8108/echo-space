@@ -91,6 +91,140 @@ const PostFormModal = () => {
     }
   }, [isOpen]);
 
+  // Touch 이벤트를 non-passive로 등록
+  useEffect(() => {
+    const modalElement = modalRef.current;
+    if (!modalElement || !isOpen) return;
+
+    const touchStartHandler = (e) => {
+      // 서브 모달이 열려있거나 제출 중이면 무시
+      if (showHashtagModal || showMoodModal || isSubmitting) return;
+
+      // 버튼, input, textarea 등 인터랙티브 요소는 무시
+      const interactiveElements = [
+        "BUTTON",
+        "INPUT",
+        "TEXTAREA",
+        "A",
+        "SELECT",
+      ];
+      if (
+        interactiveElements.includes(e.target.tagName) ||
+        e.target.closest("button")
+      ) {
+        return;
+      }
+
+      // 에디터 내부의 편집 가능한 영역은 무시
+      if (
+        e.target.contentEditable === "true" ||
+        e.target.closest('[contenteditable="true"]')
+      ) {
+        return;
+      }
+
+      // 터치 시작점 저장
+      setInitialTouch({
+        y: e.touches[0].clientY,
+        time: Date.now(),
+      });
+    };
+
+    const touchMoveHandler = (e) => {
+      if (!initialTouch && !isDragging) return;
+
+      const currentY = e.touches[0].clientY;
+
+      // 아직 드래그 시작 안 했으면 임계값 체크
+      if (!isDragging && initialTouch) {
+        const deltaY = initialTouch.y - currentY;
+
+        // 위로 일정 거리 이상 움직였을 때만 드래그 시작
+        if (deltaY > DRAG_START_THRESHOLD) {
+          setIsDragging(true);
+          setStartY(initialTouch.y);
+          setStartTime(initialTouch.time);
+          setDragOffset(deltaY);
+          e.preventDefault(); // 이제 non-passive이므로 작동함
+        }
+        return;
+      }
+
+      // 드래그 중인 경우
+      if (isDragging) {
+        const deltaY = startY - currentY;
+
+        // 위로 드래그만 허용 (deltaY > 0)
+        if (deltaY > 0) {
+          setDragOffset(deltaY);
+          e.preventDefault(); // 이제 non-passive이므로 작동함
+        }
+      }
+    };
+
+    const touchEndHandler = () => {
+      // 드래그 중이었을 때만 처리
+      if (isDragging) {
+        const endTime = Date.now();
+        const velocity = dragOffset / (endTime - startTime);
+
+        // 드래그 종료 시 트랜지션 복원
+        setIsDragging(false);
+
+        // 임계값 또는 빠른 스와이프로 닫기
+        if (dragOffset > DRAG_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
+          // 스와이프 닫기 플래그 설정
+          setIsSwipeClosing(true);
+
+          // 다음 프레임에서 최종 위치로 이동
+          requestAnimationFrame(() => {
+            setDragOffset(window.innerHeight);
+          });
+
+          setTimeout(() => {
+            closePostModal();
+          }, 300);
+        } else {
+          // 원위치로 복귀 - transition이 복원되어 부드럽게 이동
+          requestAnimationFrame(() => {
+            setDragOffset(0);
+          });
+        }
+      }
+
+      // 초기 터치 정보 리셋
+      setInitialTouch(null);
+    };
+
+    // non-passive 리스너로 등록
+    modalElement.addEventListener("touchstart", touchStartHandler, {
+      passive: false,
+    });
+    modalElement.addEventListener("touchmove", touchMoveHandler, {
+      passive: false,
+    });
+    modalElement.addEventListener("touchend", touchEndHandler, {
+      passive: false,
+    });
+
+    return () => {
+      modalElement.removeEventListener("touchstart", touchStartHandler);
+      modalElement.removeEventListener("touchmove", touchMoveHandler);
+      modalElement.removeEventListener("touchend", touchEndHandler);
+    };
+  }, [
+    isOpen,
+    showHashtagModal,
+    showMoodModal,
+    isSubmitting,
+    isDragging,
+    initialTouch,
+    dragOffset,
+    startY,
+    startTime,
+    closePostModal,
+  ]);
+
   // Handle escape key and body scroll
   useEffect(() => {
     const handleModalClose = () => {
@@ -176,101 +310,6 @@ const PostFormModal = () => {
       hashtagInputRef.current.focus();
     }
   }, [showHashtagModal]);
-
-  // 터치 이벤트 핸들러
-  const handleTouchStart = (e) => {
-    // 서브 모달이 열려있거나 제출 중이면 무시
-    if (showHashtagModal || showMoodModal || isSubmitting) return;
-
-    // 버튼, input, textarea 등 인터랙티브 요소는 무시
-    const interactiveElements = ["BUTTON", "INPUT", "TEXTAREA", "A", "SELECT"];
-    if (
-      interactiveElements.includes(e.target.tagName) ||
-      e.target.closest("button")
-    ) {
-      return;
-    }
-
-    // 에디터 내부의 편집 가능한 영역은 무시
-    if (
-      e.target.contentEditable === "true" ||
-      e.target.closest('[contenteditable="true"]')
-    ) {
-      return;
-    }
-
-    // 터치 시작점 저장
-    setInitialTouch({
-      y: e.touches[0].clientY,
-      time: Date.now(),
-    });
-  };
-
-  const handleTouchMove = (e) => {
-    if (!initialTouch && !isDragging) return;
-
-    const currentY = e.touches[0].clientY;
-
-    // 아직 드래그 시작 안 했으면 임계값 체크
-    if (!isDragging && initialTouch) {
-      const deltaY = initialTouch.y - currentY;
-
-      // 위로 일정 거리 이상 움직였을 때만 드래그 시작
-      if (deltaY > DRAG_START_THRESHOLD) {
-        setIsDragging(true);
-        setStartY(initialTouch.y);
-        setStartTime(initialTouch.time);
-        setDragOffset(deltaY);
-        e.preventDefault();
-      }
-      return;
-    }
-
-    // 드래그 중인 경우
-    if (isDragging) {
-      const deltaY = startY - currentY;
-
-      // 위로 드래그만 허용 (deltaY > 0)
-      if (deltaY > 0) {
-        setDragOffset(deltaY);
-        e.preventDefault();
-      }
-    }
-  };
-
-  const handleTouchEnd = () => {
-    // 드래그 중이었을 때만 처리
-    if (isDragging) {
-      const endTime = Date.now();
-      const velocity = dragOffset / (endTime - startTime);
-
-      // 드래그 종료 시 트랜지션 복원
-      setIsDragging(false);
-
-      // 임계값 또는 빠른 스와이프로 닫기
-      if (dragOffset > DRAG_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
-        // 스와이프 닫기 플래그 설정
-        setIsSwipeClosing(true);
-
-        // 다음 프레임에서 최종 위치로 이동
-        requestAnimationFrame(() => {
-          setDragOffset(window.innerHeight);
-        });
-
-        setTimeout(() => {
-          closePostModal();
-        }, 300);
-      } else {
-        // 원위치로 복귀 - transition이 복원되어 부드럽게 이동
-        requestAnimationFrame(() => {
-          setDragOffset(0);
-        });
-      }
-    }
-
-    // 초기 터치 정보 리셋
-    setInitialTouch(null);
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -412,7 +451,7 @@ const PostFormModal = () => {
         }}
       />
 
-      {/* Modal */}
+      {/* Modal - onTouch 이벤트 제거됨 */}
       <div
         ref={modalRef}
         className={`relative w-[100%] max-w-[600px] h-[100dvh] mx-auto bg-white shadow-2xl overflow-hidden flex flex-col ${
@@ -423,9 +462,6 @@ const PostFormModal = () => {
             : ""
         } ${isSubmitting ? "pointer-events-none" : ""}`}
         style={modalStyle}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 pt-3 pb-2 border-b border-stone-100">

@@ -14,6 +14,7 @@ import ProfileModal from "../../components/UI/ProfileModal";
 import {
   deletePostById,
   fetchPostsWithCommentsAndLikes,
+  toggleCommentLike,
 } from "../../services/postService";
 import "./Home.css";
 
@@ -302,6 +303,78 @@ const Home = () => {
     return basicCharInfo;
   };
 
+  // 댓글 좋아요 토글 핸들러 추가
+  const handleCommentLike = async (commentId, postId) => {
+    try {
+      const result = await toggleCommentLike(commentId, userId);
+
+      // React Query 캐시 업데이트 (옵티미스틱 업데이트)
+      queryClient.setQueryData(["posts", userId], (old) => {
+        if (!old) return old;
+
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            posts: page.posts.map((post) => {
+              if (post.id === postId) {
+                return {
+                  ...post,
+                  Comment: post.Comment.map((comment) => {
+                    if (comment.id === commentId) {
+                      return {
+                        ...comment,
+                        like: result.likeCount,
+                        isLikedByUser: result.liked,
+                      };
+                    }
+                    return comment;
+                  }),
+                };
+              }
+              return post;
+            }),
+          })),
+        };
+      });
+    } catch (error) {
+      console.error("댓글 좋아요 처리 실패:", error);
+      // 에러 시 캐시 무효화하여 서버 데이터로 복구
+      queryClient.invalidateQueries(["posts", userId]);
+    }
+  };
+
+  // 4. 더블 탭 핸들러 수정
+  const handleCommentDoubleTap = (() => {
+    let lastTap = 0;
+    let tapTimeout = null;
+
+    return (e, commentId, postId) => {
+      e.preventDefault(); // 모바일에서 확대 방지
+
+      const currentTime = new Date().getTime();
+      const tapLength = currentTime - lastTap;
+
+      // 이전 타임아웃 클리어
+      if (tapTimeout) {
+        clearTimeout(tapTimeout);
+        tapTimeout = null;
+      }
+
+      if (tapLength < 300 && tapLength > 0) {
+        // 더블 탭 감지
+        handleCommentLike(commentId, postId);
+        lastTap = 0; // 리셋
+      } else {
+        lastTap = currentTime;
+        // 300ms 후에 리셋 (다음 탭을 위해)
+        tapTimeout = setTimeout(() => {
+          lastTap = 0;
+        }, 300);
+      }
+    };
+  })();
+
   // 스켈레톤 로더 컴포넌트
   const PostSkeleton = () => (
     <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden animate-pulse">
@@ -566,51 +639,113 @@ const Home = () => {
                     {post.Comment && post.Comment.length > 0 && (
                       <div className="px-6 pb-3 animate-fadeIn">
                         <div className="border-t border-stone-100 pt-4 space-y-3">
-                          {post.Comment.map((c, idx) => (
-                            <div
-                              key={c.id}
-                              className="flex items-start space-x-2 animate-slideIn flex-wrap"
-                              style={{ animationDelay: `${idx * 100}ms` }}
-                            >
-                              {c.avatar_url ? (
-                                <img
-                                  src={c.avatar_url}
-                                  alt={c.character}
-                                  className="w-9 h-9 cursor-pointer rounded-2xl object-cover flex-shrink-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setProfileModal({
-                                      show: true,
-                                      character: getEnrichedCharacter(c),
-                                    });
-                                  }}
-                                  onError={(e) => {
-                                    e.target.style.display = "none";
-                                    e.target.nextSibling.style.display = "flex";
-                                  }}
-                                />
-                              ) : null}
-                              <div
-                                className="w-10 h-10 bg-gradient-to-br from-stone-500 to-stone-700 rounded-full flex items-center justify-center flex-shrink-0"
-                                style={{
-                                  display: c.avatar_url ? "none" : "flex",
-                                }}
-                              >
-                                <span className="text-white text-xs font-medium">
-                                  {c.character?.charAt(0) || "A"}
-                                </span>
-                              </div>
+                          {post.Comment.map((c, idx) => {
+                            // 서버에서 받은 데이터 사용
+                            const isLiked = c.isLikedByUser;
+                            const likeCount = c.like || 0;
 
-                              <div className="flex-1 bg-stone-50 rounded-2xl px-4 py-2">
-                                <p className="text-sm font-medium text-stone-800 mb-0.5">
-                                  {c.character || "AI Friend"}
-                                </p>
-                                <p className="text-sm text-stone-600">
-                                  {c.message}
-                                </p>
+                            return (
+                              <div
+                                key={c.id}
+                                className="flex items-start space-x-2 animate-slideIn"
+                                style={{ animationDelay: `${idx * 100}ms` }}
+                              >
+                                {c.avatar_url ? (
+                                  <img
+                                    src={c.avatar_url}
+                                    alt={c.character}
+                                    className="w-9 h-9 cursor-pointer rounded-2xl object-cover flex-shrink-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setProfileModal({
+                                        show: true,
+                                        character: getEnrichedCharacter(c),
+                                      });
+                                    }}
+                                    onError={(e) => {
+                                      e.target.style.display = "none";
+                                      e.target.nextSibling.style.display =
+                                        "flex";
+                                    }}
+                                  />
+                                ) : null}
+                                <div
+                                  className="w-10 h-10 bg-gradient-to-br from-stone-500 to-stone-700 rounded-full flex items-center justify-center flex-shrink-0"
+                                  style={{
+                                    display: c.avatar_url ? "none" : "flex",
+                                  }}
+                                >
+                                  <span className="text-white text-xs font-medium">
+                                    {c.character?.charAt(0) || "A"}
+                                  </span>
+                                </div>
+
+                                <div className="flex-1 flex items-center gap-1.5">
+                                  <div
+                                    className="flex-1 bg-stone-50 rounded-2xl px-4 py-2.5 select-none relative group"
+                                    onClick={(e) =>
+                                      handleCommentDoubleTap(e, c.id, post.id)
+                                    }
+                                    onTouchEnd={(e) =>
+                                      handleCommentDoubleTap(e, c.id, post.id)
+                                    }
+                                  >
+                                    <p className="text-sm font-medium text-stone-800 mb-0.5">
+                                      {c.character || "AI Friend"}
+                                    </p>
+                                    <p className="text-sm text-stone-600 leading-relaxed">
+                                      {c.message}
+                                    </p>
+
+                                    {/* 더블 탭 힌트 - 호버시 표시 */}
+                                    <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/[0.02] transition-colors pointer-events-none" />
+                                  </div>
+
+                                  {/* 댓글 좋아요 버튼 - 최소화된 영역 */}
+                                  <div className="flex flex-col items-center justify-center">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCommentLike(c.id, post.id);
+                                      }}
+                                      className={`group p-1.5 rounded-full transition-colors duration-200 ${
+                                        isLiked
+                                          ? "text-pink-500 hover:bg-pink-50"
+                                          : "text-stone-400 hover:text-stone-500 hover:bg-stone-50"
+                                      }`}
+                                    >
+                                      <svg
+                                        className="w-3.5 h-3.5"
+                                        fill={isLiked ? "currentColor" : "none"}
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                        />
+                                      </svg>
+                                    </button>
+
+                                    {/* 좋아요 수 */}
+                                    {likeCount > 0 && (
+                                      <span
+                                        className={`text-[10px] ${
+                                          isLiked
+                                            ? "text-pink-500"
+                                            : "text-stone-400"
+                                        }`}
+                                      >
+                                        {likeCount}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
