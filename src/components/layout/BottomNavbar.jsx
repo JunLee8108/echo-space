@@ -1,10 +1,33 @@
 import { useNavigate, useLocation } from "react-router";
+import { useRef } from "react";
 import { useOpenPostModal } from "../../stores/modalStore";
 
 const BottomNavbar = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const openPostModal = useOpenPostModal();
+  const touchHandledRef = useRef(false);
+
+  const handleAction = (action) => {
+    if (!action) return;
+
+    // 이미 터치로 처리했으면 클릭 이벤트 무시
+    if (touchHandledRef.current) {
+      touchHandledRef.current = false;
+      return;
+    }
+
+    action();
+  };
+
+  const handleTouchEnd = (e, action) => {
+    e.preventDefault(); // 클릭 이벤트 발생 방지
+    touchHandledRef.current = true;
+
+    if (action) {
+      action();
+    }
+  };
 
   const tabs = [
     {
@@ -12,7 +35,7 @@ const BottomNavbar = () => {
       path: "/",
       icon: (
         <svg
-          className="w-5 h-5"
+          className="w-5 h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -31,7 +54,7 @@ const BottomNavbar = () => {
       path: "/search",
       icon: (
         <svg
-          className="w-5 h-5"
+          className="w-5 h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -49,7 +72,7 @@ const BottomNavbar = () => {
       id: "add",
       icon: (
         <svg
-          className="w-4 h-4"
+          className="w-4 h-4 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -70,7 +93,7 @@ const BottomNavbar = () => {
       path: "/profile",
       icon: (
         <svg
-          className="w-5 h-5"
+          className="w-5 h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -87,42 +110,57 @@ const BottomNavbar = () => {
   ];
 
   return (
-    <div className="fixed w-full max-w-[500px] mx-auto bottom-0 left-0 right-0 z-50 bg-white border-t border-stone-100">
-      <div className="max-w-2xl mx-auto py-2 pb-8 sm:pb-2">
-        <nav className="flex items-center justify-around h-14 px-4">
-          {tabs.map((tab) => {
-            const isActive = tab.path
-              ? tab.path === "/"
-                ? pathname === "/"
-                : pathname.startsWith(tab.path)
-              : false;
+    <>
+      <style>{`
+        .navbar-button {
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+        }
+        
+        .navbar-button:active {
+          transform: scale(0.95);
+          opacity: 0.9;
+        }
+      `}</style>
 
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  if (tab.onClick) {
-                    tab.onClick();
-                  } else if (tab.path) {
-                    navigate(tab.path);
-                  }
-                }}
-                className={`relative p-4 rounded-xl transition-all duration-200
-                  ${
-                    tab.special
-                      ? "bg-gradient-to-br from-stone-700 to-stone-900 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
-                      : isActive
-                      ? "text-stone-900 bg-stone-100"
-                      : "text-stone-400 hover:text-stone-600 hover:bg-stone-50"
-                  }`}
-              >
-                {tab.icon}
-              </button>
-            );
-          })}
-        </nav>
+      <div className="fixed w-full max-w-[500px] mx-auto bottom-0 left-0 right-0 z-50 bg-white border-t border-stone-100">
+        <div className="max-w-2xl mx-auto py-2 pb-8 sm:pb-2">
+          <nav className="flex items-center justify-around h-14 px-4">
+            {tabs.map((tab) => {
+              const isActive = tab.path
+                ? tab.path === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(tab.path)
+                : false;
+
+              const action = tab.onClick
+                ? tab.onClick
+                : tab.path
+                ? () => navigate(tab.path)
+                : null;
+
+              return (
+                <button
+                  key={tab.id}
+                  onTouchEnd={(e) => handleTouchEnd(e, action)}
+                  onClick={() => handleAction(action)}
+                  className={`navbar-button relative p-4 rounded-xl transition-all duration-200
+                    ${
+                      tab.special
+                        ? "bg-gradient-to-br from-stone-700 to-stone-900 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
+                        : isActive
+                        ? "text-stone-900 bg-stone-100"
+                        : "text-stone-400 hover:text-stone-600 hover:bg-stone-50"
+                    }`}
+                >
+                  {tab.icon}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
