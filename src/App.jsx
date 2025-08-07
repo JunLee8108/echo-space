@@ -5,6 +5,7 @@ import ScrollToTop from "./components/utils/ScrollToTop";
 import Header from "./components/layout/Header";
 import BottomNavbar from "./components/layout/BottomNavbar";
 import PostFormModal from "./components/UI/PostFormModal";
+import PWAInstallPrompt from "./components/utils/PWAInstallPrompt";
 import "./components/UI/PostFormModal.css";
 import Home from "./pages/Home/Home";
 import Profile from "./pages/Profile/Profile";
@@ -117,6 +118,9 @@ function App() {
 
             {/* Post Form Modal */}
             <PostFormModal />
+
+            {/* PWA Install Prompt - Add this component */}
+            <PWAInstallPrompt />
           </div>
         </BrowserRouter>
       </QueryClientProvider>

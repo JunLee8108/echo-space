@@ -39,7 +39,9 @@ export async function fetchAIComment(
       Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
+      verbosity: "medium", // 대체된 temperature
+      reasoning_effort: "low", // 빠른 응답을 원할 때 적합
       messages: [
         {
           role: "system",
@@ -52,7 +54,7 @@ export async function fetchAIComment(
           }`,
         },
       ],
-      temperature: 0.8,
+      // temperature: 0.8,
     }),
   });
 
