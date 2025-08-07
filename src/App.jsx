@@ -120,7 +120,7 @@ function App() {
             <PostFormModal />
 
             {/* PWA Install Prompt - Add this component */}
-            <PWAInstallPrompt />
+            {/* <PWAInstallPrompt /> */}
           </div>
         </BrowserRouter>
       </QueryClientProvider>

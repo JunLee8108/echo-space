@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Affinity 레벨별 설정
 const getAffinityTier = (affinity) => {
@@ -74,7 +74,8 @@ const getAffinityTier = (affinity) => {
   };
 };
 
-const ProfileModal = ({ isOpen, onClose, character }) => {
+// Affinity 정보 모달 컴포넌트
+const AffinityInfoModal = ({ isOpen, onClose, affinityTier }) => {
   const modalRef = useRef(null);
 
   useEffect(() => {
@@ -83,7 +84,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
         isOpen &&
         modalRef.current &&
         !modalRef.current.contains(e.target) &&
-        !e.target.closest(".profile-trigger")
+        !e.target.closest(".affinity-trigger")
       ) {
         onClose();
       }
@@ -91,6 +92,142 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
 
     const handleEscape = (e) => {
       if (e.key === "Escape" && isOpen) {
+        e.stopPropagation(); // ProfileModal로 이벤트 전파 방지
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleEscape, true); // capture phase에서 처리
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape, true);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      style={{ background: "rgba(0, 0, 0, 0.7)" }}
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+    >
+      <div
+        ref={modalRef}
+        className="relative w-[90%] max-w-[320px] mb-[90px] sm:mb-[70px] bg-white rounded-2xl shadow-2xl p-6 transform transition-all"
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+        >
+          <svg
+            className="w-4 h-4 text-gray-500"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+
+        <div className="text-center mb-4">
+          <div
+            className={`w-8 h-8 mx-auto bg-gradient-to-br ${affinityTier.colors.icon} rounded-full flex items-center justify-center mb-3`}
+          >
+            <svg
+              className="w-4 h-4 text-white"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+            </svg>
+          </div>
+          <h3 className="text-md font-bold text-gray-900 mb-1">
+            How to Increase Affinity
+          </h3>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg
+                className="w-4 h-4 text-blue-500"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900 mb-1">
+                Comment on your posts
+              </p>
+              <p className="text-xs/4.5 text-gray-500">
+                When the character replies to your posts, there's a random
+                chance to gain affinity points
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg
+                className="w-4 h-4 text-red-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900 mb-1">
+                Like their comments
+              </p>
+              <p className="text-xs/4.5 text-gray-500">
+                Liking the character's comments has a random chance to increase
+                your affinity level
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ProfileModal = ({ isOpen, onClose, character }) => {
+  const modalRef = useRef(null);
+  const [showAffinityInfo, setShowAffinityInfo] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        isOpen &&
+        modalRef.current &&
+        !modalRef.current.contains(e.target) &&
+        !e.target.closest(".profile-trigger") &&
+        !showAffinityInfo // Affinity 모달이 열려있을 때는 ProfileModal 닫지 않음
+      ) {
+        onClose();
+      }
+    };
+
+    const handleEscape = (e) => {
+      if (e.key === "Escape" && isOpen && !showAffinityInfo) {
         onClose();
       }
     };
@@ -106,158 +243,29 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "unset";
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, showAffinityInfo]);
 
   if (!isOpen || !character) return null;
 
   const affinityTier = getAffinityTier(character.affinity);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div
-        ref={modalRef}
-        className="relative w-[90%] max-w-[380px] h-auto max-h-[70dvh] mb-[70px] overflow-y-auto bg-white rounded-3xl shadow-2xl"
-      >
-        {/* Profile Content */}
-        <div className="relative">
-          {/* Avatar */}
-          <div className="relative -mt-1 rounded-t-3xl">
-            <button
-              onClick={onClose}
-              className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors"
-            >
-              <svg
-                className="w-5 h-5 text-white"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div
+          ref={modalRef}
+          className="relative w-[90%] max-w-[380px] h-auto max-h-[70dvh] mb-[90px] sm:mb-[70px] overflow-y-auto bg-white rounded-3xl shadow-2xl"
+        >
+          {/* Profile Content */}
+          <div className="relative">
+            {/* Avatar */}
+            <div className="relative -mt-1 rounded-t-3xl">
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-            <div className="w-full h-50 mx-auto shadow-xl overflow-hidden bg-white rounded-t-3xl">
-              {character.avatar_url ? (
-                <img
-                  src={character.avatar_url}
-                  alt={character.name || character.character}
-                  className="w-full h-full object-cover rounded-t-3xl"
-                  onError={(e) => {
-                    e.target.style.display = "none";
-                    e.target.nextSibling.style.display = "flex";
-                  }}
-                />
-              ) : null}
-              <div
-                className="w-full h-full bg-gradient-to-br from-stone-400 to-stone-600 flex items-center justify-center"
-                style={{ display: character.avatar_url ? "none" : "flex" }}
-              >
-                <span className="text-4xl text-white font-bold">
-                  {character.name?.charAt(0) ||
-                    character.character?.charAt(0) ||
-                    "?"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Name and Role */}
-          <div className="text-center mt-4 mb-3 px-4">
-            <h2 className="text-xl font-bold text-stone-900 mb-1">
-              {character.name || character.character || "Unknown Character"}
-            </h2>
-            <p className="text-xs text-stone-500 font-medium mb-3">
-              AI Character
-            </p>
-
-            {/* Array personality - 이름 바로 아래에 배치 */}
-            {Array.isArray(character.personality) &&
-              character.personality.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 justify-center mb-4">
-                  {character.personality.map((trait, idx) => (
-                    <span
-                      key={idx}
-                      className="text-xs min-w-[80px] font-medium text-stone-600 px-2.5 py-1 bg-stone-100/60 backdrop-blur-sm rounded-md border border-stone-200/50"
-                    >
-                      {trait}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-            {/* Compact Affinity */}
-            {character.affinity !== undefined && (
-              <div
-                className={`inline-flex items-center gap-3 bg-gradient-to-r ${affinityTier.colors.bg} px-6 py-2 rounded-full`}
-              >
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-6 h-6 bg-gradient-to-br ${affinityTier.colors.icon} rounded-full flex items-center justify-center`}
-                  >
-                    <svg
-                      className="w-3 h-3 text-white"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
-                    </svg>
-                  </div>
-                  <span
-                    className={`text-sm font-semibold bg-gradient-to-r ${affinityTier.colors.text} bg-clip-text text-transparent`}
-                  >
-                    {character.affinity || 0}
-                  </span>
-                </div>
-                <div className={`w-px h-4 ${affinityTier.colors.divider}`} />
-                <div className="flex items-center gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <svg
-                      key={i}
-                      className={`w-3 h-3 ${
-                        i < affinityTier.stars
-                          ? affinityTier.colors.star
-                          : affinityTier.colors.starEmpty
-                      }`}
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-                <span
-                  className={`text-xs font-medium ${affinityTier.colors.label}`}
-                >
-                  {affinityTier.label}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Stats - string personality용만 남김 */}
-          {typeof character.personality === "string" && (
-            <div className="px-4 mb-6">
-              <div className="bg-stone-50 rounded-2xl p-4">
-                <p className="text-xs text-stone-500 font-medium mb-1">
-                  Personality
-                </p>
-                <p className="text-sm text-stone-800 font-semibold">
-                  {character.personality}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Description */}
-          {character.description && (
-            <div className="px-4 mb-4 mt-6">
-              <h3 className="text-sm font-semibold text-stone-900 mb-1 flex items-center">
                 <svg
-                  className="w-4 h-4 mr-1 text-stone-600"
+                  className="w-5 h-5 text-white"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
@@ -266,87 +274,226 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    d="M6 18L18 6M6 6l12 12"
                   />
                 </svg>
-                About
-              </h3>
-              <div className="bg-stone-50 rounded-2xl p-4">
-                <p className="text-sm text-stone-700 leading-relaxed">
-                  {character.description}
-                </p>
+              </button>
+              <div className="w-full h-50 mx-auto shadow-xl overflow-hidden bg-white rounded-t-3xl">
+                {character.avatar_url ? (
+                  <img
+                    src={character.avatar_url}
+                    alt={character.name || character.character}
+                    className="w-full h-full object-cover rounded-t-3xl"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      e.target.nextSibling.style.display = "flex";
+                    }}
+                  />
+                ) : null}
+                <div
+                  className="w-full h-full bg-gradient-to-br from-stone-400 to-stone-600 flex items-center justify-center"
+                  style={{ display: character.avatar_url ? "none" : "flex" }}
+                >
+                  <span className="text-4xl text-white font-bold">
+                    {character.name?.charAt(0) ||
+                      character.character?.charAt(0) ||
+                      "?"}
+                  </span>
+                </div>
               </div>
             </div>
-          )}
 
-          {/* Additional Info */}
-          <div className="space-y-3">
-            {character.background && (
-              <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-stone-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg
-                    className="w-4 h-4 text-stone-600"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-stone-500 font-medium mb-0.5">
-                    Background
-                  </p>
-                  <p className="text-sm text-stone-700">
-                    {character.background}
-                  </p>
-                </div>
-              </div>
-            )}
+            {/* Name and Role */}
+            <div className="text-center mt-4 mb-3 px-4">
+              <h2 className="text-xl font-bold text-stone-900 mb-1">
+                {character.name || character.character || "Unknown Character"}
+              </h2>
+              <p className="text-xs text-stone-500 font-medium mb-3">
+                AI Character
+              </p>
 
-            {character.interests && character.interests.length > 0 && (
-              <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-stone-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg
-                    className="w-4 h-4 text-stone-600"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                    />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-stone-500 font-medium mb-1">
-                    Interests
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {character.interests.map((interest, idx) => (
+              {/* Array personality - 이름 바로 아래에 배치 */}
+              {Array.isArray(character.personality) &&
+                character.personality.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 justify-center mb-4">
+                    {character.personality.map((trait, idx) => (
                       <span
                         key={idx}
-                        className="inline-block px-3 py-1 bg-stone-200 text-stone-700 text-xs font-medium rounded-full"
+                        className="text-xs min-w-[80px] font-medium text-stone-600 px-2.5 py-1 bg-stone-100/60 backdrop-blur-sm rounded-md border border-stone-200/50"
                       >
-                        {interest}
+                        {trait}
                       </span>
                     ))}
                   </div>
+                )}
+
+              {/* Compact Affinity - 클릭 가능하게 수정 */}
+              {character.affinity !== undefined && (
+                <button
+                  onClick={() => setShowAffinityInfo(true)}
+                  className={`affinity-trigger inline-flex items-center gap-3 bg-gradient-to-r ${affinityTier.colors.bg} px-6 py-2 rounded-full hover:brightness-97 transition-all cursor-pointer`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-6 h-6 bg-gradient-to-br ${affinityTier.colors.icon} rounded-full flex items-center justify-center`}
+                    >
+                      <svg
+                        className="w-3 h-3 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+                      </svg>
+                    </div>
+                    <span
+                      className={`text-sm font-semibold bg-gradient-to-r ${affinityTier.colors.text} bg-clip-text text-transparent`}
+                    >
+                      {character.affinity || 0}
+                    </span>
+                  </div>
+                  <div className={`w-px h-4 ${affinityTier.colors.divider}`} />
+                  <div className="flex items-center gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <svg
+                        key={i}
+                        className={`w-3 h-3 ${
+                          i < affinityTier.stars
+                            ? affinityTier.colors.star
+                            : affinityTier.colors.starEmpty
+                        }`}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <span
+                    className={`text-xs font-medium ${affinityTier.colors.label}`}
+                  >
+                    {affinityTier.label}
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Stats - string personality용만 남김 */}
+            {typeof character.personality === "string" && (
+              <div className="px-4 mb-6">
+                <div className="bg-stone-50 rounded-2xl p-4">
+                  <p className="text-xs text-stone-500 font-medium mb-1">
+                    Personality
+                  </p>
+                  <p className="text-sm text-stone-800 font-semibold">
+                    {character.personality}
+                  </p>
                 </div>
               </div>
             )}
+
+            {/* Description */}
+            {character.description && (
+              <div className="px-4 mb-4 mt-6">
+                <h3 className="text-sm font-semibold text-stone-900 mb-1 flex items-center">
+                  <svg
+                    className="w-4 h-4 mr-1 text-stone-600"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  About
+                </h3>
+                <div className="bg-stone-50 rounded-2xl p-4">
+                  <p className="text-sm text-stone-700 leading-relaxed">
+                    {character.description}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Additional Info */}
+            <div className="space-y-3">
+              {character.background && (
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-stone-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg
+                      className="w-4 h-4 text-stone-600"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-stone-500 font-medium mb-0.5">
+                      Background
+                    </p>
+                    <p className="text-sm text-stone-700">
+                      {character.background}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {character.interests && character.interests.length > 0 && (
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-stone-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg
+                      className="w-4 h-4 text-stone-600"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-stone-500 font-medium mb-1">
+                      Interests
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {character.interests.map((interest, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-block px-3 py-1 bg-stone-200 text-stone-700 text-xs font-medium rounded-full"
+                        >
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Affinity Info Modal */}
+      <AffinityInfoModal
+        isOpen={showAffinityInfo}
+        onClose={() => setShowAffinityInfo(false)}
+        affinityTier={affinityTier}
+      />
+    </>
   );
 };
 
