@@ -83,6 +83,7 @@ export async function savePostWithCommentsAndLikes(
       ai_generated,
       character_id,
       created_at,
+      updated_at,
       user_id,
       Comment (
         id,
@@ -189,6 +190,173 @@ export async function savePostWithCommentsAndLikes(
   };
 
   return formattedPost;
+}
+
+export async function updatePost(postId, { content, mood, hashtags, userId }) {
+  if (!userId) throw new Error("user_id가 없습니다.");
+  if (!postId) throw new Error("post_id가 없습니다.");
+
+  try {
+    // 1. 포스트 내용 업데이트
+    const { error: updateError } = await supabase
+      .from("Post")
+      .update({
+        content,
+        mood: mood || null,
+        updated_at: new Date().toISOString(), // updated_at 필드가 있다면
+      })
+      .eq("id", postId)
+      .eq("user_id", userId); // 본인 포스트만 수정 가능
+
+    if (updateError) {
+      console.error("❌ Post 업데이트 실패:", updateError.message);
+      throw updateError;
+    }
+
+    // 2. 기존 해시태그 연결 삭제
+    const { error: deleteHashtagError } = await supabase
+      .from("Post_Hashtag")
+      .delete()
+      .eq("post_id", postId);
+
+    if (deleteHashtagError) {
+      console.error("❌ 기존 해시태그 삭제 실패:", deleteHashtagError.message);
+      throw deleteHashtagError;
+    }
+
+    // 3. 새로운 해시태그 추가
+    if (hashtags && hashtags.length > 0) {
+      try {
+        const hashtagIds = await createOrGetHashtags(hashtags);
+        await attachHashtagsToPost(postId, hashtagIds);
+      } catch (hashtagError) {
+        console.error("❌ 해시태그 저장 실패:", hashtagError.message);
+        throw hashtagError;
+      }
+    }
+
+    // 4. 업데이트된 전체 데이터를 다시 조회하여 반환
+    const { data: fullPost, error: fetchError } = await supabase
+      .from("Post")
+      .select(
+        `
+        id,
+        content,
+        mood,
+        like,
+        ai_generated,
+        character_id,
+        created_at,
+        updated_at,
+        user_id,
+        Comment (
+          id,
+          character_id,
+          message,
+          like,
+          created_at,
+          Character (
+            id,
+            name,
+            personality,
+            avatar_url,
+            description,
+            prompt_description,
+            User_Character (
+              affinity
+            )
+          ),
+          Comment_Like (
+            user_id,
+            is_active
+          )
+        ),
+        Post_Like (
+          character_id,
+          Character (
+            id,
+            name,
+            personality,
+            avatar_url,
+            description,
+            prompt_description,
+            User_Character (
+              affinity
+            )
+          )
+        ),
+        Post_Hashtag (
+          hashtag_id,
+          Hashtag (
+            id,
+            name
+          )
+        ),
+        Character (
+          name,
+          avatar_url,
+          description,
+          personality,
+          User_Character (
+              affinity
+          )
+        ),
+        User_Profile (
+          display_name
+        )
+      `
+      )
+      .eq("id", postId)
+      .single();
+
+    if (fetchError) {
+      console.error("❌ 업데이트된 포스트 조회 실패:", fetchError.message);
+      throw fetchError;
+    }
+
+    // 데이터 구조 평탄화 (fetchPostsWithCommentsAndLikes와 동일한 형식)
+    const formattedPost = {
+      ...fullPost,
+      Comment:
+        fullPost.Comment?.map((comment) => ({
+          id: comment.id,
+          character_id: comment.character_id,
+          message: comment.message,
+          like: comment.like || 0,
+          created_at: comment.created_at,
+          character: comment.Character?.name || "Unknown",
+          personality: comment.Character?.personality || [],
+          avatar_url: comment.Character?.avatar_url || null,
+          description: comment.Character?.description || "",
+          prompt_description: comment.Character?.prompt_description || "",
+          affinity: comment.Character?.User_Character[0]?.affinity || 0,
+          isLikedByUser:
+            comment.Comment_Like?.some(
+              (like) => like.user_id === userId && like.is_active === true
+            ) || false,
+        })) || [],
+      Post_Like:
+        fullPost.Post_Like?.map((like) => ({
+          character_id: like.character_id,
+          character: like.Character?.name || "Unknown",
+          personality: like.Character?.personality || [],
+          avatar_url: like.Character?.avatar_url || null,
+          description: like.Character?.description || "",
+          prompt_description: like.Character?.prompt_description || "",
+          affinity: like.Character?.User_Character[0]?.affinity || 0,
+        })) || [],
+      Post_Hashtag:
+        fullPost.Post_Hashtag?.map((ph) => ({
+          hashtag_id: ph.hashtag_id,
+          name: ph.Hashtag?.name || "",
+        })) || [],
+    };
+
+    return formattedPost;
+  } catch (error) {
+    console.error("Error in updatePost:", error);
+    throw error;
+  }
 }
 
 // DELETE
@@ -367,6 +535,7 @@ export async function fetchPostsWithCommentsAndLikes(
         ai_generated,
         character_id,
         created_at,
+        updated_at,
         user_id,
         Comment (
           id,

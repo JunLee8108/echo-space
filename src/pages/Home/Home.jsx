@@ -11,6 +11,7 @@ import { Smile, Meh, Frown, Hash } from "lucide-react";
 import { showAffinityToast } from "../../components/utils/toastUtils";
 
 // Modal
+import { useOpenPostModal } from "../../stores/modalStore";
 import ConfirmationModal from "../../components/UI/ConfirmationModal";
 import ProfileModal from "../../components/UI/ProfileModal";
 
@@ -54,6 +55,9 @@ const MOODS = {
 
 const Home = () => {
   const userId = useUserId();
+
+  // edit post를 위한
+  const openPostModal = useOpenPostModal();
 
   // characterStore에서 캐릭터 정보 가져오기
   const characters = useCharacters();
@@ -263,6 +267,22 @@ const Home = () => {
       show: true,
       postId: postId,
     });
+  };
+
+  const handleEditClick = (postId) => {
+    const post = posts.find((p) => p.id === postId);
+    if (post) {
+      // 수정할 포스트 데이터 준비
+      const postToEdit = {
+        id: post.id,
+        content: post.content,
+        mood: post.mood,
+        hashtags: post.Post_Hashtag?.map((ph) => ph.name) || [],
+      };
+
+      openPostModal(postToEdit); // 수정 모드로 모달 열기
+      setOptionsModal({ show: false, postId: null });
+    }
   };
 
   const handleDeleteClick = (postId) => {
@@ -575,7 +595,16 @@ const Home = () => {
                             )}
                           </div>
                           <p className="text-xs text-stone-500">
-                            {formatRelativeTime(post.created_at)}
+                            {formatRelativeTime(
+                              post.updated_at || post.created_at
+                            )}
+                            {post.updated_at &&
+                              post.updated_at !== post.created_at && (
+                                <span className="text-stone-400">
+                                  {" "}
+                                  • edited
+                                </span>
+                              )}
                           </p>
                         </div>
                       </div>
@@ -605,8 +634,32 @@ const Home = () => {
                           optionsModal.postId === post.id && (
                             <div
                               ref={optionsModalRef}
-                              className="absolute top-full mt-2 right-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 py-2 min-w-[160px]"
+                              className="absolute top-full mt-1 right-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 py-2 min-w-[140px]"
                             >
+                              {/* Edit 버튼 추가 */}
+                              {!post.Character && (
+                                <button
+                                  onClick={() => handleEditClick(post.id)}
+                                  className="w-full px-4 py-2 text-left text-sm text-stone-600 hover:bg-stone-50 transition-colors flex items-center space-x-2"
+                                >
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
+                                  </svg>
+                                  <span>Edit</span>
+                                </button>
+                              )}
+
+                              {/* Delete 버튼 */}
                               <button
                                 onClick={() => handleDeleteClick(post.id)}
                                 className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"

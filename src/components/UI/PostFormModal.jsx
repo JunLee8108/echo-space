@@ -3,7 +3,12 @@ import { Smile, Meh, Frown, Hash } from "lucide-react";
 import TipTapEditor from "../utils/TipTapEditor";
 import { searchHashtags } from "../../services/hashtagService";
 import { useCreatePost } from "../hooks/useCreatePost";
-import { useIsPostModalOpen, useClosePostModal } from "../../stores/modalStore";
+import { useUpdatePost } from "../hooks/useUpdatePost";
+import {
+  useIsPostModalOpen,
+  useClosePostModal,
+  useEditingPost,
+} from "../../stores/modalStore";
 import "./PostFormModal.css";
 
 const MOODS = [
@@ -35,8 +40,10 @@ const MOODS = [
 
 const PostFormModal = () => {
   const createPostMutation = useCreatePost();
+  const updatePostMutation = useUpdatePost();
   const isOpen = useIsPostModalOpen();
   const closePostModal = useClosePostModal();
+  const editingPost = useEditingPost();
 
   const [content, setContent] = useState("");
   const [showMoodModal, setShowMoodModal] = useState(false);
@@ -90,6 +97,23 @@ const PostFormModal = () => {
       setInitialTouch(null);
     }
   }, [isOpen]);
+
+  // 수정 모드일 때 초기값 설정
+  useEffect(() => {
+    if (isOpen && editingPost) {
+      setContent(editingPost.content || "");
+
+      // mood 설정
+      if (editingPost.mood && MOODS.find((m) => m.id === editingPost.mood)) {
+        setSelectedMood(MOODS.find((m) => m.id === editingPost.mood));
+      }
+
+      // hashtags 설정
+      if (editingPost.hashtags && editingPost.hashtags.length > 0) {
+        setSelectedHashtags(editingPost.hashtags);
+      }
+    }
+  }, [isOpen, editingPost]);
 
   // Touch 이벤트를 non-passive로 등록
   useEffect(() => {
@@ -318,8 +342,6 @@ const PostFormModal = () => {
     const plainText = content.replace(/<[^>]*>/g, "").trim();
     if (!plainText) return;
 
-    setIsSubmitting(true);
-
     // p태그 안 마지막에 br이 있으면 빈 p태그 추가
     let processedContent = content.replace(
       /<br\s*\/?>\s*<\/p>/g,
@@ -332,15 +354,45 @@ const PostFormModal = () => {
       ""
     );
 
-    const newPost = {
-      id: Date.now(),
+    const postData = {
       content: processedContent,
       mood: selectedMood?.id || null,
       hashtags: selectedHashtags,
-      created_at: new Date().toISOString(),
     };
 
-    createPostMutation.mutate(newPost);
+    if (editingPost) {
+      // 수정 모드 - 변경사항 확인
+      const hasContentChanged = editingPost.content !== processedContent;
+      const hasMoodChanged = editingPost.mood !== postData.mood;
+      const hasHashtagsChanged =
+        JSON.stringify([...(editingPost.hashtags || [])].sort()) !==
+        JSON.stringify([...postData.hashtags].sort());
+
+      // 변경사항이 없으면 그냥 모달 닫기
+      if (!hasContentChanged && !hasMoodChanged && !hasHashtagsChanged) {
+        setIsClosing(true);
+        setTimeout(() => {
+          closePostModal();
+        }, 400);
+        return;
+      }
+
+      // 변경사항이 있을 때만 업데이트
+      setIsSubmitting(true);
+      updatePostMutation.mutate({
+        postId: editingPost.id,
+        ...postData,
+      });
+    } else {
+      // 생성 모드
+      setIsSubmitting(true);
+      const newPost = {
+        id: Date.now(),
+        ...postData,
+        created_at: new Date().toISOString(),
+      };
+      createPostMutation.mutate(newPost);
+    }
 
     setTimeout(() => {
       setIsClosing(true);
@@ -465,7 +517,9 @@ const PostFormModal = () => {
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 pt-3 pb-2 border-b border-stone-100">
-          <h2 className="text-base font-semibold text-stone-900">Post</h2>
+          <h2 className="text-base font-semibold text-stone-900">
+            {editingPost ? "Edit Post" : "Post"}
+          </h2>
           <button
             onClick={handleModalClose}
             className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg transition-colors"
@@ -848,6 +902,8 @@ const PostFormModal = () => {
                         ></path>
                       </svg>
                     </div>
+                  ) : editingPost ? (
+                    "Update"
                   ) : (
                     "Post"
                   )}

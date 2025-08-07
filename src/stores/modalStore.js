@@ -4,14 +4,16 @@ const useModalStore = create((set, get) => ({
   // States
   isPostModalOpen: false,
   scrollPosition: 0,
+  editingPost: null, // 수정 중인 포스트 데이터
 
   // Actions
-  openPostModal: () => {
+  openPostModal: (postToEdit = null) => {
     const currentScrollY = window.scrollY;
 
     set({
       isPostModalOpen: true,
       scrollPosition: currentScrollY,
+      editingPost: postToEdit, // 수정할 포스트 데이터 저장
     });
 
     // Body scroll lock
@@ -38,6 +40,7 @@ const useModalStore = create((set, get) => ({
     set({
       isPostModalOpen: false,
       scrollPosition: 0,
+      editingPost: null, // 수정 데이터 초기화
     });
   },
 
@@ -45,6 +48,7 @@ const useModalStore = create((set, get) => ({
   cleanup: () => {
     document.body.classList.remove("modal-open");
     document.body.style.top = "";
+    set({ editingPost: null });
   },
 }));
 
@@ -56,5 +60,6 @@ export const useOpenPostModal = () =>
 export const useClosePostModal = () =>
   useModalStore((state) => state.closePostModal);
 export const useModalCleanup = () => useModalStore((state) => state.cleanup);
+export const useEditingPost = () => useModalStore((state) => state.editingPost);
 
 export default useModalStore;

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -88,7 +89,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
       Highlight.configure({
         multicolor: true,
       }),
-
       TextStyle,
     ],
     content: content,
@@ -96,6 +96,13 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
       onChange(editor.getHTML());
     },
   });
+
+  // content prop이 변경될 때 에디터 내용 업데이트
+  useEffect(() => {
+    if (editor && content !== undefined && content !== editor.getHTML()) {
+      editor.commands.setContent(content);
+    }
+  }, [content, editor]);
 
   const addLink = useCallback(() => {
     if (linkUrl) {
