@@ -111,11 +111,7 @@ const CustomImage = BaseImage.extend({
       ...this.parent?.(),
       inline: true,
       allowBase64: true,
-      HTMLAttributes: {
-        // 이미지에 user-select: none 추가하여 텍스트 선택 방지
-        style:
-          "user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;",
-      },
+      HTMLAttributes: {},
     };
   },
 });
@@ -253,7 +249,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
               // 에디터에 base64 이미지 삽입 (기본 크기: 모바일, Tailwind 클래스 사용)
               editor
                 .chain()
-                .focus()
                 .insertContent({
                   type: "image",
                   attrs: {
@@ -299,7 +294,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
             // 에디터에 base64 이미지 삽입 (기본 크기: 모바일, Tailwind 클래스 사용)
             editor
               .chain()
-              .focus()
               .insertContent({
                 type: "image",
                 attrs: {
@@ -323,18 +317,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
         if (target.tagName === "IMG" && target.src) {
           event.preventDefault();
           event.stopPropagation();
-
-          // 모바일에서 포커스 제거 (키보드 방지)
-          if (editor) {
-            editor.commands.blur();
-            // 현재 selection 제거
-            editor.commands.setTextSelection(0);
-          }
-
-          // contenteditable 임시 비활성화
-          const editorElement = editor.view.dom;
-          const originalContentEditable = editorElement.contentEditable;
-          editorElement.contentEditable = "false";
 
           // 더블클릭 방지를 위한 디바운스
           if (imageClickTimeoutRef.current) {
@@ -364,14 +346,7 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
 
             setCurrentImageSize(currentPresetId);
             setShowImageSizeSheet(true);
-
-            // 바텀시트가 열린 후 contenteditable 복원
-            setTimeout(() => {
-              editorElement.contentEditable = originalContentEditable;
-            }, 100);
           }, 200);
-
-          return true; // 이벤트 처리 완료
         }
       },
     },
@@ -410,7 +385,13 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
   // 바텀시트 닫기 핸들러
   const handleCloseImageSheet = useCallback(() => {
     setIsSheetClosing(true);
-  }, [editor]);
+    setTimeout(() => {
+      setShowImageSizeSheet(false);
+      setSelectedImage(null);
+      setCurrentImageSize(null);
+      setIsSheetClosing(false);
+    }, 300);
+  }, []);
 
   // 이미지 크기 적용 - Tailwind 클래스 사용
   const applyImageSize = useCallback(
@@ -441,7 +422,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
         // 트랜잭션으로 속성 업데이트
         editor
           .chain()
-          .focus()
           .updateAttributes("image", {
             class: preset.className,
             "data-size": preset.id,
@@ -755,7 +735,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
               isSheetClosing ? "animate-fadeOut" : "animate-fadeIn"
             }`}
             onClick={handleCloseImageSheet}
-            onTouchStart={(e) => e.stopPropagation()} // 모바일 터치 이벤트 차단
           />
 
           {/* Bottom Sheet */}
@@ -850,28 +829,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
                   </button>
                 );
               })}
-            </div>
-
-            {/* Visual Preview with Tailwind classes */}
-            <div className="px-6 pb-6 pt-2">
-              <div className="p-3 bg-stone-50 rounded-lg">
-                <div className="text-xs text-stone-500 mb-2">미리보기</div>
-                <div className="flex justify-center">
-                  <div
-                    className={`bg-stone-200 rounded transition-all duration-300 ${
-                      currentImageSize === "thumbnail"
-                        ? "w-[60px]"
-                        : currentImageSize === "mobile"
-                        ? "w-[120px]"
-                        : currentImageSize === "tablet"
-                        ? "w-[180px]"
-                        : currentImageSize === "full"
-                        ? "w-[240px]"
-                        : "w-[150px]"
-                    } h-10`}
-                  />
-                </div>
-              </div>
             </div>
           </div>
         </div>

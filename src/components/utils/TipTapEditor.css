@@ -394,9 +394,6 @@
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
-    pointer-events: auto;
-    cursor: pointer;
-    touch-action: manipulation;
   }
 
   /* 바텀시트 모바일 최적화 */
