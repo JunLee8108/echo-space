@@ -403,6 +403,19 @@
   .bottom-sheet-content {
     -webkit-overflow-scrolling: touch;
   }
+
+  .image-size-sheet button {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  /* 바텀시트가 열릴 때 에디터 포커스 비활성화 */
+  .ProseMirror:has(+ .image-size-sheet) {
+    pointer-events: none;
+  }
 }
 
 /* 이미지 크기 클래스 - Important로 우선순위 확보 */
