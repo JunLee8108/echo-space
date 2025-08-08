@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router"; // 상단에 import 추가
 import {
   useInfiniteQuery,
   useMutation,
@@ -11,7 +12,6 @@ import { Smile, Meh, Frown, Hash } from "lucide-react";
 import { showAffinityToast } from "../../components/utils/toastUtils";
 
 // Modal
-import { useOpenPostModal } from "../../stores/modalStore";
 import ConfirmationModal from "../../components/UI/ConfirmationModal";
 import ProfileModal from "../../components/UI/ProfileModal";
 
@@ -56,8 +56,7 @@ const MOODS = {
 const Home = () => {
   const userId = useUserId();
 
-  // edit post를 위한
-  const openPostModal = useOpenPostModal();
+  const navigate = useNavigate(); // 컴포넌트 내부에 추가
 
   // characterStore에서 캐릭터 정보 가져오기
   const characters = useCharacters();
@@ -272,15 +271,18 @@ const Home = () => {
   const handleEditClick = (postId) => {
     const post = posts.find((p) => p.id === postId);
     if (post) {
-      // 수정할 포스트 데이터 준비
-      const postToEdit = {
-        id: post.id,
-        content: post.content,
-        mood: post.mood,
-        hashtags: post.Post_Hashtag?.map((ph) => ph.name) || [],
-      };
+      // 수정 페이지로 이동하면서 포스트 데이터 전달
+      navigate(`/post/edit/${postId}`, {
+        state: {
+          post: {
+            id: post.id,
+            content: post.content,
+            mood: post.mood,
+            Post_Hashtag: post.Post_Hashtag || [], // Post.jsx에서 해시태그 추출하므로 그대로 전달
+          },
+        },
+      });
 
-      openPostModal(postToEdit); // 수정 모드로 모달 열기
       setOptionsModal({ show: false, postId: null });
     }
   };

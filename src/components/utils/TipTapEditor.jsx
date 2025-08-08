@@ -1,11 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
-import { Image as BaseImage } from "@tiptap/extension-image";
+import Image from "@tiptap/extension-image";
 import Highlight from "@tiptap/extension-highlight";
 import { Color } from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
@@ -13,23 +12,13 @@ import {
   Bold,
   Underline as UnderlineIcon,
   Strikethrough,
-  List,
-  ListOrdered,
   Quote,
-  Link as LinkIcon,
-  Unlink,
   Image as ImageIcon,
   Highlighter,
   Heading1,
   Heading2,
   Heading3,
   Palette,
-  Smartphone,
-  Tablet,
-  Monitor,
-  Maximize,
-  Square,
-  X,
 } from "lucide-react";
 import { useState, useCallback } from "react";
 import "./TipTapEditor.css";
@@ -52,70 +41,6 @@ const MenuButton = ({ onClick, isActive, disabled, title, children }) => (
 
 const Divider = () => <div className="w-px h-6 bg-stone-300 mx-1" />;
 
-// Custom Image Extension with additional attributes
-const CustomImage = BaseImage.extend({
-  addAttributes() {
-    return {
-      ...this.parent?.(),
-      src: {
-        default: null,
-      },
-      alt: {
-        default: null,
-      },
-      title: {
-        default: null,
-      },
-      class: {
-        default: "w-1/2 max-w-[50%] h-auto rounded-lg",
-        parseHTML: (element) => element.getAttribute("class"),
-        renderHTML: (attributes) => {
-          if (!attributes.class) {
-            return {};
-          }
-          return {
-            class: attributes.class,
-          };
-        },
-      },
-      "data-size": {
-        default: "mobile",
-        parseHTML: (element) => element.getAttribute("data-size"),
-        renderHTML: (attributes) => {
-          if (!attributes["data-size"]) {
-            return {};
-          }
-          return {
-            "data-size": attributes["data-size"],
-          };
-        },
-      },
-      style: {
-        default: null,
-        parseHTML: (element) => element.getAttribute("style"),
-        renderHTML: (attributes) => {
-          if (!attributes.style) {
-            return {};
-          }
-          return {
-            style: attributes.style,
-          };
-        },
-      },
-    };
-  },
-
-  // Configure options
-  addOptions() {
-    return {
-      ...this.parent?.(),
-      inline: true,
-      allowBase64: true,
-      HTMLAttributes: {},
-    };
-  },
-});
-
 // 색상 팔레트
 const COLORS = [
   { name: "Default", color: "var(--color-stone-700)" },
@@ -129,63 +54,8 @@ const COLORS = [
   { name: "White", color: "#ffffff" },
 ];
 
-// 이미지 크기 프리셋 - Tailwind 클래스 사용
-const IMAGE_SIZE_PRESETS = [
-  {
-    id: "thumbnail",
-    label: "썸네일",
-    icon: Square,
-    description: "매우 작게",
-    className: "w-[150px] max-w-[150px] h-auto rounded-lg",
-    detectClass: "w-[150px]",
-  },
-  {
-    id: "mobile",
-    label: "모바일",
-    icon: Smartphone,
-    description: "화면의 50%",
-    className: "w-1/2 max-w-[50%] h-auto rounded-lg",
-    detectClass: "w-1/2",
-  },
-  {
-    id: "tablet",
-    label: "태블릿",
-    icon: Tablet,
-    description: "화면의 75%",
-    className: "w-3/4 max-w-[75%] h-auto rounded-lg",
-    detectClass: "w-3/4",
-  },
-  {
-    id: "full",
-    label: "전체 너비",
-    icon: Monitor,
-    description: "화면에 꽉 차게",
-    className: "w-full max-w-full h-auto rounded-lg",
-    detectClass: "w-full",
-  },
-  {
-    id: "original",
-    label: "원본 크기",
-    icon: Maximize,
-    description: "원래 이미지 크기",
-    className: "w-auto max-w-full h-auto rounded-lg",
-    detectClass: "w-auto",
-  },
-];
-
 const TipTapEditor = ({ content, onChange, placeholder }) => {
-  const [linkUrl, setLinkUrl] = useState("");
-  const [showLinkModal, setShowLinkModal] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
-
-  // 이미지 리사이즈 관련 상태
-  const [showImageSizeSheet, setShowImageSizeSheet] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [currentImageSize, setCurrentImageSize] = useState(null);
-  const [isSheetClosing, setIsSheetClosing] = useState(false);
-
-  const imageClickTimeoutRef = useRef(null);
-  const bottomSheetRef = useRef(null);
 
   const editor = useEditor({
     extensions: [
@@ -195,17 +65,17 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
         },
       }),
       Underline,
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: {
-          class: "text-blue-600 underline hover:text-blue-800",
-        },
-      }),
       Color,
       Placeholder.configure({
         placeholder: placeholder || "Write something amazing...",
       }),
-      CustomImage,
+      Image.configure({
+        inline: true,
+        allowBase64: true, // Base64 허용
+        HTMLAttributes: {
+          class: "max-w-full h-auto rounded-lg",
+        },
+      }),
       Highlight.configure({
         multicolor: true,
       }),
@@ -246,18 +116,8 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
                 return;
               }
 
-              // 에디터에 base64 이미지 삽입 (기본 크기: 모바일, Tailwind 클래스 사용)
-              editor
-                .chain()
-                .insertContent({
-                  type: "image",
-                  attrs: {
-                    src: base64String,
-                    class: "w-1/2 max-w-[50%] h-auto rounded-lg",
-                    "data-size": "mobile",
-                  },
-                })
-                .run();
+              // 에디터에 base64 이미지 삽입
+              editor.chain().setImage({ src: base64String }).run();
             };
             reader.readAsDataURL(file);
             return true;
@@ -291,63 +151,14 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
               return;
             }
 
-            // 에디터에 base64 이미지 삽입 (기본 크기: 모바일, Tailwind 클래스 사용)
-            editor
-              .chain()
-              .insertContent({
-                type: "image",
-                attrs: {
-                  src: base64String,
-                  class: "w-1/2 max-w-[50%] h-auto rounded-lg",
-                  "data-size": "mobile",
-                },
-              })
-              .run();
+            // 에디터에 base64 이미지 삽입
+            editor.chain().setImage({ src: base64String }).run();
           };
           reader.readAsDataURL(imageFile);
           return true;
         }
 
         return false;
-      },
-      handleClick: (view, pos, event) => {
-        const target = event.target;
-
-        // 이미지 클릭 감지
-        if (target.tagName === "IMG" && target.src) {
-          event.preventDefault();
-          event.stopPropagation();
-
-          // 더블클릭 방지를 위한 디바운스
-          if (imageClickTimeoutRef.current) {
-            clearTimeout(imageClickTimeoutRef.current);
-          }
-
-          imageClickTimeoutRef.current = setTimeout(() => {
-            setSelectedImage(target);
-
-            // 현재 이미지 크기 감지 (클래스 기반)
-            const imgClass = target.className || "";
-            let currentPresetId = "mobile"; // 기본값
-
-            // 클래스에서 현재 크기 찾기
-            for (const preset of IMAGE_SIZE_PRESETS) {
-              if (imgClass.includes(preset.detectClass)) {
-                currentPresetId = preset.id;
-                break;
-              }
-            }
-
-            // data-size 속성도 확인 (폴백)
-            const dataSize = target.getAttribute("data-size");
-            if (dataSize) {
-              currentPresetId = dataSize;
-            }
-
-            setCurrentImageSize(currentPresetId);
-            setShowImageSizeSheet(true);
-          }, 200);
-        }
       },
     },
   });
@@ -358,103 +169,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
       editor.commands.setContent(content);
     }
   }, [content, editor]);
-
-  // 바텀시트 외부 클릭 감지
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (
-        showImageSizeSheet &&
-        bottomSheetRef.current &&
-        !bottomSheetRef.current.contains(e.target)
-      ) {
-        handleCloseImageSheet();
-      }
-    };
-
-    if (showImageSizeSheet) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("touchstart", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
-    };
-  }, [showImageSizeSheet]);
-
-  // 바텀시트 닫기 핸들러
-  const handleCloseImageSheet = useCallback(() => {
-    setIsSheetClosing(true);
-    setTimeout(() => {
-      setShowImageSizeSheet(false);
-      setSelectedImage(null);
-      setCurrentImageSize(null);
-      setIsSheetClosing(false);
-    }, 300);
-  }, []);
-
-  // 이미지 크기 적용 - Tailwind 클래스 사용
-  const applyImageSize = useCallback(
-    (preset) => {
-      if (!selectedImage || !editor) return;
-
-      // DOM 요소 직접 업데이트
-      selectedImage.className = preset.className;
-      selectedImage.setAttribute("data-size", preset.id);
-
-      // TipTap 에디터 업데이트
-      const { state } = editor;
-      const { doc } = state;
-      let imagePos = null;
-
-      // 이미지 노드 찾기
-      doc.descendants((node, pos) => {
-        if (
-          node.type.name === "image" &&
-          node.attrs.src === selectedImage.src
-        ) {
-          imagePos = pos;
-          return false;
-        }
-      });
-
-      if (imagePos !== null) {
-        // 트랜잭션으로 속성 업데이트
-        editor
-          .chain()
-          .updateAttributes("image", {
-            class: preset.className,
-            "data-size": preset.id,
-          })
-          .run();
-      }
-
-      // HTML 직접 가져오기
-      const updatedHtml = editor.getHTML();
-      onChange(updatedHtml);
-
-      // 바텀시트 닫기
-      handleCloseImageSheet();
-    },
-    [selectedImage, editor, onChange, handleCloseImageSheet]
-  );
-
-  const addLink = useCallback(() => {
-    if (linkUrl) {
-      editor
-        .chain()
-        .focus()
-        .extendMarkRange("link")
-        .setLink({ href: linkUrl })
-        .run();
-      setShowLinkModal(false);
-      setLinkUrl("");
-    }
-  }, [editor, linkUrl]);
-
-  const removeLink = useCallback(() => {
-    editor.chain().focus().unsetLink().run();
-  }, [editor]);
 
   const addImage = useCallback(() => {
     const input = document.createElement("input");
@@ -482,19 +196,8 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
             return;
           }
 
-          // 에디터에 base64 이미지 삽입 (기본 크기: 모바일, Tailwind 클래스 사용)
-          editor
-            .chain()
-            .focus()
-            .insertContent({
-              type: "image",
-              attrs: {
-                src: base64String,
-                class: "w-1/2 max-w-[50%] h-auto rounded-lg",
-                "data-size": "mobile",
-              },
-            })
-            .run();
+          // 에디터에 base64 이미지 삽입
+          editor.chain().setImage({ src: base64String }).run();
         };
         reader.readAsDataURL(file);
       }
@@ -638,201 +341,16 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
 
         <Divider />
 
-        {/* Lists */}
+        {/* Images */}
         <div className="flex items-center">
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            isActive={editor.isActive("bulletList")}
-            title="Bullet List"
-          >
-            <List className="w-4 h-4" />
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            isActive={editor.isActive("orderedList")}
-            title="Numbered List"
-          >
-            <ListOrdered className="w-4 h-4" />
-          </MenuButton>
-        </div>
-
-        <Divider />
-
-        {/* Links & Images */}
-        <div className="flex items-center">
-          <MenuButton
-            onClick={() => setShowLinkModal(true)}
-            isActive={editor.isActive("link")}
-            title="Add Link"
-          >
-            <LinkIcon className="w-4 h-4" />
-          </MenuButton>
-          {editor.isActive("link") && (
-            <MenuButton onClick={removeLink} title="Remove Link">
-              <Unlink className="w-4 h-4" />
-            </MenuButton>
-          )}
           <MenuButton onClick={addImage} title="Add Image">
             <ImageIcon className="w-4 h-4" />
           </MenuButton>
         </div>
-
-        <Divider />
       </div>
 
       {/* Editor Content */}
       <EditorContent editor={editor} className="flex-1 overflow-y-auto prose" />
-
-      {/* Link Modal */}
-      {showLinkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setShowLinkModal(false)}
-          />
-          <div className="relative bg-white rounded-lg shadow-xl p-6 w-96">
-            <h3 className="text-lg font-semibold mb-4">Add Link</h3>
-            <input
-              type="url"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="https://example.com"
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addLink();
-                }
-              }}
-            />
-            <div className="flex justify-end space-x-2 mt-4">
-              <button
-                type="button"
-                onClick={() => setShowLinkModal(false)}
-                className="px-4 py-2 text-stone-600 hover:bg-stone-100 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={addLink}
-                className="px-4 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors"
-              >
-                Add Link
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Image Size Bottom Sheet */}
-      {showImageSizeSheet && (
-        <div className="fixed inset-0 z-50">
-          {/* Backdrop */}
-          <div
-            className={`absolute inset-0 bg-black/50 ${
-              isSheetClosing ? "animate-fadeOut" : "animate-fadeIn"
-            }`}
-            onClick={handleCloseImageSheet}
-          />
-
-          {/* Bottom Sheet */}
-          <div
-            ref={bottomSheetRef}
-            className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl ${
-              isSheetClosing
-                ? "animate-image-sheet-slideDown"
-                : "animate-image-sheet-slideUp"
-            }`}
-            style={{ maxHeight: "70vh" }}
-          >
-            {/* Handle bar */}
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-12 h-1 bg-stone-300 rounded-full" />
-            </div>
-
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 pb-4 border-b border-stone-100">
-              <h3 className="text-lg font-semibold text-stone-900">
-                이미지 크기 선택
-              </h3>
-              <button
-                type="button"
-                onClick={handleCloseImageSheet}
-                className="p-2 hover:bg-stone-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-stone-500" />
-              </button>
-            </div>
-
-            {/* Size Options */}
-            <div
-              className="p-4 space-y-2 overflow-y-auto"
-              style={{ maxHeight: "calc(70vh - 100px)" }}
-            >
-              {IMAGE_SIZE_PRESETS.map((preset) => {
-                const Icon = preset.icon;
-                const isSelected = currentImageSize === preset.id;
-
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => applyImageSize(preset)}
-                    className={`w-full flex items-center justify-between p-4 rounded-xl transition-all ${
-                      isSelected
-                        ? "bg-stone-100 border-2 border-stone-900"
-                        : "bg-white border-2 border-stone-200 hover:bg-stone-50 active:bg-stone-100"
-                    }`}
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div
-                        className={`p-2 rounded-lg ${
-                          isSelected
-                            ? "bg-stone-900 text-white"
-                            : "bg-stone-100 text-stone-600"
-                        }`}
-                      >
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div className="text-left">
-                        <div
-                          className={`font-medium ${
-                            isSelected ? "text-stone-900" : "text-stone-700"
-                          }`}
-                        >
-                          {preset.label}
-                        </div>
-                        <div className="text-sm text-stone-500">
-                          {preset.description}
-                        </div>
-                      </div>
-                    </div>
-                    {isSelected && (
-                      <div className="w-6 h-6 bg-stone-900 rounded-full flex items-center justify-center">
-                        <svg
-                          className="w-4 h-4 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Click outside to close color picker */}
       {showColorPicker && (

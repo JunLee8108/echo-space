@@ -1,15 +1,22 @@
 import { useNavigate, useLocation } from "react-router";
 import { useRef } from "react";
-import { useOpenPostModal } from "../../stores/modalStore";
 
 const BottomNavbar = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const openPostModal = useOpenPostModal();
   const touchHandledRef = useRef(false);
 
-  const handleAction = (action) => {
-    if (!action) return;
+  const handleNavigation = (path) => {
+    // 이미 같은 경로에 있으면 무시
+    console.log(pathname);
+    console.log(path);
+    if (pathname === path) return;
+
+    navigate(path);
+  };
+
+  const handleAction = (tab) => {
+    if (!tab) return;
 
     // 이미 터치로 처리했으면 클릭 이벤트 무시
     if (touchHandledRef.current) {
@@ -17,15 +24,21 @@ const BottomNavbar = () => {
       return;
     }
 
-    action();
+    if (tab.onClick) {
+      tab.onClick();
+    } else if (tab.path) {
+      handleNavigation(tab.path);
+    }
   };
 
-  const handleTouchEnd = (e, action) => {
+  const handleTouchEnd = (e, tab) => {
     e.preventDefault(); // 클릭 이벤트 발생 방지
     touchHandledRef.current = true;
 
-    if (action) {
-      action();
+    if (tab.onClick) {
+      tab.onClick();
+    } else if (tab.path) {
+      handleNavigation(tab.path);
     }
   };
 
@@ -70,6 +83,8 @@ const BottomNavbar = () => {
     },
     {
       id: "add",
+      path: "/post/new",
+      special: true,
       icon: (
         <svg
           className="w-4 h-4 pointer-events-none"
@@ -85,8 +100,6 @@ const BottomNavbar = () => {
           />
         </svg>
       ),
-      special: true,
-      onClick: openPostModal,
     },
     {
       id: "profile",
@@ -133,17 +146,11 @@ const BottomNavbar = () => {
                   : pathname.startsWith(tab.path)
                 : false;
 
-              const action = tab.onClick
-                ? tab.onClick
-                : tab.path
-                ? () => navigate(tab.path)
-                : null;
-
               return (
                 <button
                   key={tab.id}
-                  onTouchEnd={(e) => handleTouchEnd(e, action)}
-                  onClick={() => handleAction(action)}
+                  onTouchEnd={(e) => handleTouchEnd(e, tab)}
+                  onClick={() => handleAction(tab)}
                   className={`navbar-button relative p-4 rounded-xl transition-all duration-200
                     ${
                       tab.special

@@ -4,11 +4,10 @@ import { Toaster } from "react-hot-toast";
 import ScrollToTop from "./components/utils/ScrollToTop";
 import Header from "./components/layout/Header";
 import BottomNavbar from "./components/layout/BottomNavbar";
-import PostFormModal from "./components/UI/PostFormModal";
 import PWAInstallPrompt from "./components/utils/PWAInstallPrompt";
-import "./components/UI/PostFormModal.css";
 import Home from "./pages/Home/Home";
 import Profile from "./pages/Profile/Profile";
+import Post from "./pages/Post/Post";
 import AuthForm from "./pages/Home/AuthForm";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -109,15 +108,14 @@ function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/post/new" element={<Post />} />
+                <Route path="/post/edit/:id" element={<Post />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
 
             {/* Bottom Navigation */}
             <BottomNavbar />
-
-            {/* Post Form Modal */}
-            <PostFormModal />
 
             {/* PWA Install Prompt - Add this component */}
             {/* <PWAInstallPrompt /> */}

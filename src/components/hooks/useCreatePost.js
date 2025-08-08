@@ -283,7 +283,6 @@
 // };
 
 // hooks/useCreatePost.js
-import { useNavigate, useLocation } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCharacterActions } from "../../stores/characterStore";
 import { useUserId } from "../../stores/userStore";
@@ -300,9 +299,6 @@ import { showAffinityToast } from "../utils/toastUtils";
 const POSTS_PER_PAGE = 5;
 
 export const useCreatePost = (options = {}) => {
-  const navigate = useNavigate();
-  const location = useLocation();
-
   const queryClient = useQueryClient();
   const userId = useUserId();
   const { getRandomCharacters, updateCharacterAffinities } =
@@ -569,13 +565,6 @@ export const useCreatePost = (options = {}) => {
       if (options.onSuccess) {
         options.onSuccess(data);
       }
-
-      // 다른 페이지에서 작성한 경우 Home으로 이동
-      if (location.pathname !== "/") {
-        navigate("/");
-      }
-
-      window.scrollTo({ top: 0, behavior: "smooth" });
     },
 
     onError: (error, variables, context) => {
