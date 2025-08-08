@@ -410,21 +410,6 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
   // 바텀시트 닫기 핸들러
   const handleCloseImageSheet = useCallback(() => {
     setIsSheetClosing(true);
-
-    // 바텀시트 닫을 때 에디터 포커스 복원 (데스크톱용)
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-    setTimeout(() => {
-      setShowImageSizeSheet(false);
-      setSelectedImage(null);
-      setCurrentImageSize(null);
-      setIsSheetClosing(false);
-
-      // 데스크톱에서만 포커스 복원
-      if (!isMobile && editor) {
-        editor.commands.focus();
-      }
-    }, 300);
   }, [editor]);
 
   // 이미지 크기 적용 - Tailwind 클래스 사용
