@@ -763,13 +763,12 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
 
       {/* Image Size Bottom Sheet */}
       {showImageSizeSheet && (
-        <div className="fixed inset-0 z-[9999]" style={{ zIndex: 9999 }}>
+        <div className="fixed inset-0 z-50">
           {/* Backdrop */}
           <div
             className={`absolute inset-0 bg-black/50 ${
               isSheetClosing ? "animate-fadeOut" : "animate-fadeIn"
             }`}
-            style={{ zIndex: 9999 }}
             onClick={handleCloseImageSheet}
             onTouchStart={(e) => e.stopPropagation()} // 모바일 터치 이벤트 차단
           />
@@ -782,8 +781,7 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
                 ? "animate-image-sheet-slideDown"
                 : "animate-image-sheet-slideUp"
             }`}
-            style={{ maxHeight: "70vh", zIndex: 10000 }}
-            onTouchStart={(e) => e.stopPropagation()} // 터치 이벤트 전파 차단
+            style={{ maxHeight: "70vh" }}
           >
             {/* Handle bar */}
             <div className="flex justify-center pt-3 pb-2">
@@ -797,22 +795,8 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
               </h3>
               <button
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                    e.currentTarget.blur();
-                  }
-                  handleCloseImageSheet();
-                }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                    e.currentTarget.blur();
-                  }
-                }}
+                onClick={handleCloseImageSheet}
                 className="p-2 hover:bg-stone-100 rounded-lg transition-colors"
-                style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 <X className="w-5 h-5 text-stone-500" />
               </button>
@@ -831,33 +815,12 @@ const TipTapEditor = ({ content, onChange, placeholder }) => {
                   <button
                     key={preset.id}
                     type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      // 모바일에서 포커스 방지
-                      if (
-                        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-                      ) {
-                        e.currentTarget.blur();
-                      }
-                      applyImageSize(preset);
-                    }}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      // 터치 이벤트에서 직접 처리
-                      if (
-                        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-                      ) {
-                        e.currentTarget.blur();
-                        applyImageSize(preset);
-                      }
-                    }}
+                    onClick={() => applyImageSize(preset)}
                     className={`w-full flex items-center justify-between p-4 rounded-xl transition-all ${
                       isSelected
                         ? "bg-stone-100 border-2 border-stone-900"
                         : "bg-white border-2 border-stone-200 hover:bg-stone-50 active:bg-stone-100"
                     }`}
-                    style={{ WebkitTapHighlightColor: "transparent" }}
                   >
                     <div className="flex items-center space-x-4">
                       <div
