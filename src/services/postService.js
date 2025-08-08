@@ -1,6 +1,7 @@
 import supabase from "./supabaseClient";
 import { createOrGetHashtags, attachHashtagsToPost } from "./hashtagService";
 import { updateCharacterAffinity } from "./characterService";
+import { deletePostImages, cleanupUnusedImages } from "./imageService";
 
 // 게시글 + 댓글 + 좋아요 캐릭터 + 해시태그 저장 (SAVE)
 export async function savePostWithCommentsAndLikes(
@@ -197,23 +198,43 @@ export async function updatePost(postId, { content, mood, hashtags, userId }) {
   if (!postId) throw new Error("post_id가 없습니다.");
 
   try {
-    // 1. 포스트 내용 업데이트
+    // 1. 기존 포스트 내용 가져오기 (이미지 정리를 위해)
+    const { data: oldPost, error: fetchError } = await supabase
+      .from("Post")
+      .select("content")
+      .eq("id", postId)
+      .eq("user_id", userId)
+      .single();
+
+    if (fetchError) {
+      console.error("❌ 기존 포스트 조회 실패:", fetchError.message);
+      throw fetchError;
+    }
+
+    // 2. 포스트 내용 업데이트
     const { error: updateError } = await supabase
       .from("Post")
       .update({
         content,
         mood: mood || null,
-        updated_at: new Date().toISOString(), // updated_at 필드가 있다면
+        updated_at: new Date().toISOString(),
       })
       .eq("id", postId)
-      .eq("user_id", userId); // 본인 포스트만 수정 가능
+      .eq("user_id", userId);
 
     if (updateError) {
       console.error("❌ Post 업데이트 실패:", updateError.message);
       throw updateError;
     }
 
-    // 2. 기존 해시태그 연결 삭제
+    // 3. 사용하지 않는 이미지 정리 (비동기로 처리)
+    if (oldPost?.content && oldPost.content !== content) {
+      cleanupUnusedImages(oldPost.content, content, userId)
+        .then(() => console.log("✅ 사용하지 않는 이미지 정리 완료"))
+        .catch((error) => console.error("⚠️ 이미지 정리 중 오류:", error));
+    }
+
+    // 4. 기존 해시태그 연결 삭제
     const { error: deleteHashtagError } = await supabase
       .from("Post_Hashtag")
       .delete()
@@ -224,7 +245,7 @@ export async function updatePost(postId, { content, mood, hashtags, userId }) {
       throw deleteHashtagError;
     }
 
-    // 3. 새로운 해시태그 추가
+    // 5. 새로운 해시태그 추가
     if (hashtags && hashtags.length > 0) {
       try {
         const hashtagIds = await createOrGetHashtags(hashtags);
@@ -235,8 +256,8 @@ export async function updatePost(postId, { content, mood, hashtags, userId }) {
       }
     }
 
-    // 4. 업데이트된 전체 데이터를 다시 조회하여 반환
-    const { data: fullPost, error: fetchError } = await supabase
+    // 6. 업데이트된 전체 데이터를 다시 조회하여 반환
+    const { data: fullPost, error: fetchError2 } = await supabase
       .from("Post")
       .select(
         `
@@ -309,12 +330,12 @@ export async function updatePost(postId, { content, mood, hashtags, userId }) {
       .eq("id", postId)
       .single();
 
-    if (fetchError) {
-      console.error("❌ 업데이트된 포스트 조회 실패:", fetchError.message);
-      throw fetchError;
+    if (fetchError2) {
+      console.error("❌ 업데이트된 포스트 조회 실패:", fetchError2.message);
+      throw fetchError2;
     }
 
-    // 데이터 구조 평탄화 (fetchPostsWithCommentsAndLikes와 동일한 형식)
+    // 데이터 구조 평탄화
     const formattedPost = {
       ...fullPost,
       Comment:
@@ -363,14 +384,48 @@ export async function updatePost(postId, { content, mood, hashtags, userId }) {
 export async function deletePostById(postId, uid) {
   if (!uid) throw new Error("user_id가 없습니다.");
 
-  const { error } = await supabase
-    .from("Post")
-    .delete()
-    .eq("id", postId)
-    .eq("user_id", uid);
+  try {
+    // 1. 삭제하기 전에 포스트 내용을 먼저 가져오기 (이미지 URL 추출을 위해)
+    const { data: postData, error: fetchError } = await supabase
+      .from("Post")
+      .select("content")
+      .eq("id", postId)
+      .eq("user_id", uid)
+      .single();
 
-  if (error) {
-    console.error("❌ Post 삭제 실패:", error.message);
+    if (fetchError) {
+      console.error("❌ Post 조회 실패:", fetchError.message);
+      throw fetchError;
+    }
+
+    // 2. 포스트가 존재하고 content가 있는 경우
+    if (postData && postData.content) {
+      try {
+        // content에서 Supabase Storage URL 추출 및 삭제
+        await deletePostImages(postData.content, uid);
+        console.log("✅ 포스트 이미지 삭제 완료");
+      } catch (imageError) {
+        // 이미지 삭제 실패해도 포스트는 삭제 진행 (선택사항)
+        console.error("⚠️ 이미지 삭제 중 오류 발생:", imageError);
+        // 완전히 실패하게 하려면 throw imageError;
+      }
+    }
+
+    // 3. 포스트 삭제 (CASCADE로 Comment, Post_Like, Post_Hashtag도 자동 삭제)
+    const { error } = await supabase
+      .from("Post")
+      .delete()
+      .eq("id", postId)
+      .eq("user_id", uid);
+
+    if (error) {
+      console.error("❌ Post 삭제 실패:", error.message);
+      throw error;
+    }
+
+    console.log(`✅ Post ${postId} 삭제 완료`);
+  } catch (error) {
+    console.error("❌ deletePostById 실패:", error);
     throw error;
   }
 }

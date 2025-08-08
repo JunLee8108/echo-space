@@ -758,7 +758,7 @@ const Home = () => {
                                   />
                                 ) : null}
                                 <div
-                                  className="w-10 h-10 bg-gradient-to-br from-stone-500 to-stone-700 rounded-full flex items-center justify-center flex-shrink-0"
+                                  className="w-9 h-9 bg-gradient-to-br from-stone-500 to-stone-700 rounded-full flex items-center justify-center flex-shrink-0"
                                   style={{
                                     display: c.avatar_url ? "none" : "flex",
                                   }}
@@ -903,7 +903,7 @@ const Home = () => {
                                       <img
                                         src={like.avatar_url}
                                         alt={like.character}
-                                        className="w-10 h-10 cursor-pointer rounded-full object-cover flex-shrink-0"
+                                        className="w-9 h-9 cursor-pointer rounded-full object-cover flex-shrink-0"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           setProfileModal({
