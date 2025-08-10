@@ -186,8 +186,6 @@ const Post = () => {
       ""
     );
 
-    console.log(processedContent);
-
     const postData = {
       content: processedContent,
       mood: selectedMood?.id || null,
@@ -290,15 +288,6 @@ const Post = () => {
     hashtagInputRef.current?.focus();
   };
 
-  // CustomEditor에서 인라인 해시태그 감지 시 호출될 함수
-  const handleInlineHashtags = (inlineTags) => {
-    // 기존 선택된 해시태그와 중복되지 않는 것만 추가
-    const newTags = inlineTags.filter((tag) => !selectedHashtags.includes(tag));
-    if (newTags.length > 0) {
-      setSelectedHashtags([...selectedHashtags, ...newTags]);
-    }
-  };
-
   const plainTextContent = content.replace(/<[^>]*>/g, "").trim();
   const isButtonDisabled = !plainTextContent;
 
@@ -360,14 +349,13 @@ const Post = () => {
       </div>
 
       {/* Content Area with CustomEditor */}
-      <div className="flex flex-col flex-1 px-4 py-4">
+      <div className="flex flex-col px-4 py-4">
         {/* CustomEditor 사용 */}
         <div className="flex-1 overflow-hidden">
           <CustomEditor
             content={content}
             onChange={setContent}
             placeholder="오늘의 이야기를 들려주세요..."
-            onHashtagsChange={handleInlineHashtags}
           />
         </div>
 

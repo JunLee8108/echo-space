@@ -88,14 +88,13 @@ const EMOJI_CATEGORIES = {
   },
 };
 
-const CustomEditor = ({ content, onChange, placeholder, onHashtagsChange }) => {
+const CustomEditor = ({ content, onChange, placeholder }) => {
   const editorRef = useRef(null);
   const fileInputRef = useRef(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [selectedEmojiCategory, setSelectedEmojiCategory] =
     useState("emotions");
-  const [detectedHashtags, setDetectedHashtags] = useState([]);
   const [currentAlignment, setCurrentAlignment] = useState("left");
   const [activeStyles, setActiveStyles] = useState({
     bold: false,
@@ -104,7 +103,6 @@ const CustomEditor = ({ content, onChange, placeholder, onHashtagsChange }) => {
     color: null,
   });
   const [selectedColor, setSelectedColor] = useState("#000000");
-  const lastProcessedHashtagsRef = useRef("");
   const dragCounterRef = useRef(0);
 
   // 초기 콘텐츠 설정
@@ -156,6 +154,11 @@ const CustomEditor = ({ content, onChange, placeholder, onHashtagsChange }) => {
     };
 
     setActiveStyles(newStyles);
+
+    const editorText = editorRef.current?.innerText?.trim();
+    if (!editorText || editorText.length === 0) {
+      return; // 빈 에디터일 때는 선택된 색상 유지
+    }
 
     // 현재 활성 색상 업데이트
     if (currentColor) {
@@ -258,26 +261,9 @@ const CustomEditor = ({ content, onChange, placeholder, onHashtagsChange }) => {
   // 콘텐츠 변경 감지 및 해시태그 추출 (리스트 변환 제거)
   const handleInput = useCallback(() => {
     const html = editorRef.current.innerHTML;
-
     onChange(html);
     checkActiveStyles();
-
-    // 해시태그 추출 - 완성된 해시태그만 감지
-    const text = editorRef.current.innerText;
-    const hashtagRegex = /#[\w가-힣]+(?=\s|$|\n)/g;
-    const matches = text.match(hashtagRegex) || [];
-    const uniqueTags = [...new Set(matches.map((tag) => tag.slice(1)))];
-
-    // 이전과 다른 경우에만 업데이트
-    const currentTagsString = uniqueTags.join(",");
-    if (currentTagsString !== lastProcessedHashtagsRef.current) {
-      lastProcessedHashtagsRef.current = currentTagsString;
-      setDetectedHashtags(uniqueTags);
-      if (onHashtagsChange && uniqueTags.length > 0) {
-        onHashtagsChange(uniqueTags);
-      }
-    }
-  }, [onChange, onHashtagsChange, checkActiveStyles]);
+  }, [onChange, checkActiveStyles]);
 
   // beforeinput 이벤트 핸들러 (개선된 버전)
   const handleBeforeInput = useCallback((e) => {
@@ -808,7 +794,7 @@ const CustomEditor = ({ content, onChange, placeholder, onHashtagsChange }) => {
           <div className="toolbar-divider" />
 
           {/* 색상 선택 */}
-          <div className="toolbar-group">
+          <div className="toolbar-group space-x-0.5">
             <button
               type="button"
               onClick={() => changeColor("#000000")}
@@ -977,18 +963,6 @@ const CustomEditor = ({ content, onChange, placeholder, onHashtagsChange }) => {
           />
         </div>
       </div>
-
-      {/* 해시태그 표시 */}
-      {detectedHashtags.length > 0 && (
-        <div className="hashtag-display">
-          <Hash className="w-3 h-3 text-stone-500" />
-          {detectedHashtags.map((tag) => (
-            <span key={tag} className="hashtag-chip">
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
 
       {/* 에디터 본문 */}
       <div
