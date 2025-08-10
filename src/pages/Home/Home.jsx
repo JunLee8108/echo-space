@@ -642,7 +642,7 @@ const Home = () => {
                               {!post.Character && (
                                 <button
                                   onClick={() => handleEditClick(post.id)}
-                                  className="w-full px-4 py-2 text-left text-sm text-stone-600 hover:bg-stone-50 transition-colors flex items-center space-x-2"
+                                  className="w-full px-4 py-3 mb-1 text-left text-sm text-stone-600 hover:bg-stone-50 transition-colors flex items-center space-x-2"
                                 >
                                   <svg
                                     className="w-4 h-4"
@@ -664,7 +664,7 @@ const Home = () => {
                               {/* Delete 버튼 */}
                               <button
                                 onClick={() => handleDeleteClick(post.id)}
-                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                                className="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
                               >
                                 <svg
                                   className="w-4 h-4"

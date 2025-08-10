@@ -1,10 +1,10 @@
 // pages/Post/Post.jsx
-import "./Post.css"; // CSS 파일 import 추가
+import "./Post.css";
 
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
 import { Smile, Meh, Frown, Hash, ArrowLeft } from "lucide-react";
-import TipTapEditor from "../../components/utils/TipTapEditor";
+import CustomEditor from "./CustomEditor";
 import { searchHashtags } from "../../services/hashtagService";
 import { useCreatePost } from "../../components/hooks/useCreatePost";
 import { useUpdatePost } from "../../components/hooks/useUpdatePost";
@@ -181,17 +181,12 @@ const Post = () => {
     const plainText = content.replace(/<[^>]*>/g, "").trim();
     if (!plainText) return;
 
-    // p태그 안 마지막에 br이 있으면 빈 p태그 추가
     let processedContent = content.replace(
-      /<br\s*\/?>\s*<\/p>/g,
-      "</p><p></p>"
-    );
-
-    // 끝에 있는 빈 p태그들 제거
-    processedContent = processedContent.replace(
-      /(<p>(\s|&nbsp;)*<\/p>)+$/g,
+      /(<div>(?:<[^>]+>)*(?:\s|&nbsp;|<br\s*\/?>)*(?:<\/[^>]+>)*<\/div>)+$/g,
       ""
     );
+
+    console.log(processedContent);
 
     const postData = {
       content: processedContent,
@@ -295,13 +290,22 @@ const Post = () => {
     hashtagInputRef.current?.focus();
   };
 
+  // CustomEditor에서 인라인 해시태그 감지 시 호출될 함수
+  const handleInlineHashtags = (inlineTags) => {
+    // 기존 선택된 해시태그와 중복되지 않는 것만 추가
+    const newTags = inlineTags.filter((tag) => !selectedHashtags.includes(tag));
+    if (newTags.length > 0) {
+      setSelectedHashtags([...selectedHashtags, ...newTags]);
+    }
+  };
+
   const plainTextContent = content.replace(/<[^>]*>/g, "").trim();
   const isButtonDisabled = !plainTextContent;
 
   return (
     <div className="min-h-screen bg-white flex flex-col page-slide-in">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
+      <div className="flex sticky z-50 top-0 bg-white items-center justify-between px-4 py-3 border-b border-stone-100">
         <div className="flex items-center">
           <button
             onClick={handleBack}
@@ -310,7 +314,7 @@ const Post = () => {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="ml-3 text-lg font-semibold text-stone-900">
+          <h1 className="ml-3 text-md font-semibold text-stone-900">
             {isEditMode ? "Edit Post" : "New Post"}
           </h1>
         </div>
@@ -355,18 +359,19 @@ const Post = () => {
         </button>
       </div>
 
-      {/* Content Area */}
-      <div className="flex flex-col px-4 py-4">
-        {/* Editor */}
-        <div className="overflow-y-auto">
-          <TipTapEditor
+      {/* Content Area with CustomEditor */}
+      <div className="flex flex-col flex-1 px-4 py-4">
+        {/* CustomEditor 사용 */}
+        <div className="flex-1 overflow-hidden">
+          <CustomEditor
             content={content}
             onChange={setContent}
-            placeholder="Share your thoughts..."
+            placeholder="오늘의 이야기를 들려주세요..."
+            onHashtagsChange={handleInlineHashtags}
           />
         </div>
 
-        {/* Selected Hashtags */}
+        {/* Selected Hashtags (추가로 선택한 것들) */}
         {selectedHashtags.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {selectedHashtags.map((tag) => (
@@ -405,7 +410,7 @@ const Post = () => {
       <div className="border-t border-stone-100 px-4 py-3 pb-safe">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            {/* Hashtag Button */}
+            {/* Hashtag Button (추가 해시태그용) */}
             <div className="relative">
               <button
                 ref={hashtagButtonRef}
@@ -432,7 +437,7 @@ const Post = () => {
                   className="absolute bottom-full mb-2 left-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 p-4 min-w-[200px] max-w-[350px]"
                 >
                   <h3 className="text-sm font-medium text-stone-900 mb-3">
-                    Add Hashtags
+                    Add More Hashtags
                   </h3>
 
                   {/* Selected Tags */}
@@ -537,26 +542,6 @@ const Post = () => {
                 </div>
               )}
             </div>
-
-            {/* Image Button */}
-            <button
-              type="button"
-              className="p-3 text-stone-500 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-colors"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            </button>
 
             {/* Mood Button */}
             <div className="relative">
