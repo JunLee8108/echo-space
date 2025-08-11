@@ -1,3 +1,16 @@
+/* 이미지 로딩 상태 */
+.post-content .editor-image.loading {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* 모바일에서 터치 피드백 */
+@media (max-width: 768px) {
+  .post-content .editor-image:active {
+    transform: scale(0.98);
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

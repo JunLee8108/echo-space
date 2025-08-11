@@ -14,6 +14,7 @@ import { showAffinityToast } from "../../components/utils/toastUtils";
 // Modal
 import ConfirmationModal from "../../components/UI/ConfirmationModal";
 import ProfileModal from "../../components/UI/ProfileModal";
+import ImageModal from "./ImageModal";
 
 import {
   deletePostById,
@@ -85,6 +86,10 @@ const Home = () => {
   const [profileModal, setProfileModal] = useState({
     show: false,
     character: null,
+  });
+  const [imageModal, setImageModal] = useState({
+    show: false,
+    imageSrc: null,
   });
 
   const modalRef = useRef(null);
@@ -220,6 +225,27 @@ const Home = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [likeModal.show, optionsModal.show]);
+
+  useEffect(() => {
+    // 모든 포스트 내 이미지에 클릭 이벤트 추가
+    const handleContentImageClick = (e) => {
+      if (
+        e.target.tagName === "IMG" &&
+        e.target.classList.contains("editor-image")
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleImageClick(e.target.src);
+      }
+    };
+
+    // 이벤트 위임을 사용하여 동적으로 추가되는 이미지도 처리
+    document.addEventListener("click", handleContentImageClick);
+
+    return () => {
+      document.removeEventListener("click", handleContentImageClick);
+    };
+  }, []);
 
   const formatRelativeTime = (isoString) => {
     const now = new Date();
@@ -431,6 +457,13 @@ const Home = () => {
       }
     };
   })();
+
+  const handleImageClick = (imageSrc) => {
+    setImageModal({
+      show: true,
+      imageSrc: imageSrc,
+    });
+  };
 
   // 스켈레톤 로더 컴포넌트
   const PostSkeleton = () => (
@@ -689,7 +722,7 @@ const Home = () => {
                     {/* Post Content */}
                     <div className="px-6 pb-5">
                       <div
-                        className="text-stone-700 leading-relaxed prose max-w-none"
+                        className="text-stone-700 leading-relaxed prose max-w-none post-content"
                         dangerouslySetInnerHTML={{ __html: post.content }}
                       />
                     </div>
@@ -1053,6 +1086,12 @@ const Home = () => {
         isOpen={profileModal.show}
         onClose={() => setProfileModal({ show: false, character: null })}
         character={profileModal.character}
+      />
+
+      <ImageModal
+        isOpen={imageModal.show}
+        onClose={() => setImageModal({ show: false, imageSrc: null })}
+        imageSrc={imageModal.imageSrc}
       />
     </div>
   );
