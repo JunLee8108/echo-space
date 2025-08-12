@@ -132,6 +132,7 @@ const ImageModal = ({ isOpen, onClose, imageSrc }) => {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [initialPinchDistance, setInitialPinchDistance] = useState(0);
   const [initialScale, setInitialScale] = useState(1);
+  const [isPinching, setIsPinching] = useState(false); // 핀치 상태 추가
 
   // refs
   const imageRef = useRef(null);
@@ -164,6 +165,7 @@ const ImageModal = ({ isOpen, onClose, imageSrc }) => {
         });
       } else if (touches.length === 2) {
         e.preventDefault();
+        setIsPinching(true); // 핀치 시작
         setIsDragging(false);
         const distance = getDistance(touches[0], touches[1]);
         setInitialPinchDistance(distance);
@@ -181,6 +183,7 @@ const ImageModal = ({ isOpen, onClose, imageSrc }) => {
         setPosition({ x: newX, y: newY });
       } else if (touches.length === 2) {
         e.preventDefault();
+        setIsPinching(true); // 핀치 중임을 확실히 표시
         const currentDistance = getDistance(touches[0], touches[1]);
         const scaleChange = currentDistance / initialPinchDistance;
         const newScale = Math.min(Math.max(initialScale * scaleChange, 0.5), 4);
@@ -191,34 +194,48 @@ const ImageModal = ({ isOpen, onClose, imageSrc }) => {
     handleTouchEndRef.current = (e) => {
       const touches = e.touches;
 
-      const currentTime = new Date().getTime();
-      const tapLength = currentTime - lastTapRef.current;
+      // 핀치가 끝났는지 체크 (2개 -> 1개 또는 0개)
+      if (isPinching && touches.length < 2) {
+        setIsPinching(false);
+        // 핀치 후에는 더블 탭 타이머 리셋
+        lastTapRef.current = 0;
 
-      if (tapLength < 300 && tapLength > 0 && touches.length === 0) {
-        e.preventDefault();
-
-        if (scale === 1) {
-          setScale(2);
-        } else {
-          setScale(1);
-          setPosition({ x: 0, y: 0 });
+        // 한 손가락이 남았으면 드래그 모드로 전환
+        if (touches.length === 1) {
+          setIsDragging(true);
+          setDragStart({
+            x: touches[0].clientX - position.x,
+            y: touches[0].clientY - position.y,
+          });
         }
+        return; // 핀치 종료 시 더블 탭 체크 안 함
       }
 
-      lastTapRef.current = currentTime;
+      // 핀치가 아닐 때만 더블 탭 체크
+      if (!isPinching && touches.length === 0) {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTapRef.current;
 
-      if (touches.length === 0) {
+        if (tapLength < 300 && tapLength > 0) {
+          e.preventDefault();
+
+          if (scale === 1) {
+            setScale(2);
+          } else {
+            setScale(1);
+            setPosition({ x: 0, y: 0 });
+          }
+          lastTapRef.current = 0; // 더블 탭 후 리셋
+        } else {
+          lastTapRef.current = currentTime;
+        }
+
         setIsDragging(false);
 
+        // 축소되면 위치 리셋
         if (scale <= 1) {
           setPosition({ x: 0, y: 0 });
         }
-      } else if (touches.length === 1) {
-        setIsDragging(true);
-        setDragStart({
-          x: touches[0].clientX - position.x,
-          y: touches[0].clientY - position.y,
-        });
       }
     };
 
@@ -239,6 +256,7 @@ const ImageModal = ({ isOpen, onClose, imageSrc }) => {
     dragStart,
     initialScale,
     initialPinchDistance,
+    isPinching,
   ]);
 
   // 모든 이벤트 리스너를 passive: false로 등록
@@ -265,12 +283,14 @@ const ImageModal = ({ isOpen, onClose, imageSrc }) => {
     image.addEventListener("touchstart", touchStartHandler, { passive: false });
     image.addEventListener("touchmove", touchMoveHandler, { passive: false });
     image.addEventListener("touchend", touchEndHandler, { passive: false });
+    image.addEventListener("touchcancel", touchEndHandler, { passive: false }); // touchcancel도 추가
     container.addEventListener("wheel", wheelHandler, { passive: false });
 
     return () => {
       image.removeEventListener("touchstart", touchStartHandler);
       image.removeEventListener("touchmove", touchMoveHandler);
       image.removeEventListener("touchend", touchEndHandler);
+      image.removeEventListener("touchcancel", touchEndHandler);
       container.removeEventListener("wheel", wheelHandler);
     };
   }, [isOpen]);
@@ -307,16 +327,23 @@ const ImageModal = ({ isOpen, onClose, imageSrc }) => {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
+      // 터치 이벤트 관련 CSS 추가
+      document.body.style.touchAction = "none";
     } else {
       document.body.style.overflow = "unset";
+      document.body.style.touchAction = "auto";
+      // 모든 상태 리셋
       setScale(1);
       setRotation(0);
       setPosition({ x: 0, y: 0 });
       setIsDragging(false);
+      setIsPinching(false);
+      lastTapRef.current = 0;
     }
 
     return () => {
       document.body.style.overflow = "unset";
+      document.body.style.touchAction = "auto";
     };
   }, [isOpen]);
 
