@@ -28,7 +28,7 @@ const Header = () => {
           {/* Logo Section */}
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center">
-              <img src="logo.png" className="rounded-lg"></img>
+              <img src="/logo.png" className="rounded-lg"></img>
             </div>
             <h1 className="text-base font-semibold text-stone-900">
               DiaryFriend
