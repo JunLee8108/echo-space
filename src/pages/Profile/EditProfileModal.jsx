@@ -1,19 +1,23 @@
-// 2. EditProfileModal.jsx 전체 코드 (업데이트된 버전)
+// EditProfileModal.jsx 수정된 버전
 import { useState, useEffect, useRef } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
 import { signOut } from "../../services/authService";
+import { createTranslator } from "../../components/utils/translations";
 
 const EditProfileModal = ({
   isOpen,
   onClose,
   onConfirm,
   currentName,
+  currentLanguage,
   onPasswordChange,
+  onLanguageChange,
 }) => {
   const [name, setName] = useState(currentName);
+  const [language, setLanguage] = useState(currentLanguage || "English"); // 추가
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("name"); // "name" or "password"
+  const [activeTab, setActiveTab] = useState("general"); // "name"을 "general"로 변경
 
   // Password states
   const [currentPassword, setCurrentPassword] = useState("");
@@ -26,13 +30,16 @@ const EditProfileModal = ({
 
   const modalRef = useRef(null);
 
+  const translate = createTranslator(currentLanguage);
+
   useEffect(() => {
     if (isOpen) {
       setName(currentName);
-      setActiveTab("name");
+      setLanguage(currentLanguage || "English"); // 추가
+      setActiveTab("general"); // "name"을 "general"로 변경
       resetPasswordFields();
     }
-  }, [isOpen, currentName]);
+  }, [isOpen, currentName, currentLanguage]); // currentLanguage 추가
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -72,23 +79,37 @@ const EditProfileModal = ({
 
   if (!isOpen) return null;
 
-  const handleNameSubmit = async (e) => {
+  // handleNameSubmit을 handleGeneralSubmit으로 변경
+  const handleGeneralSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim()) {
       alert("Please enter a name.");
       return;
     }
 
-    if (name.trim() === currentName) {
+    const nameChanged = name.trim() !== currentName;
+    const languageChanged = language !== currentLanguage;
+
+    if (!nameChanged && !languageChanged) {
       onClose();
       return;
     }
 
     setLoading(true);
     try {
-      await onConfirm(name.trim());
+      // 이름이 변경되었으면 업데이트
+      if (nameChanged) {
+        await onConfirm(name.trim());
+      }
+
+      // 언어가 변경되었으면 업데이트
+      if (languageChanged) {
+        await onLanguageChange(language);
+      }
+
       onClose();
-    } catch {
+    } catch (error) {
+      console.error("Error updating profile:", error);
       // Error handling is done in the parent component
     } finally {
       setLoading(false);
@@ -144,8 +165,8 @@ const EditProfileModal = ({
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-stone-900">
-              Edit Profile
+            <h3 className="text-base font-semibold text-stone-900">
+              {translate("profile.editProfile")}
             </h3>
             <button
               onClick={onClose}
@@ -170,14 +191,14 @@ const EditProfileModal = ({
           {/* Tabs */}
           <div className="flex mb-6 bg-stone-100 rounded-lg p-1">
             <button
-              onClick={() => setActiveTab("name")}
+              onClick={() => setActiveTab("general")}
               className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-all ${
-                activeTab === "name"
+                activeTab === "general"
                   ? "bg-white text-stone-900 shadow-sm"
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              Name
+              {translate("profile.general")}
             </button>
             <button
               onClick={() => setActiveTab("password")}
@@ -187,30 +208,85 @@ const EditProfileModal = ({
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              Password
+              {translate("profile.password")}
             </button>
           </div>
 
-          {/* Name Form */}
-          {activeTab === "name" && (
-            <form onSubmit={handleNameSubmit}>
-              <div className="mb-6">
-                <label
-                  htmlFor="display-name"
-                  className="block text-sm font-medium text-stone-700 mb-2"
-                >
-                  Display Name
-                </label>
-                <input
-                  id="display-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your name"
-                  className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
-                  maxLength={50}
-                />
-                <p className="mt-2 text-xs text-stone-500">{name.length}/50</p>
+          {/* General Form (이전 Name Form) */}
+          {activeTab === "general" && (
+            <form onSubmit={handleGeneralSubmit}>
+              <div className="space-y-4 mb-7">
+                {/* Display Name */}
+                <div>
+                  <label
+                    htmlFor="display-name"
+                    className="block text-sm font-medium text-stone-700 mb-2"
+                  >
+                    {translate("profile.displayName")}
+                  </label>
+                  <input
+                    id="display-name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter your name"
+                    className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
+                    maxLength={50}
+                  />
+                  <p className="mt-2 text-xs text-stone-500">
+                    {translate("profile.displayNameHint")} {name.length}/50
+                  </p>
+                </div>
+
+                {/* Language Selection */}
+                <div>
+                  <label
+                    htmlFor="language"
+                    className="block text-sm font-medium text-stone-700 mb-2"
+                  >
+                    {translate("profile.language")}
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="language"
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      className="w-full px-4 py-3 pl-11 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all appearance-none"
+                    >
+                      <option value="English">English</option>
+                      <option value="Korean">Korean</option>
+                    </select>
+                    <svg
+                      className="absolute left-4 top-3.5 w-4 h-4 text-stone-400"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+                      />
+                    </svg>
+                    <svg
+                      className="absolute right-4 top-3.5 w-4 h-4 text-stone-400 pointer-events-none"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                  <p className="mt-2 text-xs text-stone-500">
+                    {translate("profile.languageHint")}
+                  </p>
+                </div>
               </div>
 
               {/* Actions */}
@@ -221,36 +297,39 @@ const EditProfileModal = ({
                   disabled={loading}
                   className="text-sm flex-1 px-4 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Cancel
+                  {translate("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={
-                    loading || !name.trim() || name.trim() === currentName
+                    loading ||
+                    !name.trim() ||
+                    (name.trim() === currentName &&
+                      language === currentLanguage)
                   }
                   className="text-sm flex-1 px-4 py-3 bg-stone-900 hover:bg-stone-800 text-white font-medium rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                   {loading ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   ) : (
-                    "Save"
+                    `${translate("common.save")}`
                   )}
                 </button>
               </div>
             </form>
           )}
 
-          {/* Password Form */}
+          {/* Password Form - 변경 없음 */}
           {activeTab === "password" && (
             <form onSubmit={handlePasswordSubmit}>
-              <div className="space-y-4 mb-6">
+              <div className="space-y-4 mb-7">
                 {/* Current Password */}
                 <div>
                   <label
                     htmlFor="current-password"
                     className="block text-sm font-medium text-stone-700 mb-2"
                   >
-                    Current Password
+                    {translate("profile.currentPassword")}
                   </label>
                   <div className="relative">
                     <input
@@ -258,7 +337,7 @@ const EditProfileModal = ({
                       type={showCurrentPassword ? "text" : "password"}
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Enter current password"
+                      placeholder={translate("profile.enterCurrentPassword")}
                       className="w-full px-4 py-3 pr-12 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
                     />
                     <button
@@ -283,7 +362,7 @@ const EditProfileModal = ({
                     htmlFor="new-password"
                     className="block text-sm font-medium text-stone-700 mb-2"
                   >
-                    New Password
+                    {translate("profile.newPassword")}
                   </label>
                   <div className="relative">
                     <input
@@ -291,7 +370,7 @@ const EditProfileModal = ({
                       type={showNewPassword ? "text" : "password"}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Enter new password"
+                      placeholder={translate("profile.enterNewPassword")}
                       className="w-full px-4 py-3 pr-12 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
                     />
                     <button
@@ -314,7 +393,7 @@ const EditProfileModal = ({
                     htmlFor="confirm-password"
                     className="block text-sm font-medium text-stone-700 mb-2"
                   >
-                    Confirm New Password
+                    {translate("profile.confirmPassword")}
                   </label>
                   <div className="relative">
                     <input
@@ -322,7 +401,7 @@ const EditProfileModal = ({
                       type={showConfirmPassword ? "text" : "password"}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter new password"
+                      placeholder={translate("profile.reenterNewPassword")}
                       className="w-full px-4 py-3 pr-12 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
                     />
                     <button
@@ -357,7 +436,7 @@ const EditProfileModal = ({
                   disabled={loading}
                   className="text-sm flex-1 px-4 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Cancel
+                  {translate("common.cancel")}
                 </button>
                 <button
                   type="submit"
@@ -367,7 +446,7 @@ const EditProfileModal = ({
                   {loading ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   ) : (
-                    "Update"
+                    `${translate("common.save")}`
                   )}
                 </button>
               </div>

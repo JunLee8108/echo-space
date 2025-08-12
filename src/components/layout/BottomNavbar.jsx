@@ -8,8 +8,6 @@ const BottomNavbar = () => {
 
   const handleNavigation = (path) => {
     // 이미 같은 경로에 있으면 무시
-    console.log(pathname);
-    console.log(path);
     if (pathname === path) return;
 
     navigate(path);

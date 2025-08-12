@@ -99,7 +99,7 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   background: white;
   border: 1px solid #d6d3d1;
   border-radius: 0.25rem;
@@ -111,23 +111,6 @@
 .quick-btn:hover {
   background: #fafaf9;
   border-color: #a8a29e;
-}
-
-.quick-btn.recording {
-  background: #fee2e2;
-  border-color: #ef4444;
-  color: #dc2626;
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
 }
 
 /* 이모지 피커 */
@@ -346,13 +329,7 @@
 
 .emoji-btn:hover {
   background: white;
-  transform: scale(1.15);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   z-index: 1;
-}
-
-.emoji-btn:active {
-  transform: scale(1.05);
 }
 
 /* 모바일 반응형 */

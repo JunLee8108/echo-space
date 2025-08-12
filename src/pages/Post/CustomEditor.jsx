@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import "./CustomEditor.css";
 
+import { useUserLanguage } from "../../stores/userStore";
+import { createTranslator } from "../../components/utils/translations";
+
 // 이모지 컬렉션
 const EMOJI_CATEGORIES = {
   emotions: {
@@ -88,7 +91,10 @@ const EMOJI_CATEGORIES = {
   },
 };
 
-const CustomEditor = ({ content, onChange, placeholder }) => {
+const CustomEditor = ({ content, onChange }) => {
+  const language = useUserLanguage();
+  const translate = createTranslator(language);
+
   const editorRef = useRef(null);
   const fileInputRef = useRef(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -383,22 +389,59 @@ const CustomEditor = ({ content, onChange, placeholder }) => {
 
   // 날짜 삽입 (영어)
   const insertDate = () => {
-    const date = new Date().toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      weekday: "long",
-    });
-    insertAtCursor(date);
+    const date = new Date();
+    let formattedDate;
+
+    if (language === "Korean") {
+      // 한국어 형식: 2024년 12월 19일 목요일
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      const weekdays = [
+        "일요일",
+        "월요일",
+        "화요일",
+        "수요일",
+        "목요일",
+        "금요일",
+        "토요일",
+      ];
+      const weekday = weekdays[date.getDay()];
+      formattedDate = `${year}년 ${month}월 ${day}일 ${weekday}`;
+    } else if (language === "English") {
+      // 영어 형식 (기존)
+      formattedDate = date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        weekday: "long",
+      });
+    }
+
+    insertAtCursor(formattedDate);
   };
 
   // 시간 삽입 (영어)
   const insertTime = () => {
-    const time = new Date().toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    insertAtCursor(time);
+    const time = new Date();
+    let formattedTime;
+
+    if (language === "Korean") {
+      // 한국어 형식: 오후 3시 30분
+      const hours = time.getHours();
+      const minutes = time.getMinutes();
+      const period = hours >= 12 ? "오후" : "오전";
+      const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+      formattedTime = `${period} ${displayHours}시 ${minutes}분`;
+    } else {
+      // 영어 형식 (기존)
+      formattedTime = time.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    insertAtCursor(formattedTime);
   };
 
   // 커서 위치에 텍스트 삽입
@@ -836,20 +879,20 @@ const CustomEditor = ({ content, onChange, placeholder }) => {
             type="button"
             onClick={insertDate}
             className="quick-btn"
-            title="Insert Date"
+            title={translate("editor.tooltip.insertDate")}
           >
             <Calendar className="w-3 h-3" />
-            Date
+            {translate("editor.button.date")}
           </button>
 
           <button
             type="button"
             onClick={insertTime}
             className="quick-btn"
-            title="Insert Time"
+            title={translate("editor.tooltip.insertTime")}
           >
             <Clock className="w-3 h-3" />
-            Time
+            {translate("editor.button.time")}
           </button>
 
           <div className="emoji-picker-container">
@@ -857,10 +900,10 @@ const CustomEditor = ({ content, onChange, placeholder }) => {
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               className="quick-btn"
-              title="Emoji"
+              title={translate("editor.tooltip.insertEmoji")}
             >
               <Smile className="w-3 h-3" />
-              Emoji
+              {translate("editor.button.emoji")}
             </button>
 
             {showEmojiPicker && (
@@ -947,10 +990,10 @@ const CustomEditor = ({ content, onChange, placeholder }) => {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="quick-btn"
-            title="Add Image"
+            title={translate("editor.tooltip.addImage")}
           >
             <ImageIcon className="w-3 h-3" />
-            Image
+            {translate("editor.button.image")}
           </button>
 
           <input
@@ -979,7 +1022,7 @@ const CustomEditor = ({ content, onChange, placeholder }) => {
         onDrop={handleDrop}
         onMouseUp={checkActiveStyles}
         onClick={checkActiveStyles}
-        data-placeholder={placeholder || "Share your story..."}
+        data-placeholder={"Share your story..."}
       />
     </div>
   );

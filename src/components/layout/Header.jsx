@@ -3,9 +3,15 @@ import ConfirmationModal from "../UI/ConfirmationModal";
 import { useNotificationCount } from "../../stores/notificationStore";
 import { signOut } from "../../services/authService";
 
+import { createTranslator } from "../utils/translations";
+import { useUserLanguage } from "../../stores/userStore";
+
 const Header = () => {
   const [showSignOutModal, setShowSignOutModal] = useState(false); // 모달 상태 추가
   const notificationCount = useNotificationCount();
+
+  const language = useUserLanguage();
+  const translate = createTranslator(language);
 
   const handleSignOut = async () => {
     try {
@@ -35,7 +41,7 @@ const Header = () => {
               onClick={() => setShowSignOutModal(true)} // 바로 로그아웃이 아닌 모달 표시
               className="text-sm mr-2 text-stone-600 hover:text-stone-900 transition-colors"
             >
-              Sign Out
+              {translate("header.signOut")}
             </button>
 
             <button className="p-2 rounded-lg hover:bg-stone-50 transition-colors relative">

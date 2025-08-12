@@ -13,8 +13,11 @@ import {
 import {
   useUser,
   useDisplayName,
+  useUserLanguage,
   useUserActions,
 } from "../../stores/userStore";
+
+import { createTranslator } from "../../components/utils/translations";
 
 import ProfileModal from "../../components/UI/ProfileModal";
 import EditProfileModal from "./EditProfileModal";
@@ -25,7 +28,11 @@ const Profile = () => {
   // userStore hooks
   const user = useUser();
   const displayName = useDisplayName();
-  const { updateDisplayName, updatePassword } = useUserActions();
+  const userLanguage = useUserLanguage(); // 추가
+  const { updateDisplayName, updateLanguage, updatePassword } =
+    useUserActions();
+
+  const translate = createTranslator(userLanguage);
 
   // characterStore hooks
   const characters = useCharacters();
@@ -193,6 +200,16 @@ const Profile = () => {
     }
   };
 
+  const handleLanguageChange = async (newLanguage) => {
+    try {
+      await updateLanguage(newLanguage);
+    } catch (error) {
+      alert("Failed to update language.");
+      console.error("Error updating language:", error);
+      throw error;
+    }
+  };
+
   const handlePasswordChange = async (currentPassword, newPassword) => {
     try {
       await updatePassword(currentPassword, newPassword);
@@ -241,7 +258,7 @@ const Profile = () => {
                 </button>
               </div>
               <p className="text-stone-600 text-xs">
-                Managing your AI characters
+                {translate("profile.managingUserInfo")}
               </p>
             </div>
           </div>
@@ -266,11 +283,11 @@ const Profile = () => {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-blue-900 mb-1">Pro Tip</p>
+              <p className="text-sm font-medium text-blue-900 mb-1">
+                {translate("profile.proTip")}
+              </p>
               <p className="text-sm text-blue-700">
-                Different AI characters have unique personalities and will
-                respond differently to your posts. Try following different
-                combinations!
+                {translate("profile.proTipMessage")}
               </p>
             </div>
           </div>
@@ -279,27 +296,30 @@ const Profile = () => {
         {/* Stats Section - 기존과 동일 */}
         <div className="bg-stone-50 rounded-2xl p-6 mb-8">
           <h3 className="font-semibold text-center text-stone-900 mb-4">
-            Interaction Stats
+            {translate("profile.interactionStats")}
           </h3>
           <div className="grid grid-cols-2 gap-6">
             <div className="text-center">
               <div className="text-xl font-bold text-stone-900 mb-1">
                 {followedCharacterIds.size}
               </div>
-              <div className="text-sm text-stone-600">Active</div>
+              <div className="text-sm text-stone-600">
+                {translate("profile.active")}
+              </div>
             </div>
             <div className="text-center">
               <div className="text-xl font-bold text-stone-900 mb-1">
                 {characters.length - followedCharacterIds.size}
               </div>
-              <div className="text-sm text-stone-600">Inactive</div>
+              <div className="text-sm text-stone-600">
+                {translate("profile.inactive")}
+              </div>
             </div>
           </div>
 
           <div className="mt-4 pt-4 border-t border-stone-200">
             <p className="text-xs text-stone-500 leading-relaxed">
-              Only followed AI characters will comment on and like your posts.
-              You can change this anytime.
+              {translate("profile.followedOnlyHint")}
             </p>
           </div>
         </div>
@@ -308,7 +328,9 @@ const Profile = () => {
         <div>
           {/* 헤더 - 심플하게 */}
           <div className="mb-4 flex justify-between">
-            <h2 className="text-lg font-bold text-stone-900">AI Characters</h2>
+            <h2 className="text-md font-bold text-stone-900">
+              {translate("profile.aiCharacters")}
+            </h2>
             <div className="flex items-center gap-2 text-sm text-stone-500">
               <div className="w-2 h-2 bg-green-400 rounded-full"></div>
               <span>{followedCharacterIds.size} followed</span>
@@ -337,10 +359,10 @@ const Profile = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-stone-900 text-sm">
-                    Quick Actions
+                    {translate("profile.quickActions")}
                   </h3>
                   <p className="text-xs text-stone-600">
-                    Manage all companions at once
+                    {translate("profile.manageCompanions")}
                   </p>
                 </div>
               </div>
@@ -364,7 +386,7 @@ const Profile = () => {
                       ) : (
                         <>
                           <span className="font-medium text-xs">
-                            Follow all
+                            {translate("profile.followAll")}
                           </span>
                         </>
                       )}
@@ -389,7 +411,7 @@ const Profile = () => {
                       ) : (
                         <>
                           <span className="font-medium text-xs">
-                            Unfollow all
+                            {translate("profile.unfollowAll")}
                           </span>
                         </>
                       )}
@@ -473,9 +495,9 @@ const Profile = () => {
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
                         </div>
                       ) : isFollowed ? (
-                        "Following"
+                        `${translate("profile.following")}`
                       ) : (
-                        "Follow"
+                        `${translate("profile.follow")}`
                       )}
                     </button>
                   </div>
@@ -498,7 +520,9 @@ const Profile = () => {
         onClose={() => setShowEditProfileModal(false)}
         onConfirm={handleUpdateDisplayName}
         currentName={user?.user_metadata?.display_name || ""}
+        currentLanguage={userLanguage} // 추가
         onPasswordChange={handlePasswordChange}
+        onLanguageChange={handleLanguageChange} // 추가
       />
 
       {/* 새로 추가: 확인 모달 */}

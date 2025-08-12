@@ -352,11 +352,7 @@ const Post = () => {
       <div className="flex flex-col px-4 py-4">
         {/* CustomEditor 사용 */}
         <div className="flex-1 overflow-hidden">
-          <CustomEditor
-            content={content}
-            onChange={setContent}
-            placeholder="오늘의 이야기를 들려주세요..."
-          />
+          <CustomEditor content={content} onChange={setContent} />
         </div>
 
         {/* Selected Hashtags (추가로 선택한 것들) */}

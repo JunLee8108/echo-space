@@ -24,7 +24,8 @@ import {
 import "./Home.css";
 
 // userStore imports
-import { useUserId } from "../../stores/userStore";
+import { useUserId, useUserLanguage } from "../../stores/userStore";
+import { createTranslator } from "../../components/utils/translations";
 
 // characterStore
 import { useCharacterActions } from "../../stores/characterStore";
@@ -56,6 +57,8 @@ const MOODS = {
 
 const Home = () => {
   const userId = useUserId();
+  const language = useUserLanguage();
+  const translate = createTranslator(language);
 
   const navigate = useNavigate(); // 컴포넌트 내부에 추가
 
@@ -253,10 +256,25 @@ const Home = () => {
     const diffMin = Math.floor((now - created) / 1000 / 60);
     const diffHour = Math.floor(diffMin / 60);
 
-    if (diffMin < 1) return "Just now";
-    if (diffHour < 1) return `${diffMin} minute${diffMin > 1 ? "s" : ""} ago`;
-    if (diffHour < 4) return `${diffHour} hour${diffHour > 1 ? "s" : ""} ago`;
-    return created.toLocaleDateString("en-US", {
+    if (diffMin < 1) return translate("home.justNow");
+
+    if (diffHour < 1) {
+      if (diffMin === 1) {
+        return `1 ${translate("home.minuteAgo")}`;
+      }
+      return `${diffMin}${translate("home.minutesAgo")}`;
+    }
+
+    if (diffHour < 4) {
+      if (diffHour === 1) {
+        return `1 ${translate("home.hourAgo")}`;
+      }
+      return `${diffHour}${translate("home.hoursAgo")}`;
+    }
+
+    // 4시간 이상은 날짜로 표시 (언어별 로케일 적용)
+    const locale = language === "ko" ? "ko-KR" : "en-US";
+    return created.toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -548,10 +566,10 @@ const Home = () => {
                 </svg>
               </div>
               <p className="text-stone-500 font-medium">
-                Start the conversation
+                {translate("home.startConversation")}
               </p>
               <p className="text-stone-400 text-sm mt-1">
-                Share your first thought
+                {translate("home.shareFirstThought")}
               </p>
             </div>
           ) : (
@@ -637,7 +655,7 @@ const Home = () => {
                               post.updated_at !== post.created_at && (
                                 <span className="text-stone-400">
                                   {" "}
-                                  • edited
+                                  • {translate("home.edited")}
                                 </span>
                               )}
                           </p>
@@ -1038,7 +1056,7 @@ const Home = () => {
               {!hasNextPage && posts.length > 5 && (
                 <div className="text-center py-8">
                   <p className="text-stone-400 text-sm mb-4">
-                    You're all caught up
+                    {translate("home.allCaughtUp")}
                   </p>
                   <button
                     onClick={() =>
@@ -1059,7 +1077,9 @@ const Home = () => {
                         d="M5 10l7-7m0 0l7 7m-7-7v18"
                       />
                     </svg>
-                    <span className="text-sm font-medium">Back to top</span>
+                    <span className="text-sm font-medium">
+                      {translate("home.backToTop")}
+                    </span>
                   </button>
                 </div>
               )}
