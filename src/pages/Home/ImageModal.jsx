@@ -133,10 +133,6 @@ const ImageModal = ({ isOpen, onClose, imageSrc }) => {
   const [initialPinchDistance, setInitialPinchDistance] = useState(0);
   const [initialScale, setInitialScale] = useState(1);
   const [isPinching, setIsPinching] = useState(false);
-  const [imageDimensions, setImageDimensions] = useState({
-    width: 0,
-    height: 0,
-  });
 
   // refs
   const imageRef = useRef(null);
@@ -157,15 +153,6 @@ const ImageModal = ({ isOpen, onClose, imageSrc }) => {
       x: (touch1.clientX + touch2.clientX) / 2,
       y: (touch1.clientY + touch2.clientY) / 2,
     };
-  };
-
-  // 이미지 로드 시 실제 크기 저장
-  const handleImageLoad = (e) => {
-    const img = e.target;
-    setImageDimensions({
-      width: img.naturalWidth,
-      height: img.naturalHeight,
-    });
   };
 
   // 이동 범위 제한 함수
@@ -534,7 +521,6 @@ const ImageModal = ({ isOpen, onClose, imageSrc }) => {
               : "cursor-default"
           }`}
           style={getImageStyle()}
-          onLoad={handleImageLoad}
           onMouseDown={handleMouseDown}
           draggable={false}
           onError={(e) => {
