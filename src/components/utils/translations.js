@@ -282,7 +282,7 @@ export const translations = {
   },
   "profile.unfollow": {
     English: "Unfollow",
-    Korean: "언팔로우",
+    Korean: "팔로우 취소",
   },
   "profile.followAll": {
     English: "Follow all",
@@ -290,7 +290,7 @@ export const translations = {
   },
   "profile.unfollowAll": {
     English: "Unfollow all",
-    Korean: "전체 언팔로우",
+    Korean: "전체 팔로우 취소",
   },
   "profile.quickActions": {
     English: "Quick Actions",
@@ -382,20 +382,16 @@ export const translations = {
     Korean: "모두 팔로우하시겠습니까?",
   },
   "confirm.followAllMessage": {
-    English:
-      "This will follow ${count} AI characters. They will start commenting on and liking your posts.",
-    Korean:
-      "${count}명의 AI 캐릭터를 팔로우합니다. 이들이 당신의 게시글에 댓글과 좋아요를 남기기 시작합니다.",
+    English: "This will follow ${count} AI characters.",
+    Korean: "${count}명의 AI 캐릭터를 팔로우합니다.",
   },
   "confirm.unfollowAllTitle": {
     English: "Unfollow all?",
-    Korean: "모두 언팔로우하시겠습니까?",
+    Korean: "모두 팔로우 취소하시겠습니까?",
   },
   "confirm.unfollowAllMessage": {
-    English:
-      "This will unfollow ${count} AI characters. They will stop interacting with your posts.",
-    Korean:
-      "${count}명의 AI 캐릭터를 언팔로우합니다. 이들이 당신의 게시글과 상호작용을 중단합니다.",
+    English: "This will unfollow ${count} AI characters. ",
+    Korean: "${count}명의 AI 캐릭터를 팔로우 취소합니다. ",
   },
   "confirm.yes": {
     English: "Yes, Continue",

@@ -1,6 +1,9 @@
 // Profile.jsx - 전체 Follow 기능 완벽 구현
 
 import { useState } from "react";
+
+import { UserRoundCheck, ChevronDown } from "lucide-react";
+
 // Zustand hooks
 import {
   useCharacters,
@@ -52,6 +55,9 @@ const Profile = () => {
     message: "",
   });
 
+  // Quick Action 창 토글을 위한 상태들
+  const [showQuickActions, setShowQuickActions] = useState(false);
+
   // 기존 개별 토글 핸들러
   const handleToggleFollow = async (character) => {
     setLocalLoading(true);
@@ -75,11 +81,13 @@ const Profile = () => {
       return;
     }
 
+    const count = unfollowedCharacters.length;
+
     setConfirmModal({
       show: true,
       type: "followAll",
-      title: "Follow all?",
-      message: `This will follow ${unfollowedCharacters.length} AI characters. They will start commenting on and liking your posts.`,
+      title: translate("confirm.followAllTitle"),
+      message: translate("confirm.followAllMessage", { count }),
     });
   };
 
@@ -95,8 +103,10 @@ const Profile = () => {
     setConfirmModal({
       show: true,
       type: "unfollowAll",
-      title: "Unfollow all?",
-      message: `This will unfollow ${followedCount} AI characters. They will stop interacting with your posts.`,
+      title: translate("confirm.unfollowAllTitle"),
+      message: translate("confirm.unfollowAllMessage", {
+        count: followedCount,
+      }),
     });
   };
 
@@ -265,7 +275,7 @@ const Profile = () => {
         </div>
 
         {/* Settings Hint - 기존과 동일 */}
-        <div className="mb-4 p-4 bg-blue-50 rounded-xl">
+        <div className="mb-6 p-4 bg-blue-50 rounded-xl">
           <div className="flex items-start space-x-3">
             <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
               <svg
@@ -294,7 +304,7 @@ const Profile = () => {
         </div>
 
         {/* Stats Section - 기존과 동일 */}
-        <div className="bg-stone-50 rounded-2xl p-6 mb-8">
+        <div className="bg-stone-50 rounded-2xl p-6 mb-4">
           <h3 className="font-semibold text-center text-stone-900 mb-4">
             {translate("profile.interactionStats")}
           </h3>
@@ -337,37 +347,59 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* 새로운 액션 카드 - 모바일 친화적 */}
+          {/* 새로운 액션 카드 - 토글 가능한 버전 */}
           {(followedCharacterIds.size < characters.length ||
             followedCharacterIds.size > 0) && (
-            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                  <svg
-                    className="w-4 h-4 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                    ></path>
-                  </svg>
+            <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl">
+              {/* 헤더 - 클릭 가능 */}
+              <div
+                onClick={() => setShowQuickActions(!showQuickActions)}
+                className="flex items-center justify-between cursor-pointer select-none"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                    <svg
+                      className="w-4 h-4 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      ></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-stone-900 text-sm">
+                      {translate("profile.quickActions")}
+                    </h3>
+                    <p className="text-xs text-stone-600">
+                      {translate("profile.manageCompanions")}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-stone-900 text-sm">
-                    {translate("profile.quickActions")}
-                  </h3>
-                  <p className="text-xs text-stone-600">
-                    {translate("profile.manageCompanions")}
-                  </p>
+
+                {/* 화살표 아이콘 - 회전 애니메이션 버전 */}
+                <div className="p-1.5 hover:bg-white/50 rounded-lg transition-all duration-200">
+                  <ChevronDown
+                    className={`w-5 h-5 text-stone-600 transition-transform duration-300 ${
+                      showQuickActions ? "rotate-180" : ""
+                    }`}
+                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* 버튼 그리드 - 토글되는 부분 */}
+              <div
+                className={`grid grid-cols-2 gap-3 overflow-hidden transition-all duration-300 ${
+                  showQuickActions
+                    ? "mt-4 opacity-100 max-h-20"
+                    : "mt-0 opacity-0 max-h-0"
+                }`}
+              >
                 {followedCharacterIds.size < characters.length && (
                   <button
                     onClick={handleFollowAll}
@@ -484,9 +516,9 @@ const Profile = () => {
                     <button
                       onClick={() => handleToggleFollow(character)}
                       disabled={localLoading || contextLoading || bulkLoading}
-                      className={`px-4 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 min-w-[85px] ${
+                      className={`flex justify-center px-4 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 min-w-[90px] ${
                         isFollowed
-                          ? "bg-stone-900 text-white hover:bg-stone-800"
+                          ? "bg-stone-700 text-white hover:bg-stone-800"
                           : "bg-stone-100 text-stone-700 hover:bg-stone-200"
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
@@ -495,7 +527,10 @@ const Profile = () => {
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
                         </div>
                       ) : isFollowed ? (
-                        `${translate("profile.following")}`
+                        <span className="flex items-center gap-1">
+                          <UserRoundCheck className="w-3 h-3" />
+                          {translate("profile.following")}
+                        </span>
                       ) : (
                         `${translate("profile.follow")}`
                       )}
@@ -534,8 +569,8 @@ const Profile = () => {
         onConfirm={handleConfirmModalAction}
         title={confirmModal.title}
         message={confirmModal.message}
-        confirmText="Yes, Continue"
-        cancelText="Cancel"
+        confirmText={translate("confirm.yes")}
+        cancelText={translate("common.cancel")}
         confirmButtonClass={
           confirmModal.type === "unfollowAll"
             ? "bg-red-600 hover:bg-red-700"
