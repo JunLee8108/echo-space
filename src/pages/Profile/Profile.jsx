@@ -395,9 +395,7 @@ const Profile = () => {
               {/* 버튼 그리드 - 토글되는 부분 */}
               <div
                 className={`grid grid-cols-2 gap-3 overflow-hidden transition-all duration-300 ${
-                  showQuickActions
-                    ? "mt-4 opacity-100 max-h-20"
-                    : "mt-0 opacity-0 max-h-0"
+                  showQuickActions ? "mt-4 block" : "hidden"
                 }`}
               >
                 {followedCharacterIds.size < characters.length && (
