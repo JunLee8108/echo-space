@@ -57,7 +57,6 @@ const Post = () => {
   const [selectedHashtags, setSelectedHashtags] = useState([]);
   const [hashtagSuggestions, setHashtagSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [isComposing, setIsComposing] = useState(false);
 
   const moodButtonRef = useRef(null);
   const moodModalRef = useRef(null);
@@ -249,27 +248,22 @@ const Post = () => {
   };
 
   const handleHashtagKeyDown = (e) => {
-    if (e.key === "Enter" && !isComposing) {
+    if (e.key === "Enter") {
       e.preventDefault();
+
+      // 한글 조합 중이면 무시
+      if (e.nativeEvent.isComposing) {
+        return;
+      }
+
       handleHashtagAdd();
     }
   };
 
-  const handleCompositionStart = () => {
-    setIsComposing(true);
-  };
-
-  const handleCompositionEnd = () => {
-    setIsComposing(false);
-  };
-
   const handleChange = (e) => {
-    const raw = e.target.value;
-    if (isComposing) {
-      setHashtagInput(raw);
-    } else {
-      setHashtagInput(raw.replace(/[^a-zA-Z0-9가-힣]/g, ""));
-    }
+    // 띄어쓰기와 # 기호만 제거
+    const raw = e.target.value.replace(/[\s#]/g, "");
+    setHashtagInput(raw);
   };
 
   const handleHashtagRemove = (hashtagToRemove) => {
@@ -464,8 +458,6 @@ const Post = () => {
                       type="text"
                       value={hashtagInput}
                       onChange={handleChange}
-                      onCompositionStart={handleCompositionStart}
-                      onCompositionEnd={handleCompositionEnd}
                       onKeyDown={handleHashtagKeyDown}
                       placeholder="Type hashtag..."
                       className="w-full px-3 py-2 text-base border border-stone-300 rounded-lg focus:outline-none"
