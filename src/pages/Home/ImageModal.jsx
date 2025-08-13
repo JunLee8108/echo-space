@@ -133,19 +133,39 @@ const ImageModal = memo(
 
           const currentDistance = getDistance(touches[0], touches[1]);
           const scaleChange = currentDistance / initialPinchDistanceRef.current;
-          const newScale = Math.min(
+          let newScale = Math.min(
             Math.max(initialScaleRef.current * scaleChange, 1),
             5
           );
 
-          // 변경사항이 있을 때만 업데이트
-          if (Math.abs(scaleRef.current - newScale) > 0.01) {
+          // 1.02 이하는 모두 1로 강제 처리
+          if (newScale <= 1.02) {
+            newScale = 1;
+          }
+
+          // 스케일이 변경되었거나, 1로 리셋해야 하는 경우
+          const shouldUpdate = Math.abs(scaleRef.current - newScale) > 0.001;
+          const shouldReset =
+            newScale === 1 &&
+            (scaleRef.current !== 1 ||
+              positionRef.current.x !== 0 ||
+              positionRef.current.y !== 0);
+
+          if (shouldUpdate || shouldReset) {
             scaleRef.current = newScale;
             setScale(newScale);
 
-            // 핀치 줌아웃 시 scale이 1이 되면 위치 리셋
-            if (newScale <= 1) {
-              updatePosition(0, 0);
+            // 스케일이 1이면 무조건 위치 리셋
+            if (newScale === 1) {
+              // 즉시 위치를 0,0으로 설정
+              positionRef.current = { x: 0, y: 0 };
+              setPosition({ x: 0, y: 0 });
+
+              // animationFrame 취소하여 pending 업데이트 방지
+              if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+                animationFrameRef.current = null;
+              }
             } else if (newScale > 1) {
               // 핀치 중심점 기준으로 위치 조정
               const center = getCenter(touches[0], touches[1]);
@@ -215,38 +235,48 @@ const ImageModal = memo(
     );
 
     // Wheel 핸들러 with improved throttle
-
     const lastWheelEventRef = useRef(0);
 
-    const handleWheel = useCallback(
-      (e) => {
-        e.preventDefault();
+    const handleWheel = useCallback((e) => {
+      e.preventDefault();
 
-        const now = Date.now();
-        const timeSinceLastEvent = now - lastWheelEventRef.current;
+      const now = Date.now();
+      const timeSinceLastEvent = now - lastWheelEventRef.current;
 
-        // 더 효율적인 throttle
-        if (timeSinceLastEvent < 16) return; // 60fps throttle
+      if (timeSinceLastEvent < 16) return;
 
-        lastWheelEventRef.current = now;
+      lastWheelEventRef.current = now;
 
-        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        const newScale = Math.min(
-          Math.max(scaleRef.current + delta * scaleRef.current, 1),
-          5
-        );
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      let newScale = Math.min(
+        Math.max(scaleRef.current + delta * scaleRef.current, 1),
+        5
+      );
 
-        if (Math.abs(newScale - scaleRef.current) > 0.01) {
-          scaleRef.current = newScale;
-          setScale(newScale);
+      // 1.02 이하는 모두 1로 강제 처리
+      if (newScale <= 1.02) {
+        newScale = 1;
+      }
 
-          if (newScale <= 1) {
-            updatePosition(0, 0);
+      if (
+        Math.abs(newScale - scaleRef.current) > 0.001 ||
+        (newScale === 1 && scaleRef.current !== 1)
+      ) {
+        scaleRef.current = newScale;
+        setScale(newScale);
+
+        if (newScale === 1) {
+          // 즉시 위치 리셋
+          positionRef.current = { x: 0, y: 0 };
+          setPosition({ x: 0, y: 0 });
+
+          if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = null;
           }
         }
-      },
-      [updatePosition]
-    );
+      }
+    }, []);
 
     // 이벤트 리스너 등록 - passive 옵션 최적화
     useEffect(() => {
@@ -374,13 +404,27 @@ const ImageModal = memo(
     }, []);
 
     const handleZoomOut = useCallback(() => {
-      const newScale = Math.max(scaleRef.current - 0.5, 1);
+      let newScale = Math.max(scaleRef.current - 0.5, 1);
+
+      // 1.02 이하는 모두 1로 강제 처리
+      if (newScale <= 1.02) {
+        newScale = 1;
+      }
+
       scaleRef.current = newScale;
       setScale(newScale);
-      if (newScale <= 1) {
-        updatePosition(0, 0);
+
+      if (newScale === 1) {
+        // 즉시 위치 리셋
+        positionRef.current = { x: 0, y: 0 };
+        setPosition({ x: 0, y: 0 });
+
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
       }
-    }, [updatePosition]);
+    }, []);
 
     const handleRotate = useCallback(() => {
       setRotation((prev) => (prev + 90) % 360);
