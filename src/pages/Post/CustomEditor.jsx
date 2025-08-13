@@ -558,7 +558,7 @@ const CustomEditor = ({ content, onChange }) => {
       }
 
       // 이미지 HTML 생성
-      const imgHTML = `<img src="${base64String}" class="editor-image" loading="lazy" style="max-width: 100%; height: auto; display: block; margin: 1em 0;" />`;
+      const imgHTML = `<img src="${base64String}" class="editor-image" style="max-width: 100%; height: auto; display: block; margin: 1em 0;" />`;
 
       // 에디터가 비어있으면 직접 삽입
       if (
