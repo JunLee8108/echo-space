@@ -395,43 +395,32 @@ const Home = () => {
   // 댓글 좋아요 토글 핸들러 추가
   const handleCommentLike = async (commentId, postId) => {
     try {
-      // 댓글 정보 가져오기 (이미 가지고 있는 데이터 사용)
       const post = posts.find((p) => p.id === postId);
       const comment = post?.Comment?.find((c) => c.id === commentId);
+      if (!comment) return;
 
-      if (!comment) {
-        console.error("댓글을 찾을 수 없습니다.");
-        return;
-      }
+      // 1. RPC 호출 (이제 단 한 번의 네트워크 요청)
+      const result = await toggleCommentLike(commentId, userId);
 
-      console.log(comment);
-
-      // 1. DB 호출 (postService) - comment 데이터도 함께 전달
-      const result = await toggleCommentLike(commentId, userId, {
-        like: comment.like,
-        character_id: comment.character_id,
-      });
-
-      // 2. React Query 캐시 업데이트 (UI 즉시 반영)
+      // 2. React Query 캐시 업데이트
       queryClient.setQueryData(["posts", userId], (old) => {
         if (!old) return old;
-
         return {
           ...old,
           pages: old.pages.map((page) => ({
             ...page,
-            posts: page.posts.map((post) => {
-              if (post.id === postId) {
+            posts: page.posts.map((p) => {
+              if (p.id === postId) {
                 return {
-                  ...post,
-                  Comment: post.Comment.map((c) => {
+                  ...p,
+                  Comment: p.Comment.map((c) => {
                     if (c.id === commentId) {
                       return {
                         ...c,
-                        like: result.likeCount,
+                        like: result.like_count,
                         isLikedByUser: result.liked,
-                        // 친밀도 증가 시 affinity도 UI에 반영
-                        affinity: result.affinityIncreased
+                        // RPC 결과에 따라 친밀도 즉시 반영
+                        affinity: result.affinity_increased
                           ? (c.affinity || 0) + 1
                           : c.affinity,
                       };
@@ -440,35 +429,32 @@ const Home = () => {
                   }),
                 };
               }
-              return post;
+              return p;
             }),
           })),
         };
       });
 
       // 3. 친밀도 증가 시 Store 업데이트 및 Toast 표시
-      if (result.affinityIncreased && comment) {
-        // characterStore의 로컬 상태만 업데이트 (DB는 이미 postService에서 업데이트됨)
+      if (result.affinity_increased && comment.character_id) {
+        // characterStore의 로컬 상태만 업데이트
         updateLocalCharacterAffinity(comment.character_id, 1);
 
-        // 캐릭터 정보 구성
         const characterInfo = {
           id: comment.character_id,
           name: comment.character,
           avatar_url: comment.avatar_url,
         };
 
-        // Toast 표시
         showAffinityToast(
           [{ character_id: comment.character_id, success: true }],
           [characterInfo],
-          [{ characterId: comment.character_id }]
+          [{ characterId: comment.character_id, increment: 1 }]
         );
       }
     } catch (error) {
       console.error("댓글 좋아요 처리 실패:", error);
-      // 에러 시 캐시 무효화하여 서버 데이터로 복구
-      queryClient.invalidateQueries(["posts", userId]);
+      queryClient.invalidateQueries({ queryKey: ["posts", userId] });
     }
   };
 
