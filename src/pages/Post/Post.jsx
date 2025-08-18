@@ -346,7 +346,15 @@ const Post = () => {
       <div className="flex flex-col px-4 py-4">
         {/* CustomEditor 사용 */}
         <div className="flex-1 overflow-hidden">
-          <CustomEditor content={content} onChange={setContent} />
+          <CustomEditor
+            content={content}
+            onChange={setContent}
+            onHashtagAdd={(hashtag) => {
+              if (!selectedHashtags.includes(hashtag)) {
+                setSelectedHashtags([...selectedHashtags, hashtag]);
+              }
+            }}
+          />
         </div>
 
         {/* Selected Hashtags (추가로 선택한 것들) */}

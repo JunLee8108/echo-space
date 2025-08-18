@@ -89,6 +89,7 @@ export async function savePostWithCommentsAndLikes(
       Comment (
         id,
         character_id,
+        user_id,
         message,
         like,
         created_at,
@@ -102,6 +103,10 @@ export async function savePostWithCommentsAndLikes(
           User_Character (
             affinity
           )
+        ),
+        User_Profile (
+          id,
+          display_name
         ),
         Comment_Like (
           user_id,
@@ -152,45 +157,75 @@ export async function savePostWithCommentsAndLikes(
   }
 
   // 데이터 구조 평탄화 (fetchPostsWithCommentsAndLikes와 동일한 형식)
-  const formattedPost = {
-    ...savedPost,
-    Comment:
-      savedPost.Comment?.map((comment) => ({
-        id: comment.id,
-        character_id: comment.character_id,
-        message: comment.message,
-        like: comment.like || 0,
-        created_at: comment.created_at,
-        character: comment.Character?.name || "Unknown",
-        personality: comment.Character?.personality || [],
-        avatar_url: comment.Character?.avatar_url || null,
-        description: comment.Character?.description || "",
-        prompt_description: comment.Character?.prompt_description || "",
-        affinity: comment.Character?.User_Character[0]?.affinity || 0,
-        isLikedByUser:
-          comment.Comment_Like?.some(
-            (like) =>
-              like.user_id === savedPost.user_id && like.is_active === true
-          ) || false,
-      })) || [],
-    Post_Like:
-      savedPost.Post_Like?.map((like) => ({
-        character_id: like.character_id,
-        character: like.Character?.name || "Unknown",
-        personality: like.Character?.personality || [],
-        avatar_url: like.Character?.avatar_url || null,
-        description: like.Character?.description || "",
-        prompt_description: like.Character?.prompt_description || "",
-        affinity: like.Character?.User_Character[0]?.affinity || 0,
-      })) || [],
-    Post_Hashtag:
-      savedPost.Post_Hashtag?.map((ph) => ({
-        hashtag_id: ph.hashtag_id,
-        name: ph.Hashtag?.name || "",
-      })) || [],
-  };
+  const formattedPost = formatPostData(savedPost, savedPost.user_id);
 
   return formattedPost;
+}
+
+// 사용자 댓글 추가 함수 (NEW)
+export async function addUserComment(postId, userId, message) {
+  if (!userId) throw new Error("user_id가 없습니다.");
+  if (!postId) throw new Error("post_id가 없습니다.");
+  if (!message || message.trim() === "")
+    throw new Error("댓글 내용이 없습니다.");
+
+  try {
+    // 1. 댓글 저장
+    const { data: commentData, error: commentError } = await supabase
+      .from("Comment")
+      .insert([
+        {
+          post_id: postId,
+          user_id: userId, // character_id 대신 user_id 사용
+          message: message.trim(),
+          like: 0,
+        },
+      ])
+      .select(
+        `
+        id,
+        user_id,
+        message,
+        like,
+        created_at,
+        User_Profile (
+          id,
+          display_name
+        )
+      `
+      )
+      .single();
+
+    if (commentError) {
+      console.error("❌ 사용자 댓글 저장 실패:", commentError.message);
+      throw commentError;
+    }
+
+    // 2. 포맷팅된 댓글 반환
+    const formattedComment = {
+      id: commentData.id,
+      character_id: null,
+      user_id: commentData.user_id,
+      message: commentData.message,
+      like: commentData.like || 0,
+      created_at: commentData.created_at,
+      // 사용자 댓글인 경우
+      isUserComment: true,
+      character: commentData.User_Profile?.display_name || "User",
+      avatar_url: null, // avatar_url이 없음
+      personality: [],
+      description: "",
+      prompt_description: "",
+      affinity: null,
+      isLikedByUser: false,
+      User_Profile: commentData.User_Profile,
+    };
+
+    return formattedComment;
+  } catch (error) {
+    console.error("❌ addUserComment 실패:", error);
+    throw error;
+  }
 }
 
 export async function updatePost(postId, { content, mood, hashtags, userId }) {
@@ -273,6 +308,7 @@ export async function updatePost(postId, { content, mood, hashtags, userId }) {
         Comment (
           id,
           character_id,
+          user_id,
           message,
           like,
           created_at,
@@ -286,6 +322,10 @@ export async function updatePost(postId, { content, mood, hashtags, userId }) {
             User_Character (
               affinity
             )
+          ),
+          User_Profile (
+            id,
+            display_name
           ),
           Comment_Like (
             user_id,
@@ -336,42 +376,7 @@ export async function updatePost(postId, { content, mood, hashtags, userId }) {
     }
 
     // 데이터 구조 평탄화
-    const formattedPost = {
-      ...fullPost,
-      Comment:
-        fullPost.Comment?.map((comment) => ({
-          id: comment.id,
-          character_id: comment.character_id,
-          message: comment.message,
-          like: comment.like || 0,
-          created_at: comment.created_at,
-          character: comment.Character?.name || "Unknown",
-          personality: comment.Character?.personality || [],
-          avatar_url: comment.Character?.avatar_url || null,
-          description: comment.Character?.description || "",
-          prompt_description: comment.Character?.prompt_description || "",
-          affinity: comment.Character?.User_Character[0]?.affinity || 0,
-          isLikedByUser:
-            comment.Comment_Like?.some(
-              (like) => like.user_id === userId && like.is_active === true
-            ) || false,
-        })) || [],
-      Post_Like:
-        fullPost.Post_Like?.map((like) => ({
-          character_id: like.character_id,
-          character: like.Character?.name || "Unknown",
-          personality: like.Character?.personality || [],
-          avatar_url: like.Character?.avatar_url || null,
-          description: like.Character?.description || "",
-          prompt_description: like.Character?.prompt_description || "",
-          affinity: like.Character?.User_Character[0]?.affinity || 0,
-        })) || [],
-      Post_Hashtag:
-        fullPost.Post_Hashtag?.map((ph) => ({
-          hashtag_id: ph.hashtag_id,
-          name: ph.Hashtag?.name || "",
-        })) || [],
-    };
+    const formattedPost = formatPostData(fullPost, userId);
 
     return formattedPost;
   } catch (error) {
@@ -430,19 +435,31 @@ export async function deletePostById(postId, uid) {
   }
 }
 
-export async function toggleCommentLike(commentId, userId) {
+export async function toggleCommentLike(commentId, userId, commentData = null) {
   if (!userId) throw new Error("user_id가 없습니다.");
   if (!commentId) throw new Error("comment_id가 없습니다.");
 
   try {
-    // 1. 댓글 정보 가져오기 (캐릭터 ID 필요)
-    const { data: commentData, error: commentError } = await supabase
-      .from("Comment")
-      .select("like, character_id")
-      .eq("id", commentId)
-      .single();
+    // 1. commentData가 전달되지 않은 경우에만 서버에서 가져오기
+    let currentLike, characterId;
 
-    if (commentError) throw commentError;
+    if (commentData) {
+      // 전달받은 데이터 사용 (서버 호출 없음)
+      currentLike = commentData.like || 0;
+      characterId = commentData.character_id;
+    } else {
+      // 댓글 정보 가져오기 (기존 방식)
+      const { data: fetchedData, error: commentError } = await supabase
+        .from("Comment")
+        .select("like, character_id")
+        .eq("id", commentId)
+        .single();
+
+      if (commentError) throw commentError;
+
+      currentLike = fetchedData.like || 0;
+      characterId = fetchedData.character_id;
+    }
 
     // 2. 기존 좋아요 레코드 확인 (활성/비활성 모두 포함)
     const { data: existingLike, error: checkError } = await supabase
@@ -469,25 +486,18 @@ export async function toggleCommentLike(commentId, userId) {
       if (updateError) throw updateError;
 
       // 4-1. Comment 테이블의 like 수 업데이트
-      if (newActiveState) {
-        // 활성화 (좋아요 추가)
-        await supabase
-          .from("Comment")
-          .update({ like: (commentData?.like || 0) + 1 })
-          .eq("id", commentId);
-      } else {
-        // 비활성화 (좋아요 취소)
-        await supabase
-          .from("Comment")
-          .update({ like: Math.max(0, (commentData?.like || 1) - 1) })
-          .eq("id", commentId);
-      }
+      const newLikeCount = newActiveState
+        ? currentLike + 1
+        : Math.max(0, currentLike - 1);
+
+      await supabase
+        .from("Comment")
+        .update({ like: newLikeCount })
+        .eq("id", commentId);
 
       return {
         liked: newActiveState,
-        likeCount: newActiveState
-          ? (commentData?.like || 0) + 1
-          : Math.max(0, (commentData?.like || 1) - 1),
+        likeCount: newLikeCount,
         affinityIncreased: false, // 기존 레코드가 있으면 친밀도는 이미 증가했음
       };
     } else {
@@ -498,8 +508,6 @@ export async function toggleCommentLike(commentId, userId) {
           {
             comment_id: commentId,
             user_id: userId,
-            is_active: true,
-            affinity_increased: false, // 초기값
           },
         ])
         .select()
@@ -508,21 +516,22 @@ export async function toggleCommentLike(commentId, userId) {
       if (insertError) throw insertError;
 
       // 4-2. Comment 테이블의 like 수 증가
+      const newLikeCount = currentLike + 1;
       await supabase
         .from("Comment")
-        .update({ like: (commentData?.like || 0) + 1 })
+        .update({ like: newLikeCount })
         .eq("id", commentId);
 
       // 5. 처음 좋아요를 누르는 경우에만 친밀도 증가 (확률적)
       let affinityActuallyIncreased = false;
-      if (commentData.character_id) {
+      if (characterId) {
         try {
           // 현재 캐릭터의 affinity 가져오기
           const { data: userCharData } = await supabase
             .from("User_Character")
             .select("affinity")
             .eq("user_id", userId)
-            .eq("character_id", commentData.character_id)
+            .eq("character_id", characterId)
             .single();
 
           const currentAffinity = userCharData?.affinity || 0;
@@ -536,7 +545,7 @@ export async function toggleCommentLike(commentId, userId) {
           const shouldIncreaseAffinity = Math.random() < probability;
 
           if (shouldIncreaseAffinity) {
-            await updateCharacterAffinity(userId, commentData.character_id, 1);
+            await updateCharacterAffinity(userId, characterId, 1);
 
             // 친밀도 증가 성공 시 플래그 업데이트
             await supabase
@@ -545,14 +554,6 @@ export async function toggleCommentLike(commentId, userId) {
               .eq("id", newLike.id);
 
             affinityActuallyIncreased = true;
-            // console.log(
-            //   `✅ 캐릭터 ${
-            //     commentData.character_id
-            //   }의 친밀도가 증가했습니다. (확률: ${probability * 100}%)`
-            // );
-          } else {
-            // console.log(`⏭️ 친밀도 증가 스킵 (확률: ${probability * 100}%)`);
-            // affinity_increased는 false로 유지 (다음에 다시 시도 가능)
           }
         } catch (affinityError) {
           console.error("❌ 친밀도 증가 실패:", affinityError);
@@ -561,7 +562,7 @@ export async function toggleCommentLike(commentId, userId) {
 
       return {
         liked: true,
-        likeCount: (commentData?.like || 0) + 1,
+        likeCount: newLikeCount,
         affinityIncreased: affinityActuallyIncreased,
       };
     }
@@ -595,6 +596,7 @@ export async function fetchPostsWithCommentsAndLikes(
         Comment (
           id,
           character_id,
+          user_id,
           message,
           like,
           created_at,
@@ -608,6 +610,10 @@ export async function fetchPostsWithCommentsAndLikes(
             User_Character (
               affinity
             )
+          ),
+          User_Profile (
+            id,
+            display_name
           ),
           Comment_Like (
             user_id,
@@ -679,43 +685,7 @@ export async function fetchPostsWithCommentsAndLikes(
         : null;
 
     // 데이터 구조 평탄화 - Comment_Like 정보 포함
-    const formattedData = posts.map((post) => ({
-      ...post,
-      Comment:
-        post.Comment?.map((comment) => ({
-          id: comment.id,
-          character_id: comment.character_id,
-          message: comment.message,
-          like: comment.like || 0,
-          created_at: comment.created_at,
-          character: comment.Character?.name || "Unknown",
-          personality: comment.Character?.personality || [],
-          avatar_url: comment.Character?.avatar_url || null,
-          description: comment.Character?.description || "",
-          prompt_description: comment.Character?.prompt_description || "",
-          affinity: comment.Character?.User_Character[0]?.affinity || 0,
-          // 현재 사용자가 좋아요를 눌렀는지 확인
-          isLikedByUser:
-            comment.Comment_Like?.some((like) => {
-              return like.user_id === uid && like.is_active === true;
-            }) || false,
-        })) || [],
-      Post_Like:
-        post.Post_Like?.map((like) => ({
-          character_id: like.character_id,
-          character: like.Character?.name || "Unknown",
-          personality: like.Character?.personality || [],
-          avatar_url: like.Character?.avatar_url || null,
-          description: like.Character?.description || "",
-          prompt_description: like.Character?.prompt_description || "",
-          affinity: like.Character?.User_Character[0]?.affinity || 0,
-        })) || [],
-      Post_Hashtag:
-        post.Post_Hashtag?.map((ph) => ({
-          hashtag_id: ph.hashtag_id,
-          name: ph.Hashtag?.name || "",
-        })) || [],
-    }));
+    const formattedData = posts.map((post) => formatPostData(post, uid));
 
     return {
       posts: formattedData,
@@ -726,4 +696,69 @@ export async function fetchPostsWithCommentsAndLikes(
     console.error("Error in fetchPostsWithCommentsAndLikes:", error);
     throw error;
   }
+}
+
+// 포스트 데이터 포맷팅 헬퍼 함수 (NEW)
+function formatPostData(post, userId) {
+  return {
+    ...post,
+    Comment:
+      post.Comment?.map((comment) => ({
+        id: comment.id,
+        character_id: comment.character_id,
+        user_id: comment.user_id,
+        message: comment.message,
+        like: comment.like || 0,
+        created_at: comment.created_at,
+        // AI 댓글인 경우
+        ...(comment.character_id && {
+          character: comment.Character?.name || "Unknown",
+          personality: comment.Character?.personality || [],
+          avatar_url: comment.Character?.avatar_url || null,
+          description: comment.Character?.description || "",
+          prompt_description: comment.Character?.prompt_description || "",
+          affinity: comment.Character?.User_Character[0]?.affinity || 0,
+        }),
+        // 사용자 댓글인 경우
+        ...(comment.user_id && {
+          isUserComment: true,
+          character: comment.User_Profile?.display_name || "User",
+          avatar_url: null, // avatar_url이 없음
+          personality: [],
+          description: "",
+          prompt_description: "",
+          affinity: null,
+        }),
+        // 현재 사용자가 좋아요를 눌렀는지 확인
+        isLikedByUser:
+          comment.Comment_Like?.some((like) => {
+            return like.user_id === userId && like.is_active === true;
+          }) || false,
+        User_Profile: comment.User_Profile,
+      }))
+        // 🔥 첫 로딩 시에만 정렬 적용
+        ?.sort((a, b) => {
+          // 1. like 높은 순으로 정렬
+          if (b.like !== a.like) {
+            return b.like - a.like;
+          }
+          // 2. like가 같으면 id 순으로 정렬 (오래된 것부터)
+          return a.id - b.id;
+        }) || [],
+    Post_Like:
+      post.Post_Like?.map((like) => ({
+        character_id: like.character_id,
+        character: like.Character?.name || "Unknown",
+        personality: like.Character?.personality || [],
+        avatar_url: like.Character?.avatar_url || null,
+        description: like.Character?.description || "",
+        prompt_description: like.Character?.prompt_description || "",
+        affinity: like.Character?.User_Character[0]?.affinity || 0,
+      })) || [],
+    Post_Hashtag:
+      post.Post_Hashtag?.map((ph) => ({
+        hashtag_id: ph.hashtag_id,
+        name: ph.Hashtag?.name || "",
+      })) || [],
+  };
 }

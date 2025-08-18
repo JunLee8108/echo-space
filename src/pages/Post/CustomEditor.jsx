@@ -18,6 +18,7 @@ import "./CustomEditor.css";
 
 import { useUserLanguage } from "../../stores/userStore";
 import { createTranslator } from "../../components/utils/translations";
+import { searchHashtags } from "../../services/hashtagService";
 
 // 이모지 컬렉션
 const EMOJI_CATEGORIES = {
@@ -91,7 +92,7 @@ const EMOJI_CATEGORIES = {
   },
 };
 
-const CustomEditor = ({ content, onChange }) => {
+const CustomEditor = ({ content, onChange, onHashtagAdd }) => {
   const language = useUserLanguage();
   const translate = createTranslator(language);
 
@@ -111,6 +112,17 @@ const CustomEditor = ({ content, onChange }) => {
   const [selectedColor, setSelectedColor] = useState("#000000");
   const dragCounterRef = useRef(0);
 
+  // 해시태그 자동완성 관련 state
+  const [isTypingHashtag, setIsTypingHashtag] = useState(false);
+  const [currentHashtagText, setCurrentHashtagText] = useState("");
+  const [hashtagSuggestions, setHashtagSuggestions] = useState([]);
+  const [showHashtagSuggestions, setShowHashtagSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
+  const [suggestionPosition, setSuggestionPosition] = useState({
+    top: 0,
+    left: 0,
+  });
+
   // 초기 콘텐츠 설정
   useEffect(() => {
     if (
@@ -122,24 +134,47 @@ const CustomEditor = ({ content, onChange }) => {
     }
   }, [content]);
 
-  // 활성 스타일 체크 (개선된 버전)
+  // 해시태그 자동완성 검색
+  useEffect(() => {
+    console.log("Current hashtag text:", currentHashtagText);
+
+    if (!currentHashtagText || currentHashtagText.length < 1) {
+      setHashtagSuggestions([]);
+      setShowHashtagSuggestions(false);
+      return;
+    }
+
+    const searchTimer = setTimeout(async () => {
+      try {
+        const suggestions = await searchHashtags(currentHashtagText);
+        console.log("Suggestions:", suggestions);
+        setHashtagSuggestions(suggestions);
+        setShowHashtagSuggestions(suggestions.length > 0);
+      } catch (error) {
+        console.error("해시태그 검색 실패:", error);
+        setHashtagSuggestions([]);
+        setShowHashtagSuggestions(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(searchTimer);
+  }, [currentHashtagText]);
+
+  // 활성 스타일 체크
   const checkActiveStyles = useCallback(() => {
     const selection = window.getSelection();
     if (!selection.rangeCount) return;
 
-    // 현재 커서 위치의 스타일 체크
     let element = selection.anchorNode;
     if (element.nodeType === Node.TEXT_NODE) {
       element = element.parentElement;
     }
 
-    // 색상 체크 - computed style 사용
     let currentColor = null;
     if (element) {
       const computedStyle = window.getComputedStyle(element);
       const color = computedStyle.color;
 
-      // RGB를 HEX로 변환
       if (color.startsWith("rgb")) {
         const matches = color.match(/\d+/g);
         if (matches) {
@@ -163,12 +198,10 @@ const CustomEditor = ({ content, onChange }) => {
 
     const editorText = editorRef.current?.innerText?.trim();
     if (!editorText || editorText.length === 0) {
-      return; // 빈 에디터일 때는 선택된 색상 유지
+      return;
     }
 
-    // 현재 활성 색상 업데이트
     if (currentColor) {
-      // 표준 색상과 비교
       if (
         currentColor.toLowerCase() === "#000000" ||
         currentColor.toLowerCase() === "#44403c"
@@ -188,7 +221,7 @@ const CustomEditor = ({ content, onChange }) => {
     }
   }, []);
 
-  // 리스트 변환 함수 (개선된 버전)
+  // 리스트 변환 함수
   const convertToList = (type) => {
     const selection = window.getSelection();
     if (!selection.rangeCount) return;
@@ -196,7 +229,6 @@ const CustomEditor = ({ content, onChange }) => {
     const range = selection.getRangeAt(0);
     const container = range.startContainer;
 
-    // 텍스트 노드의 부모 요소 찾기
     let targetNode =
       container.nodeType === Node.TEXT_NODE
         ? container
@@ -204,7 +236,6 @@ const CustomEditor = ({ content, onChange }) => {
 
     if (!targetNode) return;
 
-    // 텍스트 노드가 아니면 첫 번째 텍스트 노드 찾기
     if (targetNode.nodeType !== Node.TEXT_NODE) {
       const textNodes = [];
       const walker = document.createTreeWalker(
@@ -221,111 +252,286 @@ const CustomEditor = ({ content, onChange }) => {
       }
     }
 
-    // 현재 텍스트 내용
     const currentText = targetNode.textContent || "";
 
-    // 리스트 생성
     const listType = type === "ordered" ? "ol" : "ul";
     const list = document.createElement(listType);
     const listItem = document.createElement("li");
 
-    // 남은 텍스트 추가
     listItem.textContent = currentText;
     list.appendChild(listItem);
 
-    // DOM에 삽입
     if (targetNode.parentNode === editorRef.current) {
-      // 에디터 직접 자식인 경우
       editorRef.current.insertBefore(list, targetNode);
       editorRef.current.removeChild(targetNode);
     } else if (targetNode.parentNode) {
-      // 다른 요소의 자식인 경우
       const parent = targetNode.parentNode;
 
-      // P 태그나 DIV 태그인 경우
       if (parent.tagName === "P" || parent.tagName === "DIV") {
         parent.parentNode.insertBefore(list, parent);
         parent.parentNode.removeChild(parent);
       } else {
-        // 기타 경우 텍스트 노드만 교체
         parent.insertBefore(list, targetNode);
         parent.removeChild(targetNode);
       }
     }
 
-    // 커서를 리스트 아이템 끝으로 이동
     const newRange = document.createRange();
     newRange.selectNodeContents(listItem);
     newRange.collapse(false);
     selection.removeAllRanges();
     selection.addRange(newRange);
 
-    // 변경사항 알림
     handleInput();
   };
 
-  // 콘텐츠 변경 감지 및 해시태그 추출 (리스트 변환 제거)
+  // 해시태그 확정
+  const confirmHashtag = (hashtag) => {
+    setShowHashtagSuggestions(false);
+
+    if (onHashtagAdd) {
+      onHashtagAdd(hashtag.toLowerCase());
+    }
+
+    setTimeout(() => {
+      removeHashtagText();
+      resetHashtagMode();
+    }, 50);
+  };
+
+  const handleCompositionEnd = () => {
+    if (isTypingHashtag) {
+      setTimeout(() => {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          const container = range.startContainer;
+
+          if (container.nodeType === Node.TEXT_NODE) {
+            const text = container.textContent;
+            const offset = range.startOffset;
+
+            let hashIndex = -1;
+            for (let i = offset - 1; i >= 0; i--) {
+              if (text[i] === "#") {
+                hashIndex = i;
+                break;
+              }
+              if (text[i] === " " || text[i] === "\n") {
+                break;
+              }
+            }
+
+            if (hashIndex !== -1) {
+              const hashtagText = text.substring(hashIndex + 1, offset);
+              setCurrentHashtagText(hashtagText);
+            }
+          }
+        }
+      }, 0);
+    }
+  };
+
+  // 해시태그 텍스트 제거
+  const removeHashtagText = () => {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const container = range.startContainer;
+
+      if (container.nodeType === Node.TEXT_NODE) {
+        const text = container.textContent;
+        const offset = range.startOffset;
+
+        let hashIndex = -1;
+        for (let i = offset - 1; i >= 0; i--) {
+          if (text[i] === "#") {
+            hashIndex = i;
+            break;
+          }
+          if (text[i] === " " || text[i] === "\n") {
+            break;
+          }
+        }
+
+        if (hashIndex !== -1) {
+          const beforeHash = text.slice(0, hashIndex);
+          const afterHash = text.slice(offset);
+
+          container.textContent = beforeHash + afterHash;
+
+          const newRange = document.createRange();
+          newRange.setStart(container, hashIndex);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+      }
+    }
+
+    if (editorRef.current) {
+      const event = new Event("input", { bubbles: true });
+      editorRef.current.dispatchEvent(event);
+    }
+  };
+
+  // 해시태그 모드 취소
+  const cancelHashtagMode = () => {
+    resetHashtagMode();
+  };
+
+  // 해시태그 모드 리셋
+  const resetHashtagMode = () => {
+    setIsTypingHashtag(false);
+    setCurrentHashtagText("");
+    setShowHashtagSuggestions(false);
+    setHashtagSuggestions([]);
+    setSelectedSuggestionIndex(0);
+    setSuggestionPosition({ top: 0, left: 0 });
+  };
+
+  // 제안 항목 선택
+  const selectSuggestion = (suggestion) => {
+    setShowHashtagSuggestions(false);
+    confirmHashtag(suggestion.name);
+  };
+
+  // 콘텐츠 변경 감지
   const handleInput = useCallback(() => {
     const html = editorRef.current.innerHTML;
     onChange(html);
     checkActiveStyles();
-  }, [onChange, checkActiveStyles]);
 
-  // beforeinput 이벤트 핸들러 (개선된 버전)
-  const handleBeforeInput = useCallback((e) => {
-    if (e.inputType === "insertText" && e.data === " ") {
+    if (isTypingHashtag) {
       const selection = window.getSelection();
-      if (!selection.rangeCount) return;
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const container = range.startContainer;
 
-      const range = selection.getRangeAt(0);
-      const container = range.startContainer;
+        if (container.nodeType === Node.TEXT_NODE) {
+          const text = container.textContent;
+          const offset = range.startOffset;
 
-      if (container.nodeType !== Node.TEXT_NODE) return;
+          let hashIndex = -1;
+          for (let i = offset - 1; i >= 0; i--) {
+            if (text[i] === "#") {
+              hashIndex = i;
+              break;
+            }
+            if (text[i] === " " || text[i] === "\n") {
+              break;
+            }
+          }
 
-      const text = container.textContent;
-      const offset = range.startOffset;
-
-      // 현재 위치까지의 텍스트
-      const textBefore = text.substring(0, offset);
-
-      // 패턴 매칭을 위한 텍스트 (앞 공백 제거)
-      const trimmedText = textBefore.trimStart();
-
-      // '- ' 패턴 체크
-      if (trimmedText === "-") {
-        e.preventDefault();
-
-        // '-' 텍스트 제거
-        const remainingText = text.substring(offset).trim();
-        container.textContent = remainingText;
-
-        // 리스트로 변환
-        convertToList("unordered");
-        return false;
-      }
-
-      // '1. ' 등의 숫자 패턴 체크
-      if (/^\d+\.$/.test(trimmedText)) {
-        e.preventDefault();
-
-        // '1.' 텍스트 제거
-        const remainingText = text.substring(offset).trim();
-        container.textContent = remainingText;
-
-        // 리스트로 변환
-        convertToList("ordered");
-        return false;
+          if (hashIndex !== -1) {
+            const hashtagText = text.substring(hashIndex + 1, offset);
+            setCurrentHashtagText(hashtagText);
+            updateSuggestionPosition();
+          }
+        }
       }
     }
-  }, []);
+  }, [onChange, checkActiveStyles, isTypingHashtag]);
 
-  // 키 입력 감지 (해시태그 완성 체크 및 색상 업데이트)
+  const updateSuggestionPosition = () => {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const editorRect = editorRef.current.getBoundingClientRect();
+
+      let top = rect.bottom - editorRect.top + editorRef.current.scrollTop + 5;
+      let left = rect.left - editorRect.left + editorRef.current.scrollLeft;
+
+      const windowHeight = window.innerHeight;
+      const suggestionHeight = 200;
+
+      if (rect.bottom + suggestionHeight > windowHeight) {
+        top =
+          rect.top -
+          editorRect.top +
+          editorRef.current.scrollTop -
+          suggestionHeight -
+          5;
+      }
+
+      const windowWidth = window.innerWidth;
+      const suggestionWidth = 200;
+
+      if (rect.left + suggestionWidth > windowWidth) {
+        left = Math.max(0, windowWidth - suggestionWidth - 20);
+      }
+
+      setSuggestionPosition({ top, left });
+    }
+  };
+
+  // beforeinput 이벤트 핸들러 (Space 관련 로직 제거)
+  const handleBeforeInput = useCallback(
+    (e) => {
+      // # 입력 감지
+      if (e.data === "#" && !isTypingHashtag) {
+        setIsTypingHashtag(true);
+        setCurrentHashtagText("");
+        setSelectedSuggestionIndex(0);
+
+        setTimeout(() => {
+          updateSuggestionPosition();
+        }, 0);
+
+        return;
+      }
+
+      // 해시태그 입력 중 스페이스 처리 - 해시태그 모드 취소
+      if (isTypingHashtag && e.data === " ") {
+        e.preventDefault();
+        cancelHashtagMode();
+        return;
+      }
+
+      // 리스트 변환 로직은 해시태그 모드가 아닐 때만
+      if (!isTypingHashtag) {
+        if (e.inputType === "insertText" && e.data === " ") {
+          const selection = window.getSelection();
+          if (!selection.rangeCount) return;
+
+          const range = selection.getRangeAt(0);
+          const container = range.startContainer;
+
+          if (container.nodeType !== Node.TEXT_NODE) return;
+
+          const text = container.textContent;
+          const offset = range.startOffset;
+          const textBefore = text.substring(0, offset);
+          const trimmedText = textBefore.trimStart();
+
+          if (trimmedText === "-") {
+            e.preventDefault();
+            const remainingText = text.substring(offset).trim();
+            container.textContent = remainingText;
+            convertToList("unordered");
+            return false;
+          }
+
+          if (/^\d+\.$/.test(trimmedText)) {
+            e.preventDefault();
+            const remainingText = text.substring(offset).trim();
+            container.textContent = remainingText;
+            convertToList("ordered");
+            return false;
+          }
+        }
+      }
+    },
+    [isTypingHashtag]
+  );
+
+  // 키 입력 감지
   const handleKeyUp = useCallback(
     (e) => {
       if (e.key === " " || e.key === "Enter") {
         handleInput();
       }
-      // Backspace나 화살표 키 등으로 이동할 때도 스타일 체크
       if (
         e.key === "Backspace" ||
         e.key === "Delete" ||
@@ -387,13 +593,12 @@ const CustomEditor = ({ content, onChange }) => {
     setCurrentAlignment(align);
   };
 
-  // 날짜 삽입 (영어)
+  // 날짜 삽입
   const insertDate = () => {
     const date = new Date();
     let formattedDate;
 
     if (language === "Korean") {
-      // 한국어 형식: 2024년 12월 19일 목요일
       const year = date.getFullYear();
       const month = date.getMonth() + 1;
       const day = date.getDate();
@@ -409,7 +614,6 @@ const CustomEditor = ({ content, onChange }) => {
       const weekday = weekdays[date.getDay()];
       formattedDate = `${year}년 ${month}월 ${day}일 ${weekday}`;
     } else if (language === "English") {
-      // 영어 형식 (기존)
       formattedDate = date.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
@@ -421,20 +625,18 @@ const CustomEditor = ({ content, onChange }) => {
     insertAtCursor(formattedDate);
   };
 
-  // 시간 삽입 (영어)
+  // 시간 삽입
   const insertTime = () => {
     const time = new Date();
     let formattedTime;
 
     if (language === "Korean") {
-      // 한국어 형식: 오후 3시 30분
       const hours = time.getHours();
       const minutes = time.getMinutes();
       const period = hours >= 12 ? "오후" : "오전";
       const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
       formattedTime = `${period} ${displayHours}시 ${minutes}분`;
     } else {
-      // 영어 형식 (기존)
       formattedTime = time.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
@@ -461,22 +663,18 @@ const CustomEditor = ({ content, onChange }) => {
     handleInput();
   };
 
-  // HTML 삽입 (수정된 버전)
+  // HTML 삽입
   const insertHTML = (html, maintainFocus = true) => {
-    // 에디터에 포커스
     editorRef.current.focus();
 
-    // HTML 삽입
     const selection = window.getSelection();
     if (selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
       range.deleteContents();
 
-      // HTML 문자열을 DOM 요소로 변환
       const temp = document.createElement("div");
       temp.innerHTML = html;
 
-      // 모든 자식 요소를 삽입
       const fragment = document.createDocumentFragment();
       while (temp.firstChild) {
         fragment.appendChild(temp.firstChild);
@@ -484,19 +682,15 @@ const CustomEditor = ({ content, onChange }) => {
 
       range.insertNode(fragment);
 
-      // 커서를 삽입된 내용 뒤로 이동
       range.collapse(false);
       selection.removeAllRanges();
       selection.addRange(range);
     } else {
-      // 선택 영역이 없으면 끝에 추가
       editorRef.current.innerHTML += html;
     }
 
-    // 변경사항 알림
     handleInput();
 
-    // 포커스 제어
     if (!maintainFocus) {
       setTimeout(() => {
         editorRef.current.blur();
@@ -511,13 +705,12 @@ const CustomEditor = ({ content, onChange }) => {
     setShowCategoryDropdown(false);
   };
 
-  // 이미지 업로드 (수정된 버전)
+  // 이미지 업로드
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files || []);
 
     if (files.length === 0) return;
 
-    // 이미지 파일만 필터링
     const imageFiles = files.filter((file) => file.type.startsWith("image/"));
 
     if (imageFiles.length === 0) {
@@ -525,7 +718,6 @@ const CustomEditor = ({ content, onChange }) => {
       return;
     }
 
-    // 각 이미지 처리
     imageFiles.forEach((file, index) => {
       processImageFile(file, index === imageFiles.length - 1);
     });
@@ -533,7 +725,7 @@ const CustomEditor = ({ content, onChange }) => {
     e.target.value = "";
   };
 
-  // 이미지 파일 처리 (수정된 버전)
+  // 이미지 파일 처리
   const processImageFile = (file, isLastFile = true) => {
     if (!file.type.startsWith("image/")) {
       alert("Please select an image file.");
@@ -544,7 +736,6 @@ const CustomEditor = ({ content, onChange }) => {
     reader.onload = (event) => {
       const base64String = event.target.result;
 
-      // 이미지 크기 체크
       const sizeInBytes = Math.ceil((base64String.length - 22) * 0.75);
       const sizeInMB = sizeInBytes / (1024 * 1024);
 
@@ -557,10 +748,8 @@ const CustomEditor = ({ content, onChange }) => {
         return;
       }
 
-      // 이미지 HTML 생성
       const imgHTML = `<img src="${base64String}" class="editor-image" style="max-width: 100%; height: auto; display: block; margin: 1em 0;" />`;
 
-      // 에디터가 비어있으면 직접 삽입
       if (
         !editorRef.current.innerHTML ||
         editorRef.current.innerHTML === "<br>"
@@ -568,11 +757,9 @@ const CustomEditor = ({ content, onChange }) => {
         editorRef.current.innerHTML = imgHTML;
         handleInput();
       } else {
-        // 기존 내용이 있으면 현재 위치에 삽입
         insertHTML(imgHTML, false);
       }
 
-      // 마지막 파일이 아니면 줄바꿈 추가
       if (!isLastFile) {
         insertHTML("<br>", false);
       }
@@ -604,7 +791,6 @@ const CustomEditor = ({ content, onChange }) => {
     e.stopPropagation();
   };
 
-  // 드래그 앤 드롭 처리 (수정된 버전)
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -616,7 +802,6 @@ const CustomEditor = ({ content, onChange }) => {
 
     if (imageFiles.length === 0) return;
 
-    // 드롭 위치에 커서 설정
     const range = document.caretRangeFromPoint(e.clientX, e.clientY);
     if (range) {
       const selection = window.getSelection();
@@ -624,13 +809,12 @@ const CustomEditor = ({ content, onChange }) => {
       selection.addRange(range);
     }
 
-    // 여러 이미지 처리
     imageFiles.forEach((file, index) => {
       processImageFile(file, index === imageFiles.length - 1);
     });
   };
 
-  // 붙여넣기 이벤트 처리 (수정된 버전)
+  // 붙여넣기 이벤트 처리
   const handlePaste = (e) => {
     const items = Array.from(e.clipboardData?.items || []);
     const imageItem = items.find((item) => item.type.indexOf("image") !== -1);
@@ -640,14 +824,83 @@ const CustomEditor = ({ content, onChange }) => {
       const file = imageItem.getAsFile();
 
       if (file) {
-        // 현재 커서 위치에 이미지 삽입
         processImageFile(file, true);
       }
     }
   };
 
-  // 키보드 단축키
+  // 키보드 단축키 (Space 처리 제거)
   const handleKeyDown = (e) => {
+    // 해시태그 입력 중 엔터 처리
+    if (isTypingHashtag) {
+      // 제안 목록이 열려있고 엔터를 눌렀을 때
+      if (
+        e.key === "Enter" &&
+        showHashtagSuggestions &&
+        hashtagSuggestions.length > 0
+      ) {
+        e.preventDefault();
+
+        const isComposing = e.nativeEvent.isComposing;
+
+        if (!isComposing) {
+          if (hashtagSuggestions[selectedSuggestionIndex]) {
+            selectSuggestion(hashtagSuggestions[selectedSuggestionIndex]);
+          }
+        }
+        return;
+      }
+
+      // 엔터키로 해시태그 추가
+      if (e.key === "Enter") {
+        e.preventDefault();
+
+        const isComposing = e.nativeEvent.isComposing;
+
+        if (!isComposing) {
+          if (currentHashtagText.trim()) {
+            confirmHashtag(currentHashtagText.trim());
+          } else {
+            cancelHashtagMode();
+          }
+        }
+        return;
+      }
+
+      // ESC로 취소
+      if (e.key === "Escape") {
+        e.preventDefault();
+        cancelHashtagMode();
+        return;
+      }
+
+      // 백스페이스 처리
+      if (e.key === "Backspace") {
+        if (currentHashtagText.length === 0) {
+          setTimeout(() => cancelHashtagMode(), 0);
+        }
+      }
+
+      // 화살표 키로 제안 목록 네비게이션
+      if (showHashtagSuggestions && hashtagSuggestions.length > 0) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setSelectedSuggestionIndex((prev) =>
+            prev < hashtagSuggestions.length - 1 ? prev + 1 : 0
+          );
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setSelectedSuggestionIndex((prev) =>
+            prev > 0 ? prev - 1 : hashtagSuggestions.length - 1
+          );
+          return;
+        }
+      }
+    }
+
+    // 기존 단축키 로직
     if (e.ctrlKey || e.metaKey) {
       switch (e.key) {
         case "b":
@@ -760,7 +1013,7 @@ const CustomEditor = ({ content, onChange }) => {
   }, [handleBeforeInput]);
 
   return (
-    <div className="custom-editor">
+    <div className="custom-editor" style={{ position: "relative" }}>
       {/* 툴바 */}
       <div className="editor-toolbar">
         {/* 첫 번째 줄 - 텍스트 스타일 */}
@@ -958,7 +1211,7 @@ const CustomEditor = ({ content, onChange }) => {
                                 {category.name}
                               </span>
                               {selectedEmojiCategory === key && (
-                                <span className="category-item-check">✓</span>
+                                <span className="category-item-check">✔</span>
                               )}
                             </button>
                           )
@@ -1016,6 +1269,7 @@ const CustomEditor = ({ content, onChange }) => {
         onKeyUp={handleKeyUp}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
+        onCompositionEnd={handleCompositionEnd}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
@@ -1023,7 +1277,45 @@ const CustomEditor = ({ content, onChange }) => {
         onMouseUp={checkActiveStyles}
         onClick={checkActiveStyles}
         data-placeholder={"Share your story..."}
-      />
+      ></div>
+
+      {/* 해시태그 자동완성 - 동적 위치 */}
+      {showHashtagSuggestions && (
+        <div
+          className="absolute z-50 bg-white border border-stone-200 rounded-lg shadow-lg max-w-xs"
+          style={{
+            top: `${suggestionPosition.top + 50}px`,
+            left: `${suggestionPosition.left + 20}px`,
+            minWidth: "150px",
+          }}
+        >
+          <div className="py-1 max-h-48 overflow-y-auto">
+            {hashtagSuggestions.map((suggestion, index) => (
+              <button
+                key={suggestion.id}
+                type="button"
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-stone-50 ${
+                  index === selectedSuggestionIndex ? "bg-stone-100" : ""
+                }`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  selectSuggestion(suggestion);
+                }}
+                onMouseEnter={() => setSelectedSuggestionIndex(index)}
+              >
+                <span className="text-blue-600">#</span>
+                {suggestion.name}
+              </button>
+            ))}
+          </div>
+          {currentHashtagText && (
+            <div className="px-3 py-2 text-xs text-stone-500 border-t border-stone-100">
+              Press Enter to add "#{currentHashtagText}"
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

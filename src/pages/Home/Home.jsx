@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router"; // 상단에 import 추가
+import { useNavigate } from "react-router";
 import {
   useInfiniteQuery,
   useMutation,
@@ -15,6 +15,7 @@ import { showAffinityToast } from "../../components/utils/toastUtils";
 import ConfirmationModal from "../../components/UI/ConfirmationModal";
 import ProfileModal from "../../components/UI/ProfileModal";
 import ImageModal from "./ImageModal";
+import CommentInput from "./CommentInput";
 
 import {
   deletePostById,
@@ -22,6 +23,9 @@ import {
   toggleCommentLike,
 } from "../../services/postService";
 import "./Home.css";
+
+// Custom hooks
+import { useAddComment } from "../../components/hooks/useAddComment";
 
 // userStore imports
 import { useUserId, useUserLanguage } from "../../stores/userStore";
@@ -60,18 +64,31 @@ const Home = () => {
   const language = useUserLanguage();
   const translate = createTranslator(language);
 
-  const navigate = useNavigate(); // 컴포넌트 내부에 추가
+  const navigate = useNavigate();
 
   // characterStore에서 캐릭터 정보 가져오기
   const characters = useCharacters();
   const { updateLocalCharacterAffinity } = useCharacterActions();
+
+  // 댓글 추가 mutation
+  const addCommentMutation = useAddComment({
+    onSuccess: () => {
+      console.log("댓글이 성공적으로 추가되었습니다.");
+    },
+    onError: (error) => {
+      console.error("댓글 추가 실패:", error);
+    },
+  });
+
+  // 댓글 입력 표시 상태 (포스트별)
+  const [showCommentInput, setShowCommentInput] = useState({});
 
   const extractText = (html) =>
     new DOMParser().parseFromString(html, "text/html").body.textContent.trim();
 
   const queryClient = useQueryClient();
 
-  /* ──────────────────────── Modal state ──────────────────────────── */
+  /* ──────────────────────── Modal state ────────────────────────── */
   const [likeModal, setLikeModal] = useState({
     show: false,
     likes: [],
@@ -322,7 +339,7 @@ const Home = () => {
             id: post.id,
             content: post.content,
             mood: post.mood,
-            Post_Hashtag: post.Post_Hashtag || [], // Post.jsx에서 해시태그 추출하므로 그대로 전달
+            Post_Hashtag: post.Post_Hashtag || [],
           },
         },
       });
@@ -378,12 +395,22 @@ const Home = () => {
   // 댓글 좋아요 토글 핸들러 추가
   const handleCommentLike = async (commentId, postId) => {
     try {
-      // 댓글 정보 가져오기 (캐릭터 정보 필요)
+      // 댓글 정보 가져오기 (이미 가지고 있는 데이터 사용)
       const post = posts.find((p) => p.id === postId);
       const comment = post?.Comment?.find((c) => c.id === commentId);
 
-      // 1. DB 호출 (postService)
-      const result = await toggleCommentLike(commentId, userId);
+      if (!comment) {
+        console.error("댓글을 찾을 수 없습니다.");
+        return;
+      }
+
+      console.log(comment);
+
+      // 1. DB 호출 (postService) - comment 데이터도 함께 전달
+      const result = await toggleCommentLike(commentId, userId, {
+        like: comment.like,
+        character_id: comment.character_id,
+      });
 
       // 2. React Query 캐시 업데이트 (UI 즉시 반영)
       queryClient.setQueryData(["posts", userId], (old) => {
@@ -445,7 +472,7 @@ const Home = () => {
     }
   };
 
-  // 4. 더블 탭 핸들러 수정 (모바일 지원)
+  // 더블 탭 핸들러 수정 (모바일 지원)
   const handleCommentDoubleTap = (() => {
     let lastTap = 0;
     let tapTimeout = null;
@@ -481,6 +508,24 @@ const Home = () => {
       show: true,
       imageSrc: imageSrc,
     });
+  };
+
+  // 댓글 입력창 토글
+  const toggleCommentInput = (postId) => {
+    setShowCommentInput((prev) => ({
+      ...prev,
+      [postId]: !prev[postId],
+    }));
+  };
+
+  // 댓글 추가 핸들러
+  const handleAddComment = async (postId, message) => {
+    await addCommentMutation.mutateAsync({ postId, message });
+    // 성공 시 입력창 닫기
+    setShowCommentInput((prev) => ({
+      ...prev,
+      [postId]: false,
+    }));
   };
 
   // 스켈레톤 로더 컴포넌트
@@ -784,13 +829,18 @@ const Home = () => {
                             // 서버에서 받은 데이터 사용
                             const isLiked = c.isLikedByUser;
                             const likeCount = c.like || 0;
+                            const isUserComment =
+                              c.isUserComment || c.user_id === userId;
 
                             return (
                               <div
                                 key={c.id}
-                                className="flex items-start space-x-2 animate-slideIn"
+                                className={`flex items-start space-x-2 ${
+                                  c.isLoading ? "opacity-70" : ""
+                                }`}
                                 style={{ animationDelay: `${idx * 100}ms` }}
                               >
+                                {/* Avatar */}
                                 {c.avatar_url ? (
                                   <img
                                     src={c.avatar_url}
@@ -798,10 +848,13 @@ const Home = () => {
                                     className="w-9 h-9 cursor-pointer rounded-2xl object-cover flex-shrink-0"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setProfileModal({
-                                        show: true,
-                                        character: getEnrichedCharacter(c),
-                                      });
+                                      // 사용자 댓글이 아닌 경우에만 프로필 모달 열기
+                                      if (!isUserComment) {
+                                        setProfileModal({
+                                          show: true,
+                                          character: getEnrichedCharacter(c),
+                                        });
+                                      }
                                     }}
                                     onError={(e) => {
                                       e.target.style.display = "none";
@@ -811,84 +864,134 @@ const Home = () => {
                                   />
                                 ) : null}
                                 <div
-                                  className="w-9 h-9 bg-gradient-to-br from-stone-500 to-stone-700 rounded-full flex items-center justify-center flex-shrink-0"
+                                  className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                    isUserComment
+                                      ? "bg-gradient-to-br from-blue-500 to-blue-700"
+                                      : "bg-gradient-to-br from-stone-500 to-stone-700"
+                                  }`}
                                   style={{
                                     display: c.avatar_url ? "none" : "flex",
                                   }}
                                 >
                                   <span className="text-white text-xs font-medium">
-                                    {c.character?.charAt(0) || "A"}
+                                    {isUserComment
+                                      ? c.character?.charAt(0) || "U"
+                                      : c.character?.charAt(0) || "A"}
                                   </span>
                                 </div>
 
                                 <div className="flex-1 flex items-center gap-1.5">
                                   <div
-                                    className="flex-1 bg-stone-50 rounded-2xl px-4 py-2.5 select-none relative group"
-                                    onClick={(e) =>
-                                      handleCommentDoubleTap(e, c.id, post.id)
-                                    }
-                                    onTouchEnd={(e) =>
-                                      handleCommentDoubleTap(e, c.id, post.id)
-                                    }
+                                    className="flex-1 rounded-2xl px-4 py-2.5 select-none relative group bg-stone-50"
+                                    onClick={(e) => {
+                                      // AI 댓글만 더블탭 좋아요 가능
+                                      if (!isUserComment) {
+                                        handleCommentDoubleTap(
+                                          e,
+                                          c.id,
+                                          post.id
+                                        );
+                                      }
+                                    }}
+                                    onTouchEnd={(e) => {
+                                      if (!isUserComment) {
+                                        handleCommentDoubleTap(
+                                          e,
+                                          c.id,
+                                          post.id
+                                        );
+                                      }
+                                    }}
                                   >
-                                    <p className="text-sm font-medium text-stone-800 mb-0.5">
-                                      {c.character || "AI Friend"}
+                                    <p
+                                      className={`text-sm font-medium mb-0.5 ${
+                                        isUserComment
+                                          ? "text-blue-900"
+                                          : "text-stone-800"
+                                      }`}
+                                    >
+                                      {c.character}
                                     </p>
-                                    <p className="text-sm text-stone-600 leading-relaxed">
+                                    <p className="text-sm leading-relaxed text-stone-600">
                                       {c.message}
                                     </p>
 
-                                    {/* 더블 탭 힌트 - 호버시 표시 */}
-                                    <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/[0.02] transition-colors pointer-events-none" />
-                                  </div>
+                                    {/* 더블 탭 힌트 - AI 댓글에만 */}
+                                    {!isUserComment && (
+                                      <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/[0.02] transition-colors pointer-events-none" />
+                                    )}
 
-                                  {/* 댓글 좋아요 버튼 - 최소화된 영역 */}
-                                  <div className="flex flex-col items-center justify-center">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleCommentLike(c.id, post.id);
-                                      }}
-                                      className={`group p-1.5 rounded-full transition-colors duration-200 ${
-                                        isLiked
-                                          ? "text-pink-500 hover:bg-pink-50"
-                                          : "text-stone-400 hover:text-stone-500 hover:bg-stone-50"
-                                      }`}
-                                    >
-                                      <svg
-                                        className="w-3.5 h-3.5"
-                                        fill={isLiked ? "currentColor" : "none"}
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                        />
-                                      </svg>
-                                    </button>
-
-                                    {/* 좋아요 수 */}
-                                    {likeCount > 0 && (
-                                      <span
-                                        className={`text-[10px] ${
-                                          isLiked
-                                            ? "text-pink-500"
-                                            : "text-stone-400"
-                                        }`}
-                                      >
-                                        {likeCount}
-                                      </span>
+                                    {/* 로딩 인디케이터 */}
+                                    {c.isLoading && (
+                                      <div className="absolute right-2 top-2">
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                                      </div>
                                     )}
                                   </div>
+
+                                  {/* 댓글 좋아요 버튼 - AI 댓글에만 표시 */}
+                                  {!isUserComment && (
+                                    <div className="flex flex-col items-center justify-center">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCommentLike(c.id, post.id);
+                                        }}
+                                        className={`group p-1.5 rounded-full transition-colors duration-200 ${
+                                          isLiked
+                                            ? "text-pink-500 hover:bg-pink-50"
+                                            : "text-stone-400 hover:text-stone-500 hover:bg-stone-50"
+                                        }`}
+                                      >
+                                        <svg
+                                          className="w-3.5 h-3.5"
+                                          fill={
+                                            isLiked ? "currentColor" : "none"
+                                          }
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                          />
+                                        </svg>
+                                      </button>
+
+                                      {/* 좋아요 수 */}
+                                      {likeCount > 0 && (
+                                        <span
+                                          className={`text-[10px] ${
+                                            isLiked
+                                              ? "text-pink-500"
+                                              : "text-stone-400"
+                                          }`}
+                                        >
+                                          {likeCount}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );
                           })}
                         </div>
                       </div>
+                    )}
+
+                    {/* Comment Input - 포스트별로 표시 여부 제어 */}
+                    {showCommentInput[post.id] && (
+                      <CommentInput
+                        onSubmit={(message) =>
+                          handleAddComment(post.id, message)
+                        }
+                        isSubmitting={addCommentMutation.isLoading}
+                        placeholder="Add a comment..."
+                        autoFocus={true}
+                      />
                     )}
 
                     {/* Post Actions */}
@@ -1002,7 +1105,11 @@ const Home = () => {
                           )}
                         </div>
 
-                        <button className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors">
+                        {/* Comment Button - 댓글 입력창 토글 */}
+                        <button
+                          className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors"
+                          onClick={() => toggleCommentInput(post.id)}
+                        >
                           <svg
                             className="w-5 h-5 text-stone-600"
                             fill="none"
@@ -1016,7 +1123,9 @@ const Home = () => {
                               d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                             />
                           </svg>
-                          <span className="text-sm text-stone-600"></span>
+                          <span className="text-sm text-stone-600">
+                            {showCommentInput[post.id] ? "Cancel" : "Comment"}
+                          </span>
                         </button>
                       </div>
 
