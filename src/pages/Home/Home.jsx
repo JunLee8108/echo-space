@@ -6,7 +6,9 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { Smile, Meh, Frown, Hash } from "lucide-react";
+import { Smile, Meh, Frown, Hash, MessageCircleOff } from "lucide-react";
+
+import { usePostsRealtime } from "../../components/hooks/usePostsRealtime";
 
 // Toast
 import { showAffinityToast } from "../../components/utils/toastUtils";
@@ -542,6 +544,8 @@ const Home = () => {
     </div>
   );
 
+  usePostsRealtime(posts);
+
   // 초기 로딩 상태
   if (isLoading) {
     return (
@@ -611,7 +615,7 @@ const Home = () => {
                 return (
                   <article
                     key={post.id}
-                    className={`bg-white rounded-2xl border border-stone-200 overflow-hidden hover:border-stone-200 transition-all duration-200 ${
+                    className={`bg-white rounded-2xl border border-stone-200 overflow-visible hover:border-stone-200 transition-all duration-200 ${
                       isLoading ? "animate-pulse" : ""
                     }`}
                   >
@@ -1096,19 +1100,24 @@ const Home = () => {
                           className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors"
                           onClick={() => toggleCommentInput(post.id)}
                         >
-                          <svg
-                            className="w-5 h-5 text-stone-600"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                            />
-                          </svg>
+                          {showCommentInput[post.id] ? (
+                            <MessageCircleOff className="w-4 h-4 text-stone-600" />
+                          ) : (
+                            <svg
+                              className="w-5 h-5 text-stone-600"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                              />
+                            </svg>
+                          )}
+
                           <span className="text-sm text-stone-600">
                             {showCommentInput[post.id] ? "Cancel" : "Comment"}
                           </span>

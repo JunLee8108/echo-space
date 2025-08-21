@@ -2,165 +2,6 @@ import supabase from "./supabaseClient";
 import { createOrGetHashtags, attachHashtagsToPost } from "./hashtagService";
 import { deletePostImages, cleanupUnusedImages } from "./imageService";
 
-// 게시글 + 댓글 + 좋아요 캐릭터 + 해시태그 저장 (SAVE)
-export async function savePostWithCommentsAndLikes(
-  post,
-  comments,
-  likeCharacters,
-  hashtags = []
-) {
-  // 1. 게시글 저장
-  const { data: postData, error: postError } = await supabase
-    .from("Post")
-    .insert([
-      {
-        content: post.content,
-        mood: post.mood || null, // mood 추가
-        like: likeCharacters.length,
-      },
-    ])
-    .select()
-    .single();
-
-  if (postError) {
-    console.error("❌ Post 저장 실패:", postError.message);
-    throw postError;
-  }
-
-  const postId = postData.id;
-
-  // 2. 댓글 저장
-  const commentData = comments.map((c) => ({
-    post_id: postId,
-    character_id: c.character.id,
-    message: c.message,
-  }));
-
-  const { error: commentError } = await supabase
-    .from("Comment")
-    .insert(commentData);
-
-  if (commentError) {
-    console.error("❌ 댓글 저장 실패:", commentError.message);
-    throw commentError;
-  }
-
-  // 3. 좋아요 저장
-  const likeData = likeCharacters.map((c) => ({
-    post_id: postId,
-    character_id: c.id,
-  }));
-
-  const { error: likeError } = await supabase
-    .from("Post_Like")
-    .insert(likeData);
-
-  if (likeError) {
-    console.error("❌ 좋아요 저장 실패:", likeError.message);
-    throw likeError;
-  }
-
-  // 4. 해시태그 저장
-  if (hashtags.length > 0) {
-    try {
-      const hashtagIds = await createOrGetHashtags(hashtags);
-      await attachHashtagsToPost(postId, hashtagIds);
-    } catch (hashtagError) {
-      console.error("❌ 해시태그 저장 실패:", hashtagError.message);
-      throw hashtagError;
-    }
-  }
-
-  // 5. 저장된 전체 데이터를 다시 조회하여 반환
-  const { data: savedPost, error: fetchError } = await supabase
-    .from("Post")
-    .select(
-      `
-      id,
-      content,
-      mood,
-      like,
-      ai_generated,
-      character_id,
-      created_at,
-      updated_at,
-      user_id,
-      Comment (
-        id,
-        character_id,
-        user_id,
-        message,
-        like,
-        created_at,
-        Character (
-          id,
-          name,
-          personality,
-          avatar_url,
-          description,
-          prompt_description,
-          User_Character (
-            affinity
-          )
-        ),
-        User_Profile (
-          id,
-          display_name
-        ),
-        Comment_Like (
-          user_id,
-          is_active
-        )
-      ),
-      Post_Like (
-        character_id,
-        Character (
-          id,
-          name,
-          personality,
-          avatar_url,
-          description,
-          prompt_description,
-          User_Character (
-            affinity
-          )
-        )
-      ),
-      Post_Hashtag (
-        hashtag_id,
-        Hashtag (
-          id,
-          name
-        )
-      ),
-      Character (
-        name,
-        avatar_url,
-        description,
-        personality,
-        User_Character (
-            affinity
-        )
-      ),
-      User_Profile (
-        display_name
-      )
-    `
-    )
-    .eq("id", postId)
-    .single();
-
-  if (fetchError) {
-    console.error("❌ 저장된 포스트 조회 실패:", fetchError.message);
-    throw fetchError;
-  }
-
-  // 데이터 구조 평탄화 (fetchPostsWithCommentsAndLikes와 동일한 형식)
-  const formattedPost = formatPostData(savedPost, savedPost.user_id);
-
-  return formattedPost;
-}
-
 // 사용자 댓글 추가 함수 (NEW)
 export async function addUserComment(postId, userId, message) {
   if (!userId) throw new Error("user_id가 없습니다.");
@@ -655,4 +496,118 @@ function formatPostData(post, userId) {
         name: ph.Hashtag?.name || "",
       })) || [],
   };
+}
+
+// services/postService.js에 추가
+
+// services/postService.js
+
+// Edge Function 호출 함수 수정
+async function triggerAIProcessing(postId, content, hashtags, mood, userId) {
+  try {
+    // userId 추가 전달
+    const { data, error } = await supabase.functions.invoke("process-post-ai", {
+      body: {
+        postId,
+        content,
+        hashtags: hashtags || [],
+        mood: mood || null,
+        userId: userId, // ✅ userId 추가
+      },
+    });
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Edge Function 호출 실패:", error);
+    throw error;
+  }
+}
+
+// createPostImmediate 함수 수정
+export async function createPostImmediate(post, userId) {
+  if (!userId) throw new Error("user_id가 없습니다.");
+
+  try {
+    // 1. Post 저장
+    const { data: postData, error: postError } = await supabase
+      .from("Post")
+      .insert([
+        {
+          content: post.content,
+          mood: post.mood || null,
+          like: 0,
+          user_id: userId,
+        },
+      ])
+      .select(
+        `
+        id,
+        content,
+        mood,
+        like,
+        created_at,
+        updated_at,
+        user_id
+      `
+      )
+      .single();
+
+    if (postError) {
+      console.error("❌ Post 저장 실패:", postError.message);
+      throw postError;
+    }
+
+    const postId = postData.id;
+
+    // 2. 해시태그 저장 (await 추가!)
+    let savedHashtags = [];
+    if (post.hashtags && post.hashtags.length > 0) {
+      try {
+        const hashtagIds = await createOrGetHashtags(post.hashtags);
+        await attachHashtagsToPost(postId, hashtagIds);
+
+        // ✅ 저장된 해시태그 정보 조회
+        const { data: hashtagData } = await supabase
+          .from("Post_Hashtag")
+          .select(
+            `
+            hashtag_id,
+            Hashtag (
+              id,
+              name
+            )
+          `
+          )
+          .eq("post_id", postId);
+
+        // ✅ 데이터 구조 평탄화 (formatPostData와 동일하게)
+        savedHashtags =
+          hashtagData?.map((ph) => ({
+            hashtag_id: ph.hashtag_id,
+            name: ph.Hashtag?.name || "",
+          })) || [];
+      } catch (hashtagError) {
+        console.error("❌ 해시태그 저장 실패:", hashtagError.message);
+      }
+    }
+
+    // 3. Edge Function 호출
+    triggerAIProcessing(postId, post.content, post.hashtags, post.mood, userId)
+      .then(() => console.log("✅ AI 처리 시작됨"))
+      .catch((error) => console.error("❌ AI 처리 트리거 실패:", error));
+
+    // 4. 완성된 Post 반환
+    const formattedPost = {
+      ...postData,
+      Comment: [],
+      Post_Like: [],
+      Post_Hashtag: savedHashtags, // ✅ 평탄화된 해시태그 데이터
+    };
+
+    return formattedPost;
+  } catch (error) {
+    console.error("Error in createPostImmediate:", error);
+    throw error;
+  }
 }
