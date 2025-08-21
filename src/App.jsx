@@ -24,6 +24,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
+      refetchOnMount: "always",
       refetchOnWindowFocus: false,
       staleTime: 5 * 60 * 1000, // 5분
       cacheTime: 10 * 60 * 1000, // 10분
