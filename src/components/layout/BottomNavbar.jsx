@@ -48,7 +48,7 @@ const BottomNavbar = () => {
       path: "/",
       icon: (
         <svg
-          className="w-4 h-4 sm:w-5 sm:h-5 pointer-events-none"
+          className="w-4.5 h-4.5 sm:w-5 sm:h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -67,7 +67,7 @@ const BottomNavbar = () => {
       path: "/search",
       icon: (
         <svg
-          className="w-4 h-4 sm:w-5 sm:h-5 pointer-events-none"
+          className="w-4.5 h-4.5 sm:w-5 sm:h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -87,7 +87,7 @@ const BottomNavbar = () => {
       special: true,
       icon: (
         <svg
-          className="w-4 h-4 sm:w-5 sm:h-5 pointer-events-none"
+          className="w-4.5 h-4.5 sm:w-5 sm:h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -104,14 +104,16 @@ const BottomNavbar = () => {
     {
       id: "calendar",
       path: "/calendar",
-      icon: <Calendar className="w-4 h-4 sm:w-5 sm:h-5 pointer-events-none" />,
+      icon: (
+        <Calendar className="w-4.5 h-4.5 sm:w-5 sm:h-5 pointer-events-none" />
+      ),
     },
     {
       id: "profile",
       path: "/profile",
       icon: (
         <svg
-          className="w-4 h-4 sm:w-5 sm:h-5 pointer-events-none"
+          className="w-4.5 h-4.5 sm:w-5 sm:h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"

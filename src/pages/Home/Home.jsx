@@ -603,7 +603,7 @@ const Home = () => {
               </h1>
               <div className="px-3 py-1 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full">
                 <span className="text-xs font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  {posts.length} posts
+                  {posts.length} Posts
                 </span>
               </div>
             </div>
