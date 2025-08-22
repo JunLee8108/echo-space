@@ -1,8 +1,8 @@
-// Profile.jsx - 전체 Follow 기능 완벽 구현
+// Profile.jsx - 캐릭터 5개 제한 표시 및 더보기 기능 구현
 
 import { useState } from "react";
 
-import { UserRoundCheck, ChevronDown } from "lucide-react";
+import { UserRoundCheck, ChevronDown, ChevronUp, Users } from "lucide-react";
 
 // Zustand hooks
 import {
@@ -24,14 +24,14 @@ import { createTranslator } from "../../components/utils/translations";
 
 import ProfileModal from "../../components/UI/ProfileModal";
 import EditProfileModal from "./EditProfileModal";
-import ConfirmationModal from "../../components/UI/ConfirmationModal"; // 추가
+import ConfirmationModal from "../../components/UI/ConfirmationModal";
 import { Pencil } from "lucide-react";
 
 const Profile = () => {
   // userStore hooks
   const user = useUser();
   const displayName = useDisplayName();
-  const userLanguage = useUserLanguage(); // 추가
+  const userLanguage = useUserLanguage();
   const { updateDisplayName, updateLanguage, updatePassword } =
     useUserActions();
 
@@ -41,7 +41,7 @@ const Profile = () => {
   const characters = useCharacters();
   const followedCharacterIds = useFollowedCharacterIds();
   const contextLoading = useCharacterLoading();
-  const { toggleFollow, batchToggleFollow } = useCharacterActions(); // batchToggleFollow 추가
+  const { toggleFollow, batchToggleFollow } = useCharacterActions();
 
   const [localLoading, setLocalLoading] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
@@ -50,13 +50,17 @@ const Profile = () => {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [confirmModal, setConfirmModal] = useState({
     show: false,
-    type: null, // 'followAll' or 'unfollowAll'
+    type: null,
     title: "",
     message: "",
   });
 
   // Quick Action 창 토글을 위한 상태들
   const [showQuickActions, setShowQuickActions] = useState(false);
+
+  // 캐릭터 표시 개수 제어를 위한 상태 추가
+  const [showAllCharacters, setShowAllCharacters] = useState(false);
+  const INITIAL_DISPLAY_COUNT = 5; // 초기 표시 개수
 
   // 기존 개별 토글 핸들러
   const handleToggleFollow = async (character) => {
@@ -123,12 +127,8 @@ const Profile = () => {
         return;
       }
 
-      // console.log("Starting bulk follow for:", unfollowedCharacterIds);
-
-      // Store의 배치 함수 호출 - 상태 자동 업데이트됨
       const result = await batchToggleFollow(unfollowedCharacterIds, true);
 
-      // 결과에 따른 사용자 피드백
       if (result.failCount > 0) {
         alert(
           `Partially completed: ${result.processedCount} followed successfully, ${result.failCount} failed, ${result.skippedCount} were already followed.`
@@ -137,11 +137,6 @@ const Profile = () => {
         alert(
           `All ${result.skippedCount} AI characters were already being followed.`
         );
-      } else {
-        // 완전 성공 시에는 조용히 완료 (alert 없음)
-        // console.log(
-        //   `Successfully followed ${result.processedCount} AI characters`
-        // );
       }
     } catch (error) {
       console.error("Bulk follow error:", error);
@@ -162,12 +157,8 @@ const Profile = () => {
         return;
       }
 
-      // console.log("Starting bulk unfollow for:", followedCharacterIdsArray);
-
-      // Store의 배치 함수 호출 - 상태 자동 업데이트됨
       const result = await batchToggleFollow(followedCharacterIdsArray, false);
 
-      // 결과에 따른 사용자 피드백
       if (result.failCount > 0) {
         alert(
           `Partially completed: ${result.processedCount} unfollowed successfully, ${result.failCount} failed, ${result.skippedCount} were already unfollowed.`
@@ -176,11 +167,6 @@ const Profile = () => {
         alert(
           `All ${result.skippedCount} AI characters were already unfollowed.`
         );
-      } else {
-        // 완전 성공 시에는 조용히 완료 (alert 없음)
-        // console.log(
-        //   `Successfully unfollowed ${result.processedCount} AI characters`
-        // );
       }
     } catch (error) {
       console.error("Bulk unfollow error:", error);
@@ -234,6 +220,14 @@ const Profile = () => {
     character: null,
   });
 
+  // 표시할 캐릭터 결정
+  const displayedCharacters = showAllCharacters
+    ? characters
+    : characters.slice(0, INITIAL_DISPLAY_COUNT);
+
+  const remainingCount = characters.length - INITIAL_DISPLAY_COUNT;
+  const hasMoreCharacters = characters.length > INITIAL_DISPLAY_COUNT;
+
   // Show loading state if context is still loading
   if (contextLoading) {
     return (
@@ -256,7 +250,7 @@ const Profile = () => {
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-stone-900">
+                <h1 className="text-lg font-bold text-stone-900">
                   {displayName}
                 </h1>
                 <button
@@ -334,9 +328,9 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Following Section - 업데이트된 헤더 */}
+        {/* Following Section */}
         <div>
-          {/* 헤더 - 심플하게 */}
+          {/* 헤더 */}
           <div className="mb-4 flex justify-between">
             <h2 className="text-md font-bold text-stone-900">
               {translate("profile.aiCharacters")}
@@ -347,11 +341,10 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* 새로운 액션 카드 - 토글 가능한 버전 */}
+          {/* Quick Actions - 기존과 동일 */}
           {(followedCharacterIds.size < characters.length ||
             followedCharacterIds.size > 0) && (
             <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl">
-              {/* 헤더 - 클릭 가능 */}
               <div
                 onClick={() => setShowQuickActions(!showQuickActions)}
                 className="flex items-center justify-between cursor-pointer select-none"
@@ -382,7 +375,6 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* 화살표 아이콘 - 회전 애니메이션 버전 */}
                 <div className="p-1.5 hover:bg-white/50 rounded-lg transition-all duration-200">
                   <ChevronDown
                     className={`w-5 h-5 text-stone-600 transition-transform duration-300 ${
@@ -392,7 +384,6 @@ const Profile = () => {
                 </div>
               </div>
 
-              {/* 버튼 그리드 - 토글되는 부분 */}
               <div
                 className={`grid grid-cols-2 gap-3 overflow-hidden transition-all duration-300 ${
                   showQuickActions ? "mt-4 block" : "hidden"
@@ -452,9 +443,9 @@ const Profile = () => {
             </div>
           )}
 
-          {/* Characters Grid - 기존과 동일하되 disabled 조건만 수정 */}
+          {/* Characters Grid - 수정된 부분 */}
           <div className="space-y-3">
-            {characters.map((character) => {
+            {displayedCharacters.map((character) => {
               const isFollowed = followedCharacterIds.has(character.id);
 
               return (
@@ -510,7 +501,7 @@ const Profile = () => {
                       </div>
                     </div>
 
-                    {/* Follow Button - bulkLoading 조건 추가 */}
+                    {/* Follow Button */}
                     <button
                       onClick={() => handleToggleFollow(character)}
                       disabled={localLoading || contextLoading || bulkLoading}
@@ -537,6 +528,40 @@ const Profile = () => {
                 </div>
               );
             })}
+
+            {/* 더보기/접기 버튼 - 새로 추가 */}
+            {hasMoreCharacters && (
+              <button
+                onClick={() => setShowAllCharacters(!showAllCharacters)}
+                className="w-full mt-4 p-4 bg-gradient-to-r from-stone-50 to-stone-100 hover:from-stone-100 hover:to-stone-150 rounded-2xl border border-stone-200 transition-all duration-200 group"
+              >
+                <div className="flex items-center justify-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-stone-600 group-hover:text-stone-700" />
+                    <span className="text-sm font-medium text-stone-700 group-hover:text-stone-800">
+                      {showAllCharacters
+                        ? translate("profile.showLess")
+                        : translate("profile.showMore", {
+                            count: remainingCount,
+                          })}
+                    </span>
+                  </div>
+                  {showAllCharacters ? (
+                    <ChevronUp className="w-5 h-5 text-stone-500 group-hover:text-stone-600 transition-transform duration-200" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-stone-500 group-hover:text-stone-600 transition-transform duration-200" />
+                  )}
+                </div>
+                {!showAllCharacters && (
+                  <p className="text-xs text-stone-500 mt-2">
+                    {translate("profile.showingCount", {
+                      shown: INITIAL_DISPLAY_COUNT,
+                      total: characters.length,
+                    })}
+                  </p>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -553,12 +578,12 @@ const Profile = () => {
         onClose={() => setShowEditProfileModal(false)}
         onConfirm={handleUpdateDisplayName}
         currentName={user?.user_metadata?.display_name || ""}
-        currentLanguage={userLanguage} // 추가
+        currentLanguage={userLanguage}
         onPasswordChange={handlePasswordChange}
-        onLanguageChange={handleLanguageChange} // 추가
+        onLanguageChange={handleLanguageChange}
       />
 
-      {/* 새로 추가: 확인 모달 */}
+      {/* 확인 모달 */}
       <ConfirmationModal
         isOpen={confirmModal.show}
         onClose={() =>

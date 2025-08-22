@@ -2,7 +2,7 @@ import supabase from "./supabaseClient";
 import { createOrGetHashtags, attachHashtagsToPost } from "./hashtagService";
 import { deletePostImages, cleanupUnusedImages } from "./imageService";
 
-// 사용자 댓글 추가 함수 (NEW)
+// 사용자 댓글 추가 함수
 export async function addUserComment(postId, userId, message) {
   if (!userId) throw new Error("user_id가 없습니다.");
   if (!postId) throw new Error("post_id가 없습니다.");
@@ -16,7 +16,7 @@ export async function addUserComment(postId, userId, message) {
       .insert([
         {
           post_id: postId,
-          user_id: userId, // character_id 대신 user_id 사용
+          user_id: userId,
           message: message.trim(),
           like: 0,
         },
@@ -49,10 +49,9 @@ export async function addUserComment(postId, userId, message) {
       message: commentData.message,
       like: commentData.like || 0,
       created_at: commentData.created_at,
-      // 사용자 댓글인 경우
       isUserComment: true,
       character: commentData.User_Profile?.display_name || "User",
-      avatar_url: null, // avatar_url이 없음
+      avatar_url: null,
       personality: [],
       description: "",
       prompt_description: "",
@@ -68,7 +67,11 @@ export async function addUserComment(postId, userId, message) {
   }
 }
 
-export async function updatePost(postId, { content, mood, hashtags, userId }) {
+// UPDATE POST - visibility 추가
+export async function updatePost(
+  postId,
+  { content, mood, hashtags, visibility, userId }
+) {
   if (!userId) throw new Error("user_id가 없습니다.");
   if (!postId) throw new Error("post_id가 없습니다.");
 
@@ -86,12 +89,13 @@ export async function updatePost(postId, { content, mood, hashtags, userId }) {
       throw fetchError;
     }
 
-    // 2. 포스트 내용 업데이트
+    // 2. 포스트 내용 업데이트 - visibility 추가
     const { error: updateError } = await supabase
       .from("Post")
       .update({
         content,
         mood: mood || null,
+        visibility: visibility || "private", // ✅ visibility 추가
         updated_at: new Date().toISOString(),
       })
       .eq("id", postId)
@@ -131,7 +135,7 @@ export async function updatePost(postId, { content, mood, hashtags, userId }) {
       }
     }
 
-    // 6. 업데이트된 전체 데이터를 다시 조회하여 반환
+    // 6. 업데이트된 전체 데이터를 다시 조회하여 반환 - visibility 포함
     const { data: fullPost, error: fetchError2 } = await supabase
       .from("Post")
       .select(
@@ -139,189 +143,7 @@ export async function updatePost(postId, { content, mood, hashtags, userId }) {
         id,
         content,
         mood,
-        like,
-        ai_generated,
-        character_id,
-        created_at,
-        updated_at,
-        user_id,
-        Comment (
-          id,
-          character_id,
-          user_id,
-          message,
-          like,
-          created_at,
-          Character (
-            id,
-            name,
-            personality,
-            avatar_url,
-            description,
-            prompt_description,
-            User_Character (
-              affinity
-            )
-          ),
-          User_Profile (
-            id,
-            display_name
-          ),
-          Comment_Like (
-            user_id,
-            is_active
-          )
-        ),
-        Post_Like (
-          character_id,
-          Character (
-            id,
-            name,
-            personality,
-            avatar_url,
-            description,
-            prompt_description,
-            User_Character (
-              affinity
-            )
-          )
-        ),
-        Post_Hashtag (
-          hashtag_id,
-          Hashtag (
-            id,
-            name
-          )
-        ),
-        Character (
-          name,
-          avatar_url,
-          description,
-          personality,
-          User_Character (
-              affinity
-          )
-        ),
-        User_Profile (
-          display_name
-        )
-      `
-      )
-      .eq("id", postId)
-      .single();
-
-    if (fetchError2) {
-      console.error("❌ 업데이트된 포스트 조회 실패:", fetchError2.message);
-      throw fetchError2;
-    }
-
-    // 데이터 구조 평탄화
-    const formattedPost = formatPostData(fullPost, userId);
-
-    return formattedPost;
-  } catch (error) {
-    console.error("Error in updatePost:", error);
-    throw error;
-  }
-}
-
-// DELETE
-export async function deletePostById(postId, uid) {
-  if (!uid) throw new Error("user_id가 없습니다.");
-
-  try {
-    // 1. 삭제하기 전에 포스트 내용을 먼저 가져오기 (이미지 URL 추출을 위해)
-    const { data: postData, error: fetchError } = await supabase
-      .from("Post")
-      .select("content")
-      .eq("id", postId)
-      .eq("user_id", uid)
-      .single();
-
-    if (fetchError) {
-      console.error("❌ Post 조회 실패:", fetchError.message);
-      throw fetchError;
-    }
-
-    // 2. 포스트가 존재하고 content가 있는 경우
-    if (postData && postData.content) {
-      try {
-        // content에서 Supabase Storage URL 추출 및 삭제
-        await deletePostImages(postData.content, uid);
-        console.log("✅ 포스트 이미지 삭제 완료");
-      } catch (imageError) {
-        // 이미지 삭제 실패해도 포스트는 삭제 진행 (선택사항)
-        console.error("⚠️ 이미지 삭제 중 오류 발생:", imageError);
-        // 완전히 실패하게 하려면 throw imageError;
-      }
-    }
-
-    // 3. 포스트 삭제 (CASCADE로 Comment, Post_Like, Post_Hashtag도 자동 삭제)
-    const { error } = await supabase
-      .from("Post")
-      .delete()
-      .eq("id", postId)
-      .eq("user_id", uid);
-
-    if (error) {
-      console.error("❌ Post 삭제 실패:", error.message);
-      throw error;
-    }
-
-    console.log(`✅ Post ${postId} 삭제 완료`);
-  } catch (error) {
-    console.error("❌ deletePostById 실패:", error);
-    throw error;
-  }
-}
-
-export async function toggleCommentLike(commentId, userId) {
-  if (!userId) throw new Error("user_id가 없습니다.");
-  if (!commentId) throw new Error("comment_id가 없습니다.");
-
-  try {
-    const { data, error } = await supabase.rpc(
-      "toggle_comment_like_and_update_affinity",
-      {
-        p_comment_id: commentId,
-        p_user_id: userId,
-      }
-    );
-
-    if (error) {
-      console.error("❌ 댓글 좋아요 토글 RPC 실패:", error.message);
-      throw error;
-    }
-
-    // RPC는 배열 안의 객체로 결과를 반환하므로 첫 번째 요소를 사용합니다.
-    if (data && data.length > 0) {
-      console.log(data[0]);
-      return data[0]; // { liked, like_count, affinity_increased }
-    }
-
-    // 예상치 못한 응답 처리
-    throw new Error("서버로부터 유효한 응답을 받지 못했습니다.");
-  } catch (error) {
-    console.error("❌ toggleCommentLike 실패:", error);
-    throw error;
-  }
-}
-
-// CURSOR 기반 페이지네이션으로 포스트 가져오기
-export async function fetchPostsWithCommentsAndLikes(
-  uid,
-  { limit = 5, cursor = null } = {}
-) {
-  if (!uid) throw new Error("user_id가 없습니다.");
-
-  try {
-    let query = supabase
-      .from("Post")
-      .select(
-        `
-        id,
-        content,
-        mood,
+        visibility,
         like,
         ai_generated,
         character_id,
@@ -390,7 +212,194 @@ export async function fetchPostsWithCommentsAndLikes(
         )
       `
       )
+      .eq("id", postId)
+      .single();
+
+    if (fetchError2) {
+      console.error("❌ 업데이트된 포스트 조회 실패:", fetchError2.message);
+      throw fetchError2;
+    }
+
+    // 데이터 구조 평탄화
+    const formattedPost = formatPostData(fullPost, userId);
+
+    return formattedPost;
+  } catch (error) {
+    console.error("Error in updatePost:", error);
+    throw error;
+  }
+}
+
+// DELETE
+export async function deletePostById(postId, uid) {
+  if (!uid) throw new Error("user_id가 없습니다.");
+
+  try {
+    // 1. 삭제하기 전에 포스트 내용을 먼저 가져오기 (이미지 URL 추출을 위해)
+    const { data: postData, error: fetchError } = await supabase
+      .from("Post")
+      .select("content")
+      .eq("id", postId)
       .eq("user_id", uid)
+      .single();
+
+    if (fetchError) {
+      console.error("❌ Post 조회 실패:", fetchError.message);
+      throw fetchError;
+    }
+
+    // 2. 포스트가 존재하고 content가 있는 경우
+    if (postData && postData.content) {
+      try {
+        // content에서 Supabase Storage URL 추출 및 삭제
+        await deletePostImages(postData.content, uid);
+        console.log("✅ 포스트 이미지 삭제 완료");
+      } catch (imageError) {
+        console.error("⚠️ 이미지 삭제 중 오류 발생:", imageError);
+      }
+    }
+
+    // 3. 포스트 삭제 (CASCADE로 Comment, Post_Like, Post_Hashtag도 자동 삭제)
+    const { error } = await supabase
+      .from("Post")
+      .delete()
+      .eq("id", postId)
+      .eq("user_id", uid);
+
+    if (error) {
+      console.error("❌ Post 삭제 실패:", error.message);
+      throw error;
+    }
+
+    console.log(`✅ Post ${postId} 삭제 완료`);
+  } catch (error) {
+    console.error("❌ deletePostById 실패:", error);
+    throw error;
+  }
+}
+
+// 댓글 좋아요 토글
+export async function toggleCommentLike(commentId, userId) {
+  if (!userId) throw new Error("user_id가 없습니다.");
+  if (!commentId) throw new Error("comment_id가 없습니다.");
+
+  try {
+    const { data, error } = await supabase.rpc(
+      "toggle_comment_like_and_update_affinity",
+      {
+        p_comment_id: commentId,
+        p_user_id: userId,
+      }
+    );
+
+    if (error) {
+      console.error("❌ 댓글 좋아요 토글 RPC 실패:", error.message);
+      throw error;
+    }
+
+    if (data && data.length > 0) {
+      console.log(data[0]);
+      return data[0];
+    }
+
+    throw new Error("서버로부터 유효한 응답을 받지 못했습니다.");
+  } catch (error) {
+    console.error("❌ toggleCommentLike 실패:", error);
+    throw error;
+  }
+}
+
+// FETCH POSTS - visibility 처리 추가
+export async function fetchPostsWithCommentsAndLikes(
+  uid,
+  { limit = 5, cursor = null, includePublic = true } = {}
+) {
+  if (!uid) throw new Error("user_id가 없습니다.");
+
+  try {
+    let query = supabase.from("Post").select(
+      `
+        id,
+        content,
+        mood,
+        visibility,
+        like,
+        ai_generated,
+        character_id,
+        created_at,
+        updated_at,
+        user_id,
+        Comment (
+          id,
+          character_id,
+          user_id,
+          message,
+          like,
+          created_at,
+          Character (
+            id,
+            name,
+            personality,
+            avatar_url,
+            description,
+            prompt_description,
+            User_Character (
+              affinity
+            )
+          ),
+          User_Profile (
+            id,
+            display_name
+          ),
+          Comment_Like (
+            user_id,
+            is_active
+          )
+        ),
+        Post_Like (
+          character_id,
+          Character (
+            id,
+            name,
+            personality,
+            avatar_url,
+            description,
+            prompt_description,
+            User_Character (
+              affinity
+            )
+          )
+        ),
+        Post_Hashtag (
+          hashtag_id,
+          Hashtag (
+            id,
+            name
+          )
+        ),
+        Character (
+          name,
+          avatar_url,
+          description,
+          personality,
+          User_Character (
+            affinity
+          )
+        ),
+        User_Profile (
+          display_name
+        )
+      `
+    );
+
+    // ✅ visibility 조건 추가: 내 포스트 + public 포스트
+    if (includePublic) {
+      query = query.or(`user_id.eq.${uid},visibility.eq.public`);
+    } else {
+      query = query.eq("user_id", uid);
+    }
+
+    query = query
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(limit + 1);
@@ -419,7 +428,7 @@ export async function fetchPostsWithCommentsAndLikes(
           }
         : null;
 
-    // 데이터 구조 평탄화 - Comment_Like 정보 포함
+    // 데이터 구조 평탄화
     const formattedData = posts.map((post) => formatPostData(post, uid));
 
     return {
@@ -433,10 +442,11 @@ export async function fetchPostsWithCommentsAndLikes(
   }
 }
 
-// 포스트 데이터 포맷팅 헬퍼 함수 (NEW)
+// 포스트 데이터 포맷팅 헬퍼 함수 - visibility 추가
 function formatPostData(post, userId) {
   return {
     ...post,
+    visibility: post.visibility || "private", // ✅ visibility 추가
     Comment:
       post.Comment?.map((comment) => ({
         id: comment.id,
@@ -458,7 +468,7 @@ function formatPostData(post, userId) {
         ...(comment.user_id && {
           isUserComment: true,
           character: comment.User_Profile?.display_name || "User",
-          avatar_url: null, // avatar_url이 없음
+          avatar_url: null,
           personality: [],
           description: "",
           prompt_description: "",
@@ -470,16 +480,12 @@ function formatPostData(post, userId) {
             return like.user_id === userId && like.is_active === true;
           }) || false,
         User_Profile: comment.User_Profile,
-      }))
-        // 🔥 첫 로딩 시에만 정렬 적용
-        ?.sort((a, b) => {
-          // 1. like 높은 순으로 정렬
-          if (b.like !== a.like) {
-            return b.like - a.like;
-          }
-          // 2. like가 같으면 id 순으로 정렬 (오래된 것부터)
-          return a.id - b.id;
-        }) || [],
+      }))?.sort((a, b) => {
+        if (b.like !== a.like) {
+          return b.like - a.like;
+        }
+        return a.id - b.id;
+      }) || [],
     Post_Like:
       post.Post_Like?.map((like) => ({
         character_id: like.character_id,
@@ -498,21 +504,24 @@ function formatPostData(post, userId) {
   };
 }
 
-// services/postService.js에 추가
-
-// services/postService.js
-
-// Edge Function 호출 함수 수정
-async function triggerAIProcessing(postId, content, hashtags, mood, userId) {
+// Edge Function 호출 함수 - visibility 추가
+async function triggerAIProcessing(
+  postId,
+  content,
+  hashtags,
+  mood,
+  visibility,
+  userId
+) {
   try {
-    // userId 추가 전달
     const { data, error } = await supabase.functions.invoke("process-post-ai", {
       body: {
         postId,
         content,
         hashtags: hashtags || [],
         mood: mood || null,
-        userId: userId, // ✅ userId 추가
+        visibility: visibility || "private", // ✅ visibility 추가
+        userId: userId,
       },
     });
 
@@ -524,18 +533,19 @@ async function triggerAIProcessing(postId, content, hashtags, mood, userId) {
   }
 }
 
-// createPostImmediate 함수 수정
+// CREATE POST - visibility 추가 부분만 수정
 export async function createPostImmediate(post, userId) {
   if (!userId) throw new Error("user_id가 없습니다.");
 
   try {
-    // 1. Post 저장
+    // 1. Post 저장 - visibility 추가
     const { data: postData, error: postError } = await supabase
       .from("Post")
       .insert([
         {
           content: post.content,
           mood: post.mood || null,
+          visibility: post.visibility || "private", // ✅ visibility 추가
           like: 0,
           user_id: userId,
         },
@@ -545,6 +555,7 @@ export async function createPostImmediate(post, userId) {
         id,
         content,
         mood,
+        visibility,
         like,
         created_at,
         updated_at,
@@ -560,14 +571,13 @@ export async function createPostImmediate(post, userId) {
 
     const postId = postData.id;
 
-    // 2. 해시태그 저장 (await 추가!)
+    // 2. 해시태그 저장
     let savedHashtags = [];
     if (post.hashtags && post.hashtags.length > 0) {
       try {
         const hashtagIds = await createOrGetHashtags(post.hashtags);
         await attachHashtagsToPost(postId, hashtagIds);
 
-        // ✅ 저장된 해시태그 정보 조회
         const { data: hashtagData } = await supabase
           .from("Post_Hashtag")
           .select(
@@ -581,7 +591,6 @@ export async function createPostImmediate(post, userId) {
           )
           .eq("post_id", postId);
 
-        // ✅ 데이터 구조 평탄화 (formatPostData와 동일하게)
         savedHashtags =
           hashtagData?.map((ph) => ({
             hashtag_id: ph.hashtag_id,
@@ -592,17 +601,25 @@ export async function createPostImmediate(post, userId) {
       }
     }
 
-    // 3. Edge Function 호출
-    triggerAIProcessing(postId, post.content, post.hashtags, post.mood, userId)
+    // 3. Edge Function 호출 - ✅ 조건 없이 모든 포스트에 AI 처리
+    triggerAIProcessing(
+      postId,
+      post.content,
+      post.hashtags,
+      post.mood,
+      post.visibility,
+      userId
+    )
       .then(() => console.log("✅ AI 처리 시작됨"))
       .catch((error) => console.error("❌ AI 처리 트리거 실패:", error));
 
     // 4. 완성된 Post 반환
     const formattedPost = {
       ...postData,
+      visibility: postData.visibility || "private", // ✅ visibility 포함
       Comment: [],
       Post_Like: [],
-      Post_Hashtag: savedHashtags, // ✅ 평탄화된 해시태그 데이터
+      Post_Hashtag: savedHashtags,
     };
 
     return formattedPost;

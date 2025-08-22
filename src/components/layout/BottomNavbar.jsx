@@ -1,6 +1,8 @@
 import { useNavigate, useLocation } from "react-router";
 import { useRef } from "react";
 
+import { Calendar } from "lucide-react";
+
 const BottomNavbar = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -46,7 +48,7 @@ const BottomNavbar = () => {
       path: "/",
       icon: (
         <svg
-          className="w-5 h-5 pointer-events-none"
+          className="w-4 h-4 sm:w-5 sm:h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -65,7 +67,7 @@ const BottomNavbar = () => {
       path: "/search",
       icon: (
         <svg
-          className="w-5 h-5 pointer-events-none"
+          className="w-4 h-4 sm:w-5 sm:h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -85,7 +87,7 @@ const BottomNavbar = () => {
       special: true,
       icon: (
         <svg
-          className="w-4 h-4 pointer-events-none"
+          className="w-4 h-4 sm:w-5 sm:h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -100,11 +102,16 @@ const BottomNavbar = () => {
       ),
     },
     {
+      id: "calendar",
+      path: "/calendar",
+      icon: <Calendar className="w-4 h-4 sm:w-5 sm:h-5 pointer-events-none" />,
+    },
+    {
       id: "profile",
       path: "/profile",
       icon: (
         <svg
-          className="w-5 h-5 pointer-events-none"
+          className="w-4 h-4 sm:w-5 sm:h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -149,7 +156,7 @@ const BottomNavbar = () => {
                   key={tab.id}
                   onTouchEnd={(e) => handleTouchEnd(e, tab)}
                   onClick={() => handleAction(tab)}
-                  className={`navbar-button relative p-4 rounded-xl transition-all duration-200
+                  className={`navbar-button relative p-3 sm:p-4 rounded-xl transition-all duration-200
                     ${
                       tab.special
                         ? "bg-gradient-to-br from-stone-700 to-stone-900 text-white shadow-lg hover:shadow-xl transform hover:scale-105"

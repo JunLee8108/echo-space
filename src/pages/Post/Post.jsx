@@ -3,7 +3,7 @@ import "./Post.css";
 
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
-import { Smile, Meh, Frown, Hash, ArrowLeft } from "lucide-react";
+import { Smile, Meh, Frown, Hash, ArrowLeft, Globe, Lock } from "lucide-react";
 import CustomEditor from "./CustomEditor";
 import { searchHashtags } from "../../services/hashtagService";
 import { useCreatePost } from "../../components/hooks/useCreatePost";
@@ -50,6 +50,8 @@ const Post = () => {
   const [showMoodModal, setShowMoodModal] = useState(false);
   const [selectedMood, setSelectedMood] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [visibility, setVisibility] = useState("private");
+  const [showVisibilityModal, setShowVisibilityModal] = useState(false);
 
   // 해시태그 관련 상태
   const [showHashtagModal, setShowHashtagModal] = useState(false);
@@ -63,6 +65,8 @@ const Post = () => {
   const hashtagButtonRef = useRef(null);
   const hashtagModalRef = useRef(null);
   const hashtagInputRef = useRef(null);
+  const visibilityButtonRef = useRef(null);
+  const visibilityModalRef = useRef(null);
 
   // 수정 모드일 때 초기값 설정
   useEffect(() => {
@@ -79,6 +83,11 @@ const Post = () => {
         const hashtags = editingPost.Post_Hashtag.map((h) => h.name);
         setSelectedHashtags(hashtags);
       }
+
+      // visibility 설정
+      if (editingPost.visibility) {
+        setVisibility(editingPost.visibility);
+      }
     }
   }, [isEditMode, editingPost]);
 
@@ -90,6 +99,8 @@ const Post = () => {
           setShowHashtagModal(false);
         } else if (showMoodModal) {
           setShowMoodModal(false);
+        } else if (showVisibilityModal) {
+          setShowVisibilityModal(false);
         } else {
           handleBack();
         }
@@ -98,7 +109,7 @@ const Post = () => {
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [showHashtagModal, showMoodModal]);
+  }, [showHashtagModal, showMoodModal, showVisibilityModal]);
 
   // 모달 외부 클릭 처리
   useEffect(() => {
@@ -120,11 +131,20 @@ const Post = () => {
       ) {
         setShowHashtagModal(false);
       }
+
+      if (
+        showVisibilityModal &&
+        visibilityModalRef.current &&
+        !visibilityModalRef.current.contains(e.target) &&
+        !visibilityButtonRef.current.contains(e.target)
+      ) {
+        setShowVisibilityModal(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showMoodModal, showHashtagModal]);
+  }, [showMoodModal, showHashtagModal, showVisibilityModal]);
 
   // 해시태그 자동완성
   useEffect(() => {
@@ -189,6 +209,7 @@ const Post = () => {
       content: processedContent,
       mood: selectedMood?.id || null,
       hashtags: selectedHashtags,
+      visibility: visibility,
     };
 
     setIsSubmitting(true);
@@ -198,6 +219,8 @@ const Post = () => {
         // 수정 모드 - 변경사항 확인
         const hasContentChanged = editingPost.content !== processedContent;
         const hasMoodChanged = editingPost.mood !== postData.mood;
+        const hasVisibilityChanged =
+          editingPost.visibility !== postData.visibility;
         const existingHashtags =
           editingPost.Post_Hashtag?.map((h) => h.name) || [];
         const hasHashtagsChanged =
@@ -205,7 +228,12 @@ const Post = () => {
           JSON.stringify([...postData.hashtags].sort());
 
         // 변경사항이 없으면 그냥 뒤로가기
-        if (!hasContentChanged && !hasMoodChanged && !hasHashtagsChanged) {
+        if (
+          !hasContentChanged &&
+          !hasMoodChanged &&
+          !hasHashtagsChanged &&
+          !hasVisibilityChanged
+        ) {
           navigate("/");
           return;
         }
@@ -408,7 +436,7 @@ const Post = () => {
                 }`}
                 onClick={() => setShowHashtagModal(!showHashtagModal)}
               >
-                <Hash className="w-5 h-5" />
+                <Hash className="w-4 h-4" />
                 {selectedHashtags.length > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-stone-700 text-white text-xs rounded-full flex items-center justify-center">
                     {selectedHashtags.length}
@@ -423,7 +451,7 @@ const Post = () => {
                   className="absolute bottom-full mb-2 left-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 p-4 min-w-[200px] max-w-[350px]"
                 >
                   <h3 className="text-sm font-medium text-stone-900 mb-3">
-                    Add More Hashtags
+                    Add Hashtags
                   </h3>
 
                   {/* Selected Tags */}
@@ -527,6 +555,126 @@ const Post = () => {
               )}
             </div>
 
+            {/* Visibility Button */}
+            <div className="relative">
+              <button
+                ref={visibilityButtonRef}
+                type="button"
+                className={`p-3 rounded-lg transition-all duration-200 ${
+                  visibility === "public"
+                    ? "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                }`}
+                onClick={() => setShowVisibilityModal(!showVisibilityModal)}
+              >
+                {visibility === "public" ? (
+                  <Globe className="w-4 h-4" />
+                ) : (
+                  <Lock className="w-4 h-4" />
+                )}
+              </button>
+
+              {/* Visibility Modal */}
+              {showVisibilityModal && (
+                <div
+                  ref={visibilityModalRef}
+                  className="absolute bottom-full mb-2 left-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 p-4 min-w-[180px]"
+                >
+                  <h3 className="text-sm font-medium text-stone-900 mb-3">
+                    Visibility
+                  </h3>
+
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVisibility("private");
+                        setShowVisibilityModal(false);
+                      }}
+                      className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                        visibility === "private"
+                          ? "bg-stone-100 text-stone-900 font-medium"
+                          : "hover:bg-stone-50 text-stone-700"
+                      }`}
+                    >
+                      <Lock
+                        className={`w-4 h-4 ${
+                          visibility === "private"
+                            ? "text-stone-600"
+                            : "text-stone-500"
+                        }`}
+                      />
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium">Private</p>
+                        <p className="text-xs text-stone-500 whitespace-nowrap">
+                          Only you can see
+                        </p>
+                      </div>
+                      {visibility === "private" && (
+                        <svg
+                          className="w-4 h-4 text-stone-600"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVisibility("public");
+                        setShowVisibilityModal(false);
+                      }}
+                      className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                        visibility === "public"
+                          ? "bg-blue-50 text-blue-900 font-medium"
+                          : "hover:bg-stone-50 text-stone-700"
+                      }`}
+                    >
+                      <Globe
+                        className={`w-4 h-4 ${
+                          visibility === "public"
+                            ? "text-blue-600"
+                            : "text-stone-500"
+                        }`}
+                      />
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium">Public</p>
+                        <p className="text-xs text-stone-500 whitespace-nowrap">
+                          Anyone can see
+                        </p>
+                      </div>
+                      {visibility === "public" && (
+                        <svg
+                          className="w-4 h-4 text-blue-600"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="absolute -bottom-2 left-6 w-4 h-4 bg-white border-b border-r border-stone-200 transform rotate-45"></div>
+                </div>
+              )}
+            </div>
+
             {/* Mood Button */}
             <div className="relative">
               <button
@@ -541,11 +689,11 @@ const Post = () => {
               >
                 {selectedMood ? (
                   <selectedMood.icon
-                    className={`w-5 h-5 ${selectedMood.color}`}
+                    className={`w-4 h-4 ${selectedMood.color}`}
                   />
                 ) : (
                   <svg
-                    className="w-5 h-5"
+                    className="w-4 h-4"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"

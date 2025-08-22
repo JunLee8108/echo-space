@@ -6,7 +6,18 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { Smile, Meh, Frown, Hash, MessageCircleOff } from "lucide-react";
+import {
+  Smile,
+  Meh,
+  Frown,
+  Hash,
+  MessageCircleOff,
+  Globe,
+  Lock,
+  Filter, // ✅ 추가
+  Users, // ✅ 추가
+  Sparkles, // ✅ 추가
+} from "lucide-react";
 
 import { usePostsRealtime } from "../../components/hooks/usePostsRealtime";
 
@@ -72,6 +83,7 @@ const Home = () => {
   const characters = useCharacters();
   const { updateLocalCharacterAffinity } = useCharacterActions();
 
+  /* ──────────────────────── 댓글 추가 ────────────────────────── */
   // 댓글 추가 mutation
   const addCommentMutation = useAddComment({
     onSuccess: () => {
@@ -81,7 +93,6 @@ const Home = () => {
       console.error("댓글 추가 실패:", error);
     },
   });
-
   // 댓글 입력 표시 상태 (포스트별)
   const [showCommentInput, setShowCommentInput] = useState({});
 
@@ -341,6 +352,7 @@ const Home = () => {
             id: post.id,
             content: post.content,
             mood: post.mood,
+            visibility: post.visibility, // ✅ visibility 추가
             Post_Hashtag: post.Post_Hashtag || [],
           },
         },
@@ -580,6 +592,25 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* ✅ 새로운 필터 헤더 추가 */}
+      <div className="bg-white/80 backdrop-blur-lg z-40 border-b border-stone-100">
+        <div className="max-w-2xl mx-auto px-6 py-4">
+          {/* 헤더 타이틀과 필터 */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h1 className="text-md font-bold bg-gradient-to-r from-stone-900 to-stone-600 bg-clip-text text-transparent">
+                Feed
+              </h1>
+              <div className="px-3 py-1 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full">
+                <span className="text-xs font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  {posts.length} posts
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-2xl mx-auto px-6 py-8 min-h-[70dvh]">
         {/* Posts Feed */}
         <div className="space-y-6">
@@ -655,13 +686,31 @@ const Home = () => {
                           </div>
                         )}
 
-                        <div>
-                          <div className="flex items-center space-x-2">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
                             <h3 className="font-medium text-stone-900 text-sm">
                               {post.ai_generated
                                 ? post.Character.name || "AI"
                                 : post.User_Profile?.display_name || "User"}
                             </h3>
+
+                            {/* ✅ Visibility Badge 추가 */}
+                            {post.visibility === "public" ? (
+                              <div className="flex items-center px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">
+                                <Globe className="w-2.5 h-2.5 mr-1" />
+                                <span className="text-xs font-medium">
+                                  Public
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center px-2 py-0.5 bg-stone-100 text-stone-600 rounded-full">
+                                <Lock className="w-2.5 h-2.5 mr-1" />
+                                <span className="text-xs font-medium">
+                                  Private
+                                </span>
+                              </div>
+                            )}
+
                             {/* Mood indicator */}
                             {post.mood && MOODS[post.mood] && (
                               <div
@@ -682,6 +731,7 @@ const Home = () => {
                               </div>
                             )}
                           </div>
+
                           <p className="text-xs text-stone-500">
                             {formatRelativeTime(
                               post.updated_at || post.created_at
@@ -696,6 +746,8 @@ const Home = () => {
                           </p>
                         </div>
                       </div>
+
+                      {/* Options button - 기존 코드 유지 */}
                       <div className="relative">
                         <button
                           className="options-button p-2 hover:bg-stone-50 rounded-lg transition-colors"
@@ -717,15 +769,15 @@ const Home = () => {
                           </svg>
                         </button>
 
-                        {/* Options Modal */}
+                        {/* Options Modal - 기존 코드 유지 */}
                         {optionsModal.show &&
                           optionsModal.postId === post.id && (
                             <div
                               ref={optionsModalRef}
                               className="absolute top-full mt-1 right-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 py-2 min-w-[140px]"
                             >
-                              {/* Edit 버튼 추가 */}
-                              {!post.Character && (
+                              {/* Edit 버튼 - 자신의 포스트만 */}
+                              {!post.Character && post.user_id === userId && (
                                 <button
                                   onClick={() => handleEditClick(post.id)}
                                   className="w-full px-4 py-3 mb-1 text-left text-sm text-stone-600 hover:bg-stone-50 transition-colors flex items-center space-x-2"
@@ -747,26 +799,54 @@ const Home = () => {
                                 </button>
                               )}
 
-                              {/* Delete 버튼 */}
-                              <button
-                                onClick={() => handleDeleteClick(post.id)}
-                                className="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
-                              >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  viewBox="0 0 24 24"
+                              {/* Delete 버튼 - 자신의 포스트만 */}
+                              {post.user_id === userId && (
+                                <button
+                                  onClick={() => handleDeleteClick(post.id)}
+                                  className="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
                                 >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                  />
-                                </svg>
-                                <span>{translate("common.delete")}</span>
-                              </button>
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
+                                  </svg>
+                                  <span>{translate("common.delete")}</span>
+                                </button>
+                              )}
+
+                              {/* Report 버튼 - 다른 사람의 public 포스트 */}
+                              {post.user_id !== userId &&
+                                post.visibility === "public" && (
+                                  <button
+                                    onClick={() =>
+                                      console.log("Report post:", post.id)
+                                    }
+                                    className="w-full px-4 py-3 text-left text-sm text-stone-600 hover:bg-stone-50 transition-colors flex items-center space-x-2"
+                                  >
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"
+                                      />
+                                    </svg>
+                                    <span>Report</span>
+                                  </button>
+                                )}
                             </div>
                           )}
                       </div>
@@ -821,6 +901,7 @@ const Home = () => {
                             const likeCount = c.like || 0;
                             const isUserComment =
                               c.isUserComment || c.user_id === userId;
+                            const isMyComment = c.user_id === userId;
 
                             return (
                               <div
@@ -855,9 +936,9 @@ const Home = () => {
                                 ) : null}
                                 <div
                                   className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                    isUserComment
-                                      ? "bg-gradient-to-br from-blue-500 to-blue-700"
-                                      : "bg-gradient-to-br from-stone-500 to-stone-700"
+                                    isMyComment
+                                      ? "bg-gradient-to-br from-blue-500 to-blue-700" // 내 댓글만 파란색
+                                      : "bg-gradient-to-br from-stone-500 to-stone-700" // 나머지는 모두 회색
                                   }`}
                                   style={{
                                     display: c.avatar_url ? "none" : "flex",
@@ -893,14 +974,14 @@ const Home = () => {
                                       }
                                     }}
                                   >
-                                    <p
-                                      className={`text-sm font-medium mb-0.5 ${
-                                        isUserComment
-                                          ? "text-blue-900"
-                                          : "text-stone-800"
-                                      }`}
-                                    >
+                                    <p className="text-sm font-medium mb-0.5">
                                       {c.character}
+                                      {/* 선택적: 내 댓글에 "(You)" 표시 */}
+                                      {isMyComment && (
+                                        <span className="text-xs ml-1 opacity-60">
+                                          (You)
+                                        </span>
+                                      )}
                                     </p>
                                     <p className="text-sm leading-relaxed text-stone-600">
                                       {c.message}

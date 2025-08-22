@@ -190,6 +190,18 @@ export const translations = {
     English: "Update",
     Korean: "수정",
   },
+  "profile.showMore": {
+    English: "Show ${count} more",
+    Korean: "${count}개 더 보기",
+  },
+  "profile.showLess": {
+    English: "Show less",
+    Korean: "접기",
+  },
+  "profile.showingCount": {
+    English: "Showing ${shown} of ${total}",
+    Korean: "전체 ${total}개 중 ${shown}개 표시 중",
+  },
 
   // ============= Profile Page =============
   "profile.editProfile": {
