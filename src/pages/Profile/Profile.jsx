@@ -228,6 +228,39 @@ const Profile = () => {
   const remainingCount = characters.length - INITIAL_DISPLAY_COUNT;
   const hasMoreCharacters = characters.length > INITIAL_DISPLAY_COUNT;
 
+  // 상태 결정 함수
+  const getCharacterStatus = () => {
+    const random = Math.random();
+    if (random < 0.6) return "online"; // 60% - 초록색
+    if (random < 0.85) return "away"; // 25% - 주황색
+    return "offline"; // 15% - 회색
+  };
+
+  // 상태별 스타일 매핑
+  const statusStyles = {
+    online: {
+      bg: "bg-green-400",
+      title: "Online",
+    },
+    away: {
+      bg: "bg-orange-400",
+      title: "Away",
+    },
+    offline: {
+      bg: "bg-gray-400",
+      title: "Offline",
+    },
+  };
+
+  // 첫 로딩 시에만 각 캐릭터의 상태 결정 (lazy initial state)
+  const [characterStatuses] = useState(() => {
+    const statuses = {};
+    characters.forEach((character) => {
+      statuses[character.id] = getCharacterStatus();
+    });
+    return statuses;
+  });
+
   // Show loading state if context is still loading
   if (contextLoading) {
     return (
@@ -447,6 +480,9 @@ const Profile = () => {
           <div className="space-y-3">
             {displayedCharacters.map((character) => {
               const isFollowed = followedCharacterIds.has(character.id);
+              // 온라인 상태 (없으면 기본값 online)
+              const status = characterStatuses[character.id] || "online";
+              const statusStyle = statusStyles[status];
 
               return (
                 <div
@@ -487,7 +523,10 @@ const Profile = () => {
                         </div>
 
                         {/* Online indicator */}
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 border-2 border-white rounded-full"></div>
+                        <div
+                          className={`absolute -bottom-1 -right-1 w-4 h-4 ${statusStyle.bg} border-2 border-white rounded-full`}
+                          title={statusStyle.title}
+                        />
                       </div>
 
                       {/* Character Info */}
