@@ -59,8 +59,7 @@ const PostSearchItem = ({ post, query, highlightText, animationDelay = 0 }) => {
 
   return (
     <div
-      className="search-result-item post-item p-4 hover:bg-stone-50 transition-colors cursor-pointer"
-      style={{ animationDelay: `${animationDelay}ms` }}
+      className="post-item p-4 hover:bg-stone-50 transition-colors cursor-pointer"
       onClick={handlePostClick}
     >
       {/* Author Info */}

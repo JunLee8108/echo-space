@@ -37,8 +37,7 @@ const UserSearchItem = ({ user, query, highlightText, animationDelay = 0 }) => {
   return (
     <>
       <div
-        className="search-result-item user-item p-4 hover:bg-stone-50 transition-colors cursor-pointer"
-        style={{ animationDelay: `${animationDelay}ms` }}
+        className="user-item p-4 hover:bg-stone-50 transition-colors cursor-pointer"
         onClick={() => setShowProfileModal(true)}
       >
         <div className="flex items-center gap-4">

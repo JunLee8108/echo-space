@@ -27,36 +27,3 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
-
-/* 검색 결과 애니메이션 */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.search-result-item {
-  animation: fadeInUp 0.3s ease-out;
-  animation-fill-mode: both;
-}
-
-.search-result-item:nth-child(1) {
-  animation-delay: 0.05s;
-}
-.search-result-item:nth-child(2) {
-  animation-delay: 0.1s;
-}
-.search-result-item:nth-child(3) {
-  animation-delay: 0.15s;
-}
-.search-result-item:nth-child(4) {
-  animation-delay: 0.2s;
-}
-.search-result-item:nth-child(5) {
-  animation-delay: 0.25s;
-}

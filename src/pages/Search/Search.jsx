@@ -327,7 +327,7 @@ const Search = () => {
 
           {/* 탭 네비게이션 */}
           {searchQuery && (
-            <div className="px-4 pb-3 mb-3">
+            <div className="px-4 pb-3 mt-1.5">
               <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
                 {tabs.map((tab) => {
                   const count = resultCounts[tab.id];
