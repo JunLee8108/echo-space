@@ -1286,7 +1286,7 @@ const Home = () => {
                                                               c.id
                                                             )
                                                           }
-                                                          className="w-full px-4 py-2 text-left text-sm text-stone-600 hover:bg-stone-50 transition-colors flex items-center space-x-2"
+                                                          className="w-full px-4 py-3 mb-1 text-left text-sm text-stone-600 hover:bg-stone-50 transition-colors flex items-center space-x-2"
                                                         >
                                                           <svg
                                                             className="w-3 h-3"
@@ -1321,7 +1321,7 @@ const Home = () => {
                                                               )
                                                             )
                                                           }
-                                                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                                                          className="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
                                                         >
                                                           <svg
                                                             className="w-3 h-3"

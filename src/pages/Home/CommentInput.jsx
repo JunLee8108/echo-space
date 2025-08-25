@@ -92,8 +92,8 @@ const CommentInput = ({
   return (
     <div
       className={`${
-        isEditMode ? "" : "border-t border-stone-100"
-      } px-6 py-3 transition-all duration-200`}
+        isEditMode ? "px-2 pb-3" : "border-t border-stone-100 px-6 py-3"
+      }  transition-all duration-200`}
     >
       <form onSubmit={handleSubmit} className="flex items-center gap-3">
         <div className="flex items-center flex-1 relative">
@@ -139,7 +139,7 @@ const CommentInput = ({
                 type="button"
                 onClick={handleCancel}
                 disabled={isSubmitting}
-                className="h-[34px] w-[34px] rounded-xl transition-all duration-200 transform flex items-center justify-center
+                className="h-[30px] w-[30px] rounded-xl transition-all duration-200 transform flex items-center justify-center
                          bg-stone-100 text-stone-600 hover:bg-stone-200 active:scale-95
                          disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -154,7 +154,7 @@ const CommentInput = ({
                   isSubmitting ||
                   comment.trim() === initialValue.trim()
                 }
-                className={`h-[34px] w-[34px] rounded-xl transition-all duration-200 transform flex items-center justify-center
+                className={`h-[30px] w-[30px] rounded-xl transition-all duration-200 transform flex items-center justify-center
                          ${
                            comment.trim() &&
                            !isSubmitting &&
