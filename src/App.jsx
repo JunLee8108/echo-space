@@ -8,6 +8,7 @@ import PWAInstallPrompt from "./components/utils/PWAInstallPrompt";
 import Home from "./pages/Home/Home";
 import Profile from "./pages/Profile/Profile";
 import Post from "./pages/Post/Post";
+import Search from "./pages/Search/Search";
 import AuthForm from "./pages/Home/AuthForm";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -109,6 +110,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/search" element={<Search />} />
                 <Route path="/post/new" element={<Post />} />
                 <Route path="/post/edit/:id" element={<Post />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

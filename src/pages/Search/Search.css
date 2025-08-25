@@ -1,0 +1,62 @@
+/* src/pages/Search/Search.css */
+.search-page {
+  min-height: 100vh;
+  padding-bottom: 80px; /* Bottom navbar space */
+}
+
+.search-header {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.search-input-container {
+  transition: all 0.2s ease;
+}
+
+.search-input-container:focus-within {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* 스크롤바 숨기기 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* 검색 결과 애니메이션 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.search-result-item {
+  animation: fadeInUp 0.3s ease-out;
+  animation-fill-mode: both;
+}
+
+.search-result-item:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.search-result-item:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.search-result-item:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.search-result-item:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.search-result-item:nth-child(5) {
+  animation-delay: 0.25s;
+}

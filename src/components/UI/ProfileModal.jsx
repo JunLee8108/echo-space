@@ -309,7 +309,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
                 {character.name || character.character || "Unknown Character"}
               </h2>
               <p className="text-xs text-stone-500 font-medium mb-3">
-                AI Character
+                {character.isUser ? "User" : "AI Character"}
               </p>
 
               {/* Array personality - 이름 바로 아래에 배치 */}
