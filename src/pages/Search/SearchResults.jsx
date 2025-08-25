@@ -57,13 +57,12 @@ const SearchResults = ({ query, activeTab, users = [], posts = [] }) => {
               )}
             </div>
             <div className="divide-y divide-stone-100">
-              {displayUsers.map((user, index) => (
+              {displayUsers.map((user) => (
                 <UserSearchItem
                   key={user.id}
                   user={user}
                   query={query}
                   highlightText={highlightText}
-                  animationDelay={index * 50}
                 />
               ))}
             </div>
@@ -109,13 +108,12 @@ const SearchResults = ({ query, activeTab, users = [], posts = [] }) => {
     return (
       <div className="search-results-container">
         <div className="divide-y divide-stone-100">
-          {users.map((user, index) => (
+          {users.map((user) => (
             <UserSearchItem
               key={user.id}
               user={user}
               query={query}
               highlightText={highlightText}
-              animationDelay={index * 30}
             />
           ))}
         </div>
@@ -128,13 +126,12 @@ const SearchResults = ({ query, activeTab, users = [], posts = [] }) => {
     return (
       <div className="search-results-container">
         <div className="divide-y divide-stone-100">
-          {posts.map((post, index) => (
+          {posts.map((post) => (
             <PostSearchItem
               key={post.id}
               post={post}
               query={query}
               highlightText={highlightText}
-              animationDelay={index * 30}
             />
           ))}
         </div>

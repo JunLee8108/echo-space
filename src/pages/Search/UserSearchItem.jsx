@@ -3,7 +3,7 @@ import { useState } from "react";
 import { UserCircle, Calendar, MessageCircle, FileText } from "lucide-react";
 import ProfileModal from "../../components/UI/ProfileModal";
 
-const UserSearchItem = ({ user, query, highlightText, animationDelay = 0 }) => {
+const UserSearchItem = ({ user, query, highlightText }) => {
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   // 프로필 사진 렌더링

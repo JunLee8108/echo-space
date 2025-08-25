@@ -62,12 +62,6 @@ const Search = () => {
         top: 0,
         behavior: "smooth",
       });
-
-      // 모바일에서 더 나은 경험을 위해 document.documentElement도 함께 스크롤
-      document.documentElement.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
     },
     [originalHandleTabChange]
   );

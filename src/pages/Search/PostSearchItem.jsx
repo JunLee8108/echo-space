@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router";
 
-const PostSearchItem = ({ post, query, highlightText, animationDelay = 0 }) => {
+const PostSearchItem = ({ post, query, highlightText }) => {
   const navigate = useNavigate();
   const [imageError, setImageError] = useState(false);
 
