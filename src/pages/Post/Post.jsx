@@ -3,11 +3,23 @@ import "./Post.css";
 
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router";
-import { Smile, Meh, Frown, Hash, ArrowLeft, Globe, Lock } from "lucide-react";
+import {
+  Smile,
+  Meh,
+  Frown,
+  Hash,
+  ArrowLeft,
+  Globe,
+  Lock,
+  Bot,
+  BotOff,
+} from "lucide-react";
 import CustomEditor from "./CustomEditor";
 import { searchHashtags } from "../../services/hashtagService";
 import { useCreatePost } from "../../components/hooks/useCreatePost";
 import { useUpdatePost } from "../../components/hooks/useUpdatePost";
+import { useUserLanguage } from "../../stores/userStore";
+import { createTranslator } from "../../components/utils/translations";
 
 const MOODS = [
   {
@@ -40,6 +52,10 @@ const Post = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
+
+  const userLanguage = useUserLanguage();
+  const translate = createTranslator(userLanguage);
+
   const isEditMode = !!id;
   const editingPost = location.state?.post || null;
 
@@ -52,6 +68,8 @@ const Post = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [visibility, setVisibility] = useState("private");
   const [showVisibilityModal, setShowVisibilityModal] = useState(false);
+  const [allowAIComments, setAllowAIComments] = useState(true); // AI 댓글 허용 상태
+  const [showAIModal, setShowAIModal] = useState(false); // AI 모달 상태
 
   // 해시태그 관련 상태
   const [showHashtagModal, setShowHashtagModal] = useState(false);
@@ -67,6 +85,8 @@ const Post = () => {
   const hashtagInputRef = useRef(null);
   const visibilityButtonRef = useRef(null);
   const visibilityModalRef = useRef(null);
+  const aiButtonRef = useRef(null);
+  const aiModalRef = useRef(null);
 
   // 수정 모드일 때 초기값 설정
   useEffect(() => {
@@ -88,6 +108,11 @@ const Post = () => {
       if (editingPost.visibility) {
         setVisibility(editingPost.visibility);
       }
+
+      // AI comments 설정
+      if (editingPost.allow_ai_comments !== undefined) {
+        setAllowAIComments(editingPost.allow_ai_comments);
+      }
     }
   }, [isEditMode, editingPost]);
 
@@ -101,6 +126,8 @@ const Post = () => {
           setShowMoodModal(false);
         } else if (showVisibilityModal) {
           setShowVisibilityModal(false);
+        } else if (showAIModal) {
+          setShowAIModal(false);
         } else {
           handleBack();
         }
@@ -109,7 +136,7 @@ const Post = () => {
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [showHashtagModal, showMoodModal, showVisibilityModal]);
+  }, [showHashtagModal, showMoodModal, showVisibilityModal, showAIModal]);
 
   // 모달 외부 클릭 처리
   useEffect(() => {
@@ -140,11 +167,20 @@ const Post = () => {
       ) {
         setShowVisibilityModal(false);
       }
+
+      if (
+        showAIModal &&
+        aiModalRef.current &&
+        !aiModalRef.current.contains(e.target) &&
+        !aiButtonRef.current.contains(e.target)
+      ) {
+        setShowAIModal(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showMoodModal, showHashtagModal, showVisibilityModal]);
+  }, [showMoodModal, showHashtagModal, showVisibilityModal, showAIModal]);
 
   // 해시태그 자동완성
   useEffect(() => {
@@ -210,6 +246,7 @@ const Post = () => {
       mood: selectedMood?.id || null,
       hashtags: selectedHashtags,
       visibility: visibility,
+      allowAIComments: allowAIComments, // AI 댓글 허용 여부 추가
     };
 
     setIsSubmitting(true);
@@ -221,6 +258,8 @@ const Post = () => {
         const hasMoodChanged = editingPost.mood !== postData.mood;
         const hasVisibilityChanged =
           editingPost.visibility !== postData.visibility;
+        const hasAICommentsChanged =
+          editingPost.allow_ai_comments !== postData.allowAIComments;
         const existingHashtags =
           editingPost.Post_Hashtag?.map((h) => h.name) || [];
         const hasHashtagsChanged =
@@ -232,7 +271,8 @@ const Post = () => {
           !hasContentChanged &&
           !hasMoodChanged &&
           !hasHashtagsChanged &&
-          !hasVisibilityChanged
+          !hasVisibilityChanged &&
+          !hasAICommentsChanged
         ) {
           navigate("/");
           return;
@@ -326,7 +366,9 @@ const Post = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="ml-3 text-md font-semibold text-stone-900">
-            {isEditMode ? "Edit Post" : "New Post"}
+            {isEditMode
+              ? `${translate("post.editTitle")}`
+              : `${translate("post.title")}`}
           </h1>
         </div>
 
@@ -336,7 +378,7 @@ const Post = () => {
           className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 ${
             isButtonDisabled || isSubmitting
               ? "bg-stone-100 text-stone-400 cursor-not-allowed"
-              : "bg-stone-900 text-white hover:bg-stone-800 active:scale-95"
+              : "bg-stone-900 text-white hover:bg-stone-800"
           }`}
         >
           {isSubmitting ? (
@@ -451,7 +493,7 @@ const Post = () => {
                   className="absolute bottom-full mb-2 left-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 p-4 min-w-[200px] max-w-[350px]"
                 >
                   <h3 className="text-sm font-medium text-stone-900 mb-3">
-                    Add Hashtags
+                    {translate("post.hashtag.title")}
                   </h3>
 
                   {/* Selected Tags */}
@@ -495,7 +537,7 @@ const Post = () => {
                       value={hashtagInput}
                       onChange={handleChange}
                       onKeyDown={handleHashtagKeyDown}
-                      placeholder="Type hashtag..."
+                      placeholder={`${translate("post.hashtag.placeholder")}`}
                       className="w-full px-3 py-2 text-base border border-stone-300 rounded-lg focus:outline-none"
                       maxLength={30}
                     />
@@ -527,7 +569,7 @@ const Post = () => {
                     <div className="mt-2 max-h-32 overflow-y-auto">
                       {isSearching ? (
                         <div className="text-center py-2 text-sm text-stone-400">
-                          Searching...
+                          {translate("post.hashtag.searching")}
                         </div>
                       ) : hashtagSuggestions.length > 0 ? (
                         <div className="space-y-1">
@@ -581,7 +623,7 @@ const Post = () => {
                   className="absolute bottom-full mb-2 left-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 p-4 min-w-[180px]"
                 >
                   <h3 className="text-sm font-medium text-stone-900 mb-3">
-                    Visibility
+                    {translate("post.visibility.title")}
                   </h3>
 
                   <div className="space-y-2">
@@ -605,9 +647,11 @@ const Post = () => {
                         }`}
                       />
                       <div className="flex-1 text-left">
-                        <p className="text-sm font-medium">Private</p>
+                        <p className="text-sm font-medium">
+                          {translate("post.visibility.private")}
+                        </p>
                         <p className="text-xs text-stone-500 whitespace-nowrap">
-                          Only you can see
+                          {translate("post.visibility.privateDesc")}
                         </p>
                       </div>
                       {visibility === "private" && (
@@ -647,14 +691,141 @@ const Post = () => {
                         }`}
                       />
                       <div className="flex-1 text-left">
-                        <p className="text-sm font-medium">Public</p>
+                        <p className="text-sm font-medium">
+                          {translate("post.visibility.public")}
+                        </p>
                         <p className="text-xs text-stone-500 whitespace-nowrap">
-                          Anyone can see
+                          {translate("post.visibility.publicDesc")}
                         </p>
                       </div>
                       {visibility === "public" && (
                         <svg
                           className="w-4 h-4 text-blue-600"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="absolute -bottom-2 left-6 w-4 h-4 bg-white border-b border-r border-stone-200 transform rotate-45"></div>
+                </div>
+              )}
+            </div>
+
+            {/* AI Comments Button */}
+            <div className="relative">
+              <button
+                ref={aiButtonRef}
+                type="button"
+                className={`p-3 rounded-lg transition-all duration-200 ${
+                  allowAIComments
+                    ? "bg-purple-50 text-purple-600 hover:bg-purple-100"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                }`}
+                onClick={() => setShowAIModal(!showAIModal)}
+                title={
+                  allowAIComments
+                    ? "AI Comments Enabled"
+                    : "AI Comments Disabled"
+                }
+              >
+                {allowAIComments ? (
+                  <Bot className="w-4 h-4" />
+                ) : (
+                  <BotOff className="w-4 h-4" />
+                )}
+              </button>
+
+              {/* AI Modal */}
+              {showAIModal && (
+                <div
+                  ref={aiModalRef}
+                  className="absolute bottom-full mb-2 left-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 p-4 min-w-[200px]"
+                >
+                  <h3 className="text-sm font-medium text-stone-900 mb-3">
+                    {translate("post.ai.title")}
+                  </h3>
+
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAllowAIComments(true);
+                        setShowAIModal(false);
+                      }}
+                      className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                        allowAIComments
+                          ? "bg-purple-50 text-purple-900 font-medium"
+                          : "hover:bg-stone-50 text-stone-700"
+                      }`}
+                    >
+                      <Bot
+                        className={`w-4 h-4 ${
+                          allowAIComments ? "text-purple-600" : "text-stone-500"
+                        }`}
+                      />
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium">
+                          {translate("post.ai.enable")}
+                        </p>
+                        <p className="text-xs text-stone-500 whitespace-nowrap">
+                          {translate("post.ai.enableDesc")}
+                        </p>
+                      </div>
+                      {allowAIComments && (
+                        <svg
+                          className="w-4 h-4 text-purple-600"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAllowAIComments(false);
+                        setShowAIModal(false);
+                      }}
+                      className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                        !allowAIComments
+                          ? "bg-stone-100 text-stone-900 font-medium"
+                          : "hover:bg-stone-50 text-stone-700"
+                      }`}
+                    >
+                      <BotOff
+                        className={`w-4 h-4 ${
+                          !allowAIComments ? "text-stone-600" : "text-stone-500"
+                        }`}
+                      />
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium">
+                          {translate("post.ai.disable")}
+                        </p>
+                        <p className="text-xs text-stone-500 whitespace-nowrap">
+                          {translate("post.ai.disableDesc")}
+                        </p>
+                      </div>
+                      {!allowAIComments && (
+                        <svg
+                          className="w-4 h-4 text-stone-600"
                           fill="none"
                           stroke="currentColor"
                           strokeWidth="2"

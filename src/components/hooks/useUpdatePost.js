@@ -9,7 +9,14 @@ export const useUpdatePost = (options = {}) => {
   const userId = useUserId();
 
   return useMutation({
-    mutationFn: async ({ postId, content, mood, hashtags }) => {
+    mutationFn: async ({
+      postId,
+      content,
+      mood,
+      hashtags,
+      visibility,
+      allowAIComments,
+    }) => {
       try {
         // 1. 콘텐츠의 base64 이미지를 URL로 변환
         let processedContent = content;
@@ -35,6 +42,8 @@ export const useUpdatePost = (options = {}) => {
           content: processedContent, // 처리된 콘텐츠 사용
           mood,
           hashtags,
+          visibility,
+          allowAIComments, // AI 댓글 허용 여부 추가
           userId,
         });
 
@@ -45,7 +54,14 @@ export const useUpdatePost = (options = {}) => {
       }
     },
 
-    onMutate: async ({ postId, content, mood, hashtags }) => {
+    onMutate: async ({
+      postId,
+      content,
+      mood,
+      hashtags,
+      visibility,
+      allowAIComments,
+    }) => {
       // 낙관적 업데이트를 위해 쿼리 취소
       await queryClient.cancelQueries({ queryKey: ["posts", userId] });
 
@@ -64,6 +80,8 @@ export const useUpdatePost = (options = {}) => {
                 ...post,
                 content, // 일단 base64 그대로 표시
                 mood,
+                visibility,
+                allow_ai_comments: allowAIComments, // AI 댓글 허용 여부 추가
                 Post_Hashtag:
                   hashtags?.map((tag) => ({
                     hashtag_id: `temp-${tag}`,

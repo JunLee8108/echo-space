@@ -30,6 +30,10 @@ export const translations = {
     English: "Error",
     Korean: "오류",
   },
+  "common.remove": {
+    English: "Remove",
+    Korean: "제거",
+  },
 
   // ============= Header =============
   // 로그아웃
@@ -190,17 +194,95 @@ export const translations = {
     English: "Update",
     Korean: "수정",
   },
-  "profile.showMore": {
-    English: "Show ${count} more",
-    Korean: "${count}개 더 보기",
+  "post.titleAICommentEnabled": {
+    English: "AI Comments Enabled",
+    Korean: "AI 댓글 허용",
   },
-  "profile.showLess": {
-    English: "Show less",
-    Korean: "접기",
+  "post.titleAICommentDisabled": {
+    English: "AI Comments Disabled",
+    Korean: "AI 댓글 금지",
   },
-  "profile.showingCount": {
-    English: "Showing ${shown} of ${total}",
-    Korean: "전체 ${total}개 중 ${shown}개 표시 중",
+
+  // Post Page - 새로 추가된 항목들
+  "post.button.post": {
+    English: "Post",
+    Korean: "게시",
+  },
+  "post.button.update": {
+    English: "Update",
+    Korean: "수정",
+  },
+  "post.exitConfirm": {
+    English: "You have unsaved changes. Are you sure you want to leave?",
+    Korean: "작성 중인 내용이 있습니다. 정말 나가시겠습니까?",
+  },
+
+  // Hashtag Modal
+  "post.hashtag.title": {
+    English: "Add Hashtags",
+    Korean: "해시태그 추가",
+  },
+  "post.hashtag.placeholder": {
+    English: "Type hashtag...",
+    Korean: "해시태그 입력...",
+  },
+  "post.hashtag.searching": {
+    English: "Searching...",
+    Korean: "검색 중...",
+  },
+  "post.hashtag.pressEnter": {
+    English: 'Press Enter to add "#${hashtag}"',
+    Korean: 'Enter를 눌러 "#${hashtag}" 추가',
+  },
+
+  // Visibility Modal
+  "post.visibility.title": {
+    English: "Visibility",
+    Korean: "공개 설정",
+  },
+  "post.visibility.private": {
+    English: "Private",
+    Korean: "비공개",
+  },
+  "post.visibility.privateDesc": {
+    English: "Only you can see",
+    Korean: "나만 볼 수 있음",
+  },
+  "post.visibility.public": {
+    English: "Public",
+    Korean: "공개",
+  },
+  "post.visibility.publicDesc": {
+    English: "Anyone can see",
+    Korean: "모두가 볼 수 있음",
+  },
+
+  // AI Comments Modal
+  "post.ai.title": {
+    English: "AI Comments",
+    Korean: "AI 댓글",
+  },
+  "post.ai.enable": {
+    English: "Enable",
+    Korean: "허용",
+  },
+  "post.ai.enableDesc": {
+    English: "AI can comment",
+    Korean: "AI가 댓글 작성",
+  },
+  "post.ai.disable": {
+    English: "Disable",
+    Korean: "금지",
+  },
+  "post.ai.disableDesc": {
+    English: "No AI comments",
+    Korean: "AI가 댓글 작성하지 않음",
+  },
+
+  // Character count
+  "post.characterCount": {
+    English: "${count} / 500",
+    Korean: "${count} / 500",
   },
 
   // ============= Profile Page =============
@@ -324,6 +406,18 @@ export const translations = {
     English: "Inactive",
     Korean: "비활성",
   },
+  "profile.showMore": {
+    English: "Show ${count} more",
+    Korean: "${count}개 더 보기",
+  },
+  "profile.showLess": {
+    English: "Show less",
+    Korean: "접기",
+  },
+  "profile.showingCount": {
+    English: "Showing ${shown} of ${total}",
+    Korean: "전체 ${total}개 중 ${shown}개 표시 중",
+  },
 
   // ============= Home Page =============
   "home.startConversation": {
@@ -331,7 +425,7 @@ export const translations = {
     Korean: "첫 게시글을 작성해보세요",
   },
   "home.shareFirstThought": {
-    English: "What’s on your mind?",
+    English: "What's on your mind?",
     Korean: "지금 어떤 생각을 하고 계신가요?",
   },
   "home.allCaughtUp": {
@@ -434,6 +528,14 @@ export const translations = {
   "error.updateFailed": {
     English: "Failed to update. Please try again.",
     Korean: "업데이트에 실패했습니다. 다시 시도해주세요.",
+  },
+  "error.hashtagSearch": {
+    English: "Failed to search hashtags",
+    Korean: "해시태그 검색 실패",
+  },
+  "error.postSave": {
+    English: "Failed to save post",
+    Korean: "포스트 저장 실패",
   },
 
   // ============= Success Messages =============

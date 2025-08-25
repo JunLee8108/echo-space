@@ -182,16 +182,25 @@ export async function deleteComment(commentId, userId, postUserId = null) {
 // UPDATE POST - visibility 추가
 export async function updatePost(
   postId,
-  { content, mood, hashtags, visibility, userId }
+  { content, mood, hashtags, visibility, allowAIComments, userId }
 ) {
   if (!userId) throw new Error("user_id가 없습니다.");
   if (!postId) throw new Error("post_id가 없습니다.");
 
   try {
-    // 1. 기존 포스트 내용 가져오기 (이미지 정리를 위해)
+    // 1. 기존 포스트 내용과 AI 댓글 상태 확인
     const { data: oldPost, error: fetchError } = await supabase
       .from("Post")
-      .select("content")
+      .select(
+        `
+        content, 
+        allow_ai_comments,
+        Comment (
+          id,
+          character_id
+        )
+      `
+      )
       .eq("id", postId)
       .eq("user_id", userId)
       .single();
@@ -201,13 +210,33 @@ export async function updatePost(
       throw fetchError;
     }
 
-    // 2. 포스트 내용 업데이트 - visibility 추가
+    // AI 댓글 상태 변경 감지
+    const wasAIDisabled = oldPost.allow_ai_comments === false;
+    const isAIEnabled = allowAIComments === true;
+
+    // AI 댓글(character_id가 있는 댓글)이 있는지 확인
+    const hasAIComments =
+      oldPost.Comment &&
+      oldPost.Comment.some((comment) => comment.character_id !== null);
+
+    // AI 댓글이 비활성화였다가 활성화되고, AI 댓글이 없는 경우에만 트리거
+    const shouldTriggerAI = wasAIDisabled && isAIEnabled && !hasAIComments;
+
+    console.log("🔍 AI 상태 체크:", {
+      wasAIDisabled,
+      isAIEnabled,
+      hasAIComments,
+      shouldTriggerAI,
+    });
+
+    // 2. 포스트 내용 업데이트
     const { error: updateError } = await supabase
       .from("Post")
       .update({
         content,
         mood: mood || null,
-        visibility: visibility || "private", // ✅ visibility 추가
+        visibility: visibility || "private",
+        allow_ai_comments: allowAIComments !== false,
         updated_at: new Date().toISOString(),
       })
       .eq("id", postId)
@@ -247,7 +276,32 @@ export async function updatePost(
       }
     }
 
-    // 6. 업데이트된 전체 데이터를 다시 조회하여 반환 - visibility 포함
+    // 6. AI 처리가 필요한 경우에만 Edge Function 호출
+    if (shouldTriggerAI) {
+      console.log("🤖 AI 댓글 활성화 감지 - Edge Function 호출");
+
+      triggerAIProcessing(
+        postId,
+        content,
+        hashtags,
+        mood,
+        visibility,
+        true, // allowAIComments를 명시적으로 true로
+        userId
+      )
+        .then(() => console.log("✅ AI 처리 시작됨 (수정 후 활성화)"))
+        .catch((error) => console.error("❌ AI 처리 트리거 실패:", error));
+    } else {
+      if (!isAIEnabled) {
+        console.log("ℹ️ AI 댓글 비활성화 상태 유지");
+      } else if (hasAIComments) {
+        console.log("ℹ️ AI 댓글이 이미 존재하므로 추가 처리 생략");
+      } else if (!wasAIDisabled) {
+        console.log("ℹ️ AI 상태 변경 없음");
+      }
+    }
+
+    // 7. 업데이트된 전체 데이터를 다시 조회하여 반환
     const { data: fullPost, error: fetchError2 } = await supabase
       .from("Post")
       .select(
@@ -256,6 +310,7 @@ export async function updatePost(
         content,
         mood,
         visibility,
+        allow_ai_comments,
         like,
         ai_generated,
         character_id,
@@ -435,6 +490,7 @@ export async function fetchPostsWithCommentsAndLikes(
         content,
         mood,
         visibility,
+        allow_ai_comments,
         like,
         ai_generated,
         character_id,
@@ -504,7 +560,6 @@ export async function fetchPostsWithCommentsAndLikes(
       `
     );
 
-    // ✅ visibility 조건 추가: 내 포스트 + public 포스트
     if (includePublic) {
       query = query.or(`user_id.eq.${uid},visibility.eq.public`);
     } else {
@@ -558,7 +613,8 @@ export async function fetchPostsWithCommentsAndLikes(
 function formatPostData(post, userId) {
   return {
     ...post,
-    visibility: post.visibility || "private", // ✅ visibility 추가
+    visibility: post.visibility || "private",
+    allow_ai_comments: post.allow_ai_comments !== false, // 기본값 true
     Comment:
       post.Comment?.map((comment) => ({
         id: comment.id,
@@ -623,6 +679,7 @@ async function triggerAIProcessing(
   hashtags,
   mood,
   visibility,
+  allowAIComments,
   userId
 ) {
   try {
@@ -632,7 +689,8 @@ async function triggerAIProcessing(
         content,
         hashtags: hashtags || [],
         mood: mood || null,
-        visibility: visibility || "private", // ✅ visibility 추가
+        visibility: visibility || "private",
+        allowAIComments: allowAIComments !== false, // 명시적으로 전달
         userId: userId,
       },
     });
@@ -650,14 +708,15 @@ export async function createPostImmediate(post, userId) {
   if (!userId) throw new Error("user_id가 없습니다.");
 
   try {
-    // 1. Post 저장 - visibility 추가
+    // 1. Post 저장 - allowAIComments 추가
     const { data: postData, error: postError } = await supabase
       .from("Post")
       .insert([
         {
           content: post.content,
           mood: post.mood || null,
-          visibility: post.visibility || "private", // ✅ visibility 추가
+          visibility: post.visibility || "private",
+          allow_ai_comments: post.allowAIComments !== false, // 기본값 true
           like: 0,
           user_id: userId,
         },
@@ -668,6 +727,7 @@ export async function createPostImmediate(post, userId) {
         content,
         mood,
         visibility,
+        allow_ai_comments,
         like,
         created_at,
         updated_at,
@@ -713,22 +773,30 @@ export async function createPostImmediate(post, userId) {
       }
     }
 
-    // 3. Edge Function 호출 - ✅ 조건 없이 모든 포스트에 AI 처리
-    triggerAIProcessing(
-      postId,
-      post.content,
-      post.hashtags,
-      post.mood,
-      post.visibility,
-      userId
-    )
-      .then(() => console.log("✅ AI 처리 시작됨"))
-      .catch((error) => console.error("❌ AI 처리 트리거 실패:", error));
+    // 3. 조건부 Edge Function 호출 - AI 댓글이 허용된 경우에만
+    if (post.allowAIComments !== false) {
+      console.log("🤖 AI 댓글 처리 시작 (allow_ai_comments: true)");
+
+      triggerAIProcessing(
+        postId,
+        post.content,
+        post.hashtags,
+        post.mood,
+        post.visibility,
+        post.allowAIComments,
+        userId
+      )
+        .then(() => console.log("✅ AI 처리 시작됨"))
+        .catch((error) => console.error("❌ AI 처리 트리거 실패:", error));
+    } else {
+      console.log("🚫 AI 댓글 비활성화됨 (allow_ai_comments: false)");
+    }
 
     // 4. 완성된 Post 반환
     const formattedPost = {
       ...postData,
-      visibility: postData.visibility || "private", // ✅ visibility 포함
+      visibility: postData.visibility || "private",
+      allow_ai_comments: postData.allow_ai_comments,
       Comment: [],
       Post_Like: [],
       Post_Hashtag: savedHashtags,

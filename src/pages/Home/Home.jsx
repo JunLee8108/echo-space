@@ -469,6 +469,7 @@ const Home = () => {
             content: post.content,
             mood: post.mood,
             visibility: post.visibility,
+            allow_ai_comments: post.allow_ai_comments,
             Post_Hashtag: post.Post_Hashtag || [],
           },
         },
