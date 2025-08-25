@@ -67,6 +67,118 @@ export async function addUserComment(postId, userId, message) {
   }
 }
 
+// 댓글 수정 함수 추가
+export async function updateComment(commentId, userId, newMessage) {
+  if (!userId) throw new Error("user_id가 없습니다.");
+  if (!commentId) throw new Error("comment_id가 없습니다.");
+  if (!newMessage || newMessage.trim() === "")
+    throw new Error("댓글 내용이 없습니다.");
+
+  try {
+    // 댓글 수정 (본인 댓글만 수정 가능)
+    const { data, error } = await supabase
+      .from("Comment")
+      .update({
+        message: newMessage.trim(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", commentId)
+      .eq("user_id", userId) // 본인 확인
+      .select(
+        `
+        id,
+        user_id,
+        message,
+        like,
+        created_at,
+        updated_at,
+        User_Profile (
+          id,
+          display_name
+        )
+      `
+      )
+      .single();
+
+    if (error) {
+      console.error("❌ 댓글 수정 실패:", error.message);
+      throw error;
+    }
+
+    // 포맷팅된 댓글 반환
+    const formattedComment = {
+      id: data.id,
+      character_id: null,
+      user_id: data.user_id,
+      message: data.message,
+      like: data.like || 0,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      isUserComment: true,
+      character: data.User_Profile?.display_name || "User",
+      avatar_url: null,
+      personality: [],
+      description: "",
+      prompt_description: "",
+      affinity: null,
+      isLikedByUser: false,
+      User_Profile: data.User_Profile,
+    };
+
+    return formattedComment;
+  } catch (error) {
+    console.error("❌ updateComment 실패:", error);
+    throw error;
+  }
+}
+
+// 댓글 삭제 함수 추가
+export async function deleteComment(commentId, userId, postUserId = null) {
+  if (!userId) throw new Error("user_id가 없습니다.");
+  if (!commentId) throw new Error("comment_id가 없습니다.");
+
+  try {
+    // 먼저 댓글 정보 조회
+    const { data: commentData, error: fetchError } = await supabase
+      .from("Comment")
+      .select("user_id, character_id, post_id")
+      .eq("id", commentId)
+      .single();
+
+    if (fetchError) {
+      console.error("❌ 댓글 조회 실패:", fetchError.message);
+      throw fetchError;
+    }
+
+    // 권한 체크
+    const isUserComment = commentData.user_id === userId;
+    const isAIComment = commentData.character_id !== null;
+    const isPostOwner = postUserId === userId;
+
+    // 삭제 권한 확인
+    if (!isUserComment && !(isAIComment && isPostOwner)) {
+      throw new Error("댓글을 삭제할 권한이 없습니다.");
+    }
+
+    // 댓글 삭제 (CASCADE로 Comment_Like도 자동 삭제됨)
+    const { error: deleteError } = await supabase
+      .from("Comment")
+      .delete()
+      .eq("id", commentId);
+
+    if (deleteError) {
+      console.error("❌ 댓글 삭제 실패:", deleteError.message);
+      throw deleteError;
+    }
+
+    console.log(`✅ Comment ${commentId} 삭제 완료`);
+    return { success: true, commentId };
+  } catch (error) {
+    console.error("❌ deleteComment 실패:", error);
+    throw error;
+  }
+}
+
 // UPDATE POST - visibility 추가
 export async function updatePost(
   postId,

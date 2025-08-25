@@ -14,9 +14,9 @@ import {
   MessageCircleOff,
   Globe,
   Lock,
-  Filter, // ✅ 추가
-  Users, // ✅ 추가
-  Sparkles, // ✅ 추가
+  Filter,
+  Users,
+  Sparkles,
 } from "lucide-react";
 
 import { usePostsRealtime } from "../../components/hooks/usePostsRealtime";
@@ -34,6 +34,8 @@ import {
   deletePostById,
   fetchPostsWithCommentsAndLikes,
   toggleCommentLike,
+  updateComment, // ✅ 추가
+  deleteComment, // ✅ 추가
 } from "../../services/postService";
 import "./Home.css";
 
@@ -83,7 +85,7 @@ const Home = () => {
   const characters = useCharacters();
   const { updateLocalCharacterAffinity } = useCharacterActions();
 
-  /* ──────────────────────── 댓글 추가 ────────────────────────── */
+  /* ────────────────────── 댓글 추가 ───────────────────────── */
   // 댓글 추가 mutation
   const addCommentMutation = useAddComment({
     onSuccess: () => {
@@ -101,7 +103,7 @@ const Home = () => {
 
   const queryClient = useQueryClient();
 
-  /* ──────────────────────── Modal state ────────────────────────── */
+  /* ────────────────────── Modal state ───────────────────────── */
   const [likeModal, setLikeModal] = useState({
     show: false,
     likes: [],
@@ -125,14 +127,30 @@ const Home = () => {
     imageSrc: null,
   });
 
+  // ✅ 댓글 관련 상태 추가
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [commentOptionsModal, setCommentOptionsModal] = useState({
+    show: false,
+    commentId: null,
+    postId: null,
+  });
+  const [confirmDeleteComment, setConfirmDeleteComment] = useState({
+    show: false,
+    commentId: null,
+    postId: null,
+    postUserId: null,
+    commentText: null,
+  });
+
   const modalRef = useRef(null);
   const optionsModalRef = useRef(null);
+  const commentOptionsModalRef = useRef(null); // ✅ 추가
 
   // Intersection Observer를 위한 ref
   const observerRef = useRef(null);
   const loadMoreRef = useRef(null);
 
-  /* ───────── React Query: Infinite Query with Cursor ───────── */
+  /* ───────── React Query: Infinite Query with Cursor ────────── */
   const {
     data,
     fetchNextPage,
@@ -170,7 +188,7 @@ const Home = () => {
   });
   const posts = Array.from(postsMap.values());
 
-  /* ───────── Intersection Observer 설정 ───────── */
+  /* ───────── Intersection Observer 설정 ────────── */
   useEffect(() => {
     if (!loadMoreRef.current) return;
 
@@ -197,7 +215,7 @@ const Home = () => {
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  /* ───────── React Query: Delete Post Mutation ───────── */
+  /* ───────── React Query: Delete Post Mutation ────────── */
   const deletePostMutation = useMutation({
     mutationFn: ({ postId }) => deletePostById(postId, userId),
     onMutate: async ({ postId }) => {
@@ -233,6 +251,94 @@ const Home = () => {
     },
   });
 
+  // ✅ 댓글 수정 mutation 추가
+  const updateCommentMutation = useMutation({
+    mutationFn: ({ commentId, message }) =>
+      updateComment(commentId, userId, message),
+    onMutate: async ({ commentId, message, postId }) => {
+      await queryClient.cancelQueries({ queryKey: ["posts", userId] });
+
+      const previousData = queryClient.getQueryData(["posts", userId]);
+
+      // 낙관적 업데이트
+      queryClient.setQueryData(["posts", userId], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            posts: page.posts.map((p) => {
+              if (p.id === postId) {
+                return {
+                  ...p,
+                  Comment: p.Comment.map((c) => {
+                    if (c.id === commentId) {
+                      return { ...c, message };
+                    }
+                    return c;
+                  }),
+                };
+              }
+              return p;
+            }),
+          })),
+        };
+      });
+
+      return { previousData };
+    },
+    onError: (error, variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["posts", userId], context.previousData);
+      }
+      console.error("댓글 수정 실패:", error);
+      alert("댓글 수정에 실패했습니다.");
+    },
+    onSuccess: () => {
+      setEditingCommentId(null);
+    },
+  });
+
+  // ✅ 댓글 삭제 mutation 추가
+  const deleteCommentMutation = useMutation({
+    mutationFn: ({ commentId, postUserId }) =>
+      deleteComment(commentId, userId, postUserId),
+    onMutate: async ({ commentId, postId }) => {
+      await queryClient.cancelQueries({ queryKey: ["posts", userId] });
+
+      const previousData = queryClient.getQueryData(["posts", userId]);
+
+      // 낙관적 업데이트
+      queryClient.setQueryData(["posts", userId], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            posts: page.posts.map((p) => {
+              if (p.id === postId) {
+                return {
+                  ...p,
+                  Comment: p.Comment.filter((c) => c.id !== commentId),
+                };
+              }
+              return p;
+            }),
+          })),
+        };
+      });
+
+      return { previousData };
+    },
+    onError: (error, variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["posts", userId], context.previousData);
+      }
+      console.error("댓글 삭제 실패:", error);
+      alert("댓글 삭제에 실패했습니다.");
+    },
+  });
+
   // Close modals when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -253,11 +359,21 @@ const Home = () => {
       ) {
         setOptionsModal({ show: false, postId: null });
       }
+
+      // ✅ 댓글 옵션 모달 외부 클릭 감지 추가
+      if (
+        commentOptionsModal.show &&
+        commentOptionsModalRef.current &&
+        !commentOptionsModalRef.current.contains(e.target) &&
+        !e.target.closest(".comment-options-button")
+      ) {
+        setCommentOptionsModal({ show: false, commentId: null, postId: null });
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [likeModal.show, optionsModal.show]);
+  }, [likeModal.show, optionsModal.show, commentOptionsModal.show]);
 
   useEffect(() => {
     // 모든 포스트 내 이미지에 클릭 이벤트 추가
@@ -352,7 +468,7 @@ const Home = () => {
             id: post.id,
             content: post.content,
             mood: post.mood,
-            visibility: post.visibility, // ✅ visibility 추가
+            visibility: post.visibility,
             Post_Hashtag: post.Post_Hashtag || [],
           },
         },
@@ -406,7 +522,7 @@ const Home = () => {
     return basicCharInfo;
   };
 
-  // 댓글 좋아요 토글 핸들러 추가
+  // 댓글 좋아요 토글 핸들러
   const handleCommentLike = async (commentId, postId) => {
     try {
       const post = posts.find((p) => p.id === postId);
@@ -528,6 +644,73 @@ const Home = () => {
     }));
   };
 
+  // ✅ 댓글 옵션 클릭 핸들러
+  const handleCommentOptionsClick = (e, commentId, postId) => {
+    e.stopPropagation();
+
+    if (
+      commentOptionsModal.show &&
+      commentOptionsModal.commentId === commentId
+    ) {
+      setCommentOptionsModal({ show: false, commentId: null, postId: null });
+      return;
+    }
+
+    setCommentOptionsModal({
+      show: true,
+      commentId: commentId,
+      postId: postId,
+    });
+  };
+
+  // ✅ 댓글 수정 클릭 핸들러
+  const handleEditCommentClick = (commentId) => {
+    setEditingCommentId(commentId);
+    setCommentOptionsModal({ show: false, commentId: null, postId: null });
+  };
+
+  // ✅ 댓글 삭제 클릭 핸들러
+  const handleDeleteCommentClick = (
+    commentId,
+    postId,
+    postUserId,
+    commentText
+  ) => {
+    setConfirmDeleteComment({
+      show: true,
+      commentId: commentId,
+      postId: postId,
+      postUserId: postUserId,
+      commentText: commentText,
+    });
+    setCommentOptionsModal({ show: false, commentId: null, postId: null });
+  };
+
+  // ✅ 댓글 삭제 확인 핸들러
+  const handleDeleteCommentConfirm = () => {
+    deleteCommentMutation.mutate({
+      commentId: confirmDeleteComment.commentId,
+      postId: confirmDeleteComment.postId,
+      postUserId: confirmDeleteComment.postUserId,
+    });
+    setConfirmDeleteComment({
+      show: false,
+      commentId: null,
+      postId: null,
+      postUserId: null,
+      commentText: null,
+    });
+  };
+
+  // ✅ 댓글 수정 제출 핸들러
+  const handleUpdateComment = async (commentId, postId, newMessage) => {
+    await updateCommentMutation.mutateAsync({
+      commentId,
+      postId,
+      message: newMessage,
+    });
+  };
+
   // 스켈레톤 로더 컴포넌트
   const PostSkeleton = () => (
     <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden animate-pulse">
@@ -592,7 +775,7 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* ✅ 새로운 필터 헤더 추가 */}
+      {/* 새로운 필터 헤더 추가 */}
       <div className="bg-white/80 backdrop-blur-lg z-40 border-b border-stone-100">
         <div className="max-w-2xl mx-auto px-6 py-4">
           {/* 헤더 타이틀과 필터 */}
@@ -601,7 +784,10 @@ const Home = () => {
               <h1 className="text-md font-bold bg-gradient-to-r from-stone-900 to-stone-600 bg-clip-text text-transparent">
                 Feed
               </h1>
-              <div className="px-3 py-1 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full">
+              <div
+                className="px-2 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full"
+                style={{ paddingBottom: "3px" }}
+              >
                 <span className="text-xs font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                   {posts.length} Posts
                 </span>
@@ -657,7 +843,7 @@ const Home = () => {
                           <img
                             src={post.Character.avatar_url}
                             alt={post.Character.name}
-                            className="w-9 h-9 cursor-pointer rounded-2xl object-cover flex-shrink-0"
+                            className="w-8 h-8 cursor-pointer rounded-2xl object-cover flex-shrink-0"
                             onClick={(e) => {
                               const character = {
                                 ...post.Character,
@@ -694,7 +880,7 @@ const Home = () => {
                                 : post.User_Profile?.display_name || "User"}
                             </h3>
 
-                            {/* ✅ Visibility Badge 추가 */}
+                            {/* Visibility Badge 추가 */}
                             {post.visibility === "public" ? (
                               <div className="flex items-center px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">
                                 <Globe className="w-2.5 h-2.5 mr-1" />
@@ -747,7 +933,7 @@ const Home = () => {
                         </div>
                       </div>
 
-                      {/* Options button - 기존 코드 유지 */}
+                      {/* Options button */}
                       <div className="relative">
                         <button
                           className="options-button p-2 hover:bg-stone-50 rounded-lg transition-colors"
@@ -769,7 +955,7 @@ const Home = () => {
                           </svg>
                         </button>
 
-                        {/* Options Modal - 기존 코드 유지 */}
+                        {/* Options Modal */}
                         {optionsModal.show &&
                           optionsModal.postId === post.id && (
                             <div
@@ -892,159 +1078,280 @@ const Home = () => {
                     )}
 
                     {/* Comments Section with fade-in animation */}
+                    {/* Comments Section with fade-in animation */}
                     {post.Comment && post.Comment.length > 0 && (
                       <div className="px-6 pb-3 animate-fadeIn">
                         <div className="border-t border-stone-100 pt-4 space-y-3">
                           {post.Comment.map((c, idx) => {
-                            // 서버에서 받은 데이터 사용
                             const isLiked = c.isLikedByUser;
                             const likeCount = c.like || 0;
                             const isUserComment =
                               c.isUserComment || c.user_id === userId;
                             const isMyComment = c.user_id === userId;
+                            const isAIComment = c.character_id !== null;
+                            const isPostOwner = post.user_id === userId;
+                            const canEdit = isMyComment;
+                            const canDelete =
+                              isMyComment || (isAIComment && isPostOwner);
+                            const isEditing = editingCommentId === c.id;
 
                             return (
                               <div
                                 key={c.id}
-                                className={`flex items-start space-x-2 ${
-                                  c.isLoading ? "opacity-70" : ""
-                                }`}
+                                className={`${c.isLoading ? "opacity-70" : ""}`}
                                 style={{ animationDelay: `${idx * 100}ms` }}
                               >
-                                {/* Avatar */}
-                                {c.avatar_url ? (
-                                  <img
-                                    src={c.avatar_url}
-                                    alt={c.character}
-                                    className="w-9 h-9 cursor-pointer rounded-2xl object-cover flex-shrink-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      // 사용자 댓글이 아닌 경우에만 프로필 모달 열기
-                                      if (!isUserComment) {
-                                        setProfileModal({
-                                          show: true,
-                                          character: getEnrichedCharacter(c),
-                                        });
-                                      }
-                                    }}
-                                    onError={(e) => {
-                                      e.target.style.display = "none";
-                                      e.target.nextSibling.style.display =
-                                        "flex";
-                                    }}
-                                  />
-                                ) : null}
-                                <div
-                                  className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                    isMyComment
-                                      ? "bg-gradient-to-br from-blue-500 to-blue-700" // 내 댓글만 파란색
-                                      : "bg-gradient-to-br from-stone-500 to-stone-700" // 나머지는 모두 회색
-                                  }`}
-                                  style={{
-                                    display: c.avatar_url ? "none" : "flex",
-                                  }}
-                                >
-                                  <span className="text-white text-xs font-medium">
-                                    {isUserComment
-                                      ? c.character?.charAt(0) || "U"
-                                      : c.character?.charAt(0) || "A"}
-                                  </span>
-                                </div>
-
-                                <div className="flex-1 flex items-center gap-1.5">
+                                <div className="flex items-start space-x-2">
+                                  {/* Avatar */}
+                                  {c.avatar_url ? (
+                                    <img
+                                      src={c.avatar_url}
+                                      alt={c.character}
+                                      className="w-8 h-8 cursor-pointer rounded-2xl object-cover flex-shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!isUserComment) {
+                                          setProfileModal({
+                                            show: true,
+                                            character: getEnrichedCharacter(c),
+                                          });
+                                        }
+                                      }}
+                                      onError={(e) => {
+                                        e.target.style.display = "none";
+                                        e.target.nextSibling.style.display =
+                                          "flex";
+                                      }}
+                                    />
+                                  ) : null}
                                   <div
-                                    className="flex-1 rounded-2xl px-4 py-2.5 select-none relative group bg-stone-50"
-                                    onClick={(e) => {
-                                      // AI 댓글만 더블탭 좋아요 가능
-                                      if (!isUserComment) {
-                                        handleCommentDoubleTap(
-                                          e,
-                                          c.id,
-                                          post.id
-                                        );
-                                      }
-                                    }}
-                                    onTouchEnd={(e) => {
-                                      if (!isUserComment) {
-                                        handleCommentDoubleTap(
-                                          e,
-                                          c.id,
-                                          post.id
-                                        );
-                                      }
+                                    className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                      isMyComment
+                                        ? "bg-gradient-to-br from-blue-500 to-blue-700"
+                                        : "bg-gradient-to-br from-stone-500 to-stone-700"
+                                    }`}
+                                    style={{
+                                      display: c.avatar_url ? "none" : "flex",
                                     }}
                                   >
-                                    <p className="text-sm font-medium mb-0.5">
-                                      {c.character}
-                                      {/* 선택적: 내 댓글에 "(You)" 표시 */}
-                                      {isMyComment && (
-                                        <span className="text-xs ml-1 opacity-60">
-                                          (You)
-                                        </span>
-                                      )}
-                                    </p>
-                                    <p className="text-sm leading-relaxed text-stone-600">
-                                      {c.message}
-                                    </p>
-
-                                    {/* 더블 탭 힌트 - AI 댓글에만 */}
-                                    {!isUserComment && (
-                                      <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/[0.02] transition-colors pointer-events-none" />
-                                    )}
-
-                                    {/* 로딩 인디케이터 */}
-                                    {c.isLoading && (
-                                      <div className="absolute right-2 top-2">
-                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
-                                      </div>
-                                    )}
+                                    <span className="text-white text-xs font-medium">
+                                      {isUserComment
+                                        ? c.character?.charAt(0) || "U"
+                                        : c.character?.charAt(0) || "A"}
+                                    </span>
                                   </div>
 
-                                  {/* 댓글 좋아요 버튼 - AI 댓글에만 표시 */}
-                                  {!isUserComment && (
-                                    <div className="flex flex-col items-center justify-center">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleCommentLike(c.id, post.id);
-                                        }}
-                                        className={`group p-1.5 rounded-full transition-colors duration-200 ${
-                                          isLiked
-                                            ? "text-pink-500 hover:bg-pink-50"
-                                            : "text-stone-400 hover:text-stone-500 hover:bg-stone-50"
-                                        }`}
-                                      >
-                                        <svg
-                                          className="w-3.5 h-3.5"
-                                          fill={
-                                            isLiked ? "currentColor" : "none"
-                                          }
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                          viewBox="0 0 24 24"
+                                  {/* Comment Content */}
+                                  <div className="flex-1">
+                                    {/* 수정 모드 */}
+                                    {isEditing ? (
+                                      <CommentInput
+                                        initialValue={c.message}
+                                        onSubmit={(newMessage) =>
+                                          handleUpdateComment(
+                                            c.id,
+                                            post.id,
+                                            newMessage
+                                          )
+                                        }
+                                        onCancel={() =>
+                                          setEditingCommentId(null)
+                                        }
+                                        isSubmitting={
+                                          updateCommentMutation.isLoading
+                                        }
+                                        placeholder="Edit comment..."
+                                        autoFocus={true}
+                                        isEditMode={true}
+                                      />
+                                    ) : (
+                                      <>
+                                        {/* 일반 댓글 표시 */}
+                                        <div
+                                          className="rounded-2xl px-4 py-2.5 select-none relative group bg-stone-50"
+                                          onClick={(e) => {
+                                            handleCommentDoubleTap(
+                                              e,
+                                              c.id,
+                                              post.id
+                                            );
+                                          }}
+                                          onTouchEnd={(e) => {
+                                            handleCommentDoubleTap(
+                                              e,
+                                              c.id,
+                                              post.id
+                                            );
+                                          }}
                                         >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                          />
-                                        </svg>
-                                      </button>
+                                          <p className="text-sm font-medium">
+                                            {c.character}
+                                            {isMyComment && (
+                                              <span className="text-xs ml-1 opacity-60">
+                                                (You)
+                                              </span>
+                                            )}
+                                          </p>
+                                          {/* 날짜를 이름 아래로 이동 */}
+                                          <p className="text-xs text-stone-400 mb-1">
+                                            {formatRelativeTime(c.created_at)}
+                                          </p>
+                                          <p className="text-sm leading-relaxed text-stone-600 break-words">
+                                            {c.message}
+                                          </p>
 
-                                      {/* 좋아요 수 */}
-                                      {likeCount > 0 && (
-                                        <span
-                                          className={`text-[10px] ${
-                                            isLiked
-                                              ? "text-pink-500"
-                                              : "text-stone-400"
-                                          }`}
-                                        >
-                                          {likeCount}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
+                                          {!isUserComment && (
+                                            <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/[0.02] transition-colors pointer-events-none" />
+                                          )}
+
+                                          {c.isLoading && (
+                                            <div className="absolute right-2 top-2">
+                                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* 액션 버튼들 - 우측 정렬로 변경 */}
+                                        <div className="flex items-center justify-end gap-1 mt-0.5">
+                                          {/* 좋아요 버튼 */}
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleCommentLike(c.id, post.id);
+                                            }}
+                                            className={`group inline-flex items-center gap-1 px-2 py-1 rounded-lg transition-all duration-200 ${
+                                              isLiked
+                                                ? "text-pink-500 hover:bg-pink-50"
+                                                : "text-stone-400 hover:text-stone-500 hover:bg-stone-50"
+                                            }`}
+                                          >
+                                            <svg
+                                              className="w-3 h-3"
+                                              fill={
+                                                isLiked
+                                                  ? "currentColor"
+                                                  : "none"
+                                              }
+                                              stroke="currentColor"
+                                              strokeWidth="2"
+                                              viewBox="0 0 24 24"
+                                            >
+                                              <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                              />
+                                            </svg>
+                                            {likeCount > 0 && (
+                                              <span className="text-xs font-medium">
+                                                {likeCount}
+                                              </span>
+                                            )}
+                                          </button>
+
+                                          {/* 옵션 메뉴 - 권한이 있을 때만 표시 */}
+                                          {(canEdit || canDelete) && (
+                                            <>
+                                              <span className="text-stone-300">
+                                                ·
+                                              </span>
+                                              <div className="relative">
+                                                <button
+                                                  className="comment-options-button px-2 py-1 text-xs text-stone-400 hover:text-stone-600 hover:bg-stone-50 rounded-lg transition-colors"
+                                                  onClick={(e) =>
+                                                    handleCommentOptionsClick(
+                                                      e,
+                                                      c.id,
+                                                      post.id
+                                                    )
+                                                  }
+                                                >
+                                                  More
+                                                </button>
+
+                                                {/* 댓글 옵션 모달 - right-0로 변경 */}
+                                                {commentOptionsModal.show &&
+                                                  commentOptionsModal.commentId ===
+                                                    c.id && (
+                                                    <div
+                                                      ref={
+                                                        commentOptionsModalRef
+                                                      }
+                                                      className="absolute top-full mb-1 right-0 z-50 bg-white rounded-xl shadow-lg border border-stone-200 py-2 min-w-[120px]"
+                                                    >
+                                                      {canEdit && (
+                                                        <button
+                                                          onClick={() =>
+                                                            handleEditCommentClick(
+                                                              c.id
+                                                            )
+                                                          }
+                                                          className="w-full px-4 py-2 text-left text-sm text-stone-600 hover:bg-stone-50 transition-colors flex items-center space-x-2"
+                                                        >
+                                                          <svg
+                                                            className="w-3 h-3"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            viewBox="0 0 24 24"
+                                                          >
+                                                            <path
+                                                              strokeLinecap="round"
+                                                              strokeLinejoin="round"
+                                                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                            />
+                                                          </svg>
+                                                          <span>
+                                                            {translate(
+                                                              "common.edit"
+                                                            )}
+                                                          </span>
+                                                        </button>
+                                                      )}
+                                                      {canDelete && (
+                                                        <button
+                                                          onClick={() =>
+                                                            handleDeleteCommentClick(
+                                                              c.id,
+                                                              post.id,
+                                                              post.user_id,
+                                                              c.message.substring(
+                                                                0,
+                                                                50
+                                                              )
+                                                            )
+                                                          }
+                                                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                                                        >
+                                                          <svg
+                                                            className="w-3 h-3"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            viewBox="0 0 24 24"
+                                                          >
+                                                            <path
+                                                              strokeLinecap="round"
+                                                              strokeLinejoin="round"
+                                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                            />
+                                                          </svg>
+                                                          <span>
+                                                            {translate(
+                                                              "common.delete"
+                                                            )}
+                                                          </span>
+                                                        </button>
+                                                      )}
+                                                    </div>
+                                                  )}
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             );
@@ -1200,7 +1507,7 @@ const Home = () => {
                           )}
 
                           <span className="text-sm text-stone-600">
-                            {showCommentInput[post.id] ? "Cancel" : "Comment"}
+                            {showCommentInput[post.id] ? "Cancel" : ""}
                           </span>
                         </button>
                       </div>
@@ -1273,6 +1580,7 @@ const Home = () => {
         </div>
       </div>
 
+      {/* 포스트 삭제 확인 모달 */}
       <ConfirmationModal
         isOpen={confirmDelete.show}
         onClose={() =>
@@ -1287,12 +1595,35 @@ const Home = () => {
         icon="danger"
       />
 
+      {/* ✅ 댓글 삭제 확인 모달 추가 */}
+      <ConfirmationModal
+        isOpen={confirmDeleteComment.show}
+        onClose={() =>
+          setConfirmDeleteComment({
+            show: false,
+            commentId: null,
+            postId: null,
+            postUserId: null,
+            commentText: null,
+          })
+        }
+        onConfirm={handleDeleteCommentConfirm}
+        title="Delete Comment?"
+        message={`Are you sure you want to delete this comment? "${confirmDeleteComment.commentText}..."`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmButtonClass="bg-red-600 hover:bg-red-700"
+        icon="danger"
+      />
+
+      {/* 프로필 모달 */}
       <ProfileModal
         isOpen={profileModal.show}
         onClose={() => setProfileModal({ show: false, character: null })}
         character={profileModal.character}
       />
 
+      {/* 이미지 모달 */}
       <ImageModal
         isOpen={imageModal.show}
         onClose={() => setImageModal({ show: false, imageSrc: null })}
