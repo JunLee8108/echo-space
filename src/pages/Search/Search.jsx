@@ -56,11 +56,6 @@ const Search = () => {
     (tab) => {
       // 원래의 탭 변경 함수 호출
       originalHandleTabChange(tab);
-
-      // 스크롤을 최상단으로 이동
-      requestAnimationFrame(() => {
-        window.scrollTo(0, 0); // smooth 제거하고 즉시 이동
-      });
     },
     [originalHandleTabChange]
   );
@@ -194,7 +189,7 @@ const Search = () => {
   return (
     <div className="search-page min-h-screen bg-white">
       {/* 검색 헤더 */}
-      <div className="search-header sticky top-0 z-40 bg-white border-b border-stone-100">
+      <div className="search-header bg-white border-b border-stone-100">
         <div className="max-w-2xl mx-auto">
           {/* 검색 입력창 */}
           <div ref={searchContainerRef} className="px-4 py-3">
@@ -233,10 +228,10 @@ const Search = () => {
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-lg border border-stone-100 overflow-hidden z-50">
                   {/* 최근 검색어 */}
                   {hasSearches && (
-                    <div className="p-3 border-b border-stone-100">
-                      <div className="flex items-center justify-between mb-2">
+                    <div className="p-4 border-b border-stone-100">
+                      <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-medium text-stone-700">
-                          Recent Searches
+                          Recent
                         </h3>
                         <button
                           onClick={clearRecentSearches}
@@ -249,7 +244,7 @@ const Search = () => {
                         {recentSearches.slice(0, 5).map((item, index) => (
                           <div
                             key={index}
-                            className="flex items-center justify-between group"
+                            className="flex items-center justify-between group gap-2"
                           >
                             <button
                               onClick={() => handleRecentSearchClick(item)}
@@ -271,7 +266,7 @@ const Search = () => {
                               }
                               className="p-1 opacity-0 group-hover:opacity-100 hover:bg-stone-100 rounded transition-all"
                             >
-                              <X className="w-3 h-3 text-stone-400" />
+                              <X className="w-4 h-4 text-stone-400" />
                             </button>
                           </div>
                         ))}
@@ -281,9 +276,9 @@ const Search = () => {
 
                   {/* 트렌딩 해시태그 */}
                   {!loadingTrending && trendingHashtags?.length > 0 && (
-                    <div className="p-3">
-                      <h3 className="text-sm font-medium text-stone-700 mb-2 flex items-center gap-1">
-                        <TrendingUp className="w-3.5 h-3.5" />
+                    <div className="p-4">
+                      <h3 className="text-sm font-medium text-stone-700 mb-3 flex items-center gap-1">
+                        <TrendingUp className="w-3.5 h-3.5 text-purple-600" />
                         Trending Topics
                       </h3>
                       <div className="flex flex-wrap gap-2">
@@ -291,7 +286,7 @@ const Search = () => {
                           <button
                             key={index}
                             onClick={() => handleTrendingClick(hashtag)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-stone-50 hover:bg-stone-100 text-stone-700 rounded-full text-sm transition-colors"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-stone-50 hover:bg-stone-100 text-stone-700 rounded-full text-xs transition-colors"
                           >
                             <HashIcon className="w-3 h-3" />
                             {hashtag.name}

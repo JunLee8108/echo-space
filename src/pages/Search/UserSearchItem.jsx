@@ -10,8 +10,8 @@ const UserSearchItem = ({ user, query, highlightText }) => {
   const renderAvatar = () => {
     // User_Profile에는 avatar_url이 없으므로 기본 아바타 표시
     return (
-      <div className="w-10 h-10 bg-gradient-to-br from-stone-400 to-stone-600 rounded-full flex items-center justify-center flex-shrink-0">
-        <span className="text-white font-bold text-md">
+      <div className="w-8 h-8 bg-gradient-to-br from-stone-400 to-stone-600 rounded-full flex items-center justify-center flex-shrink-0">
+        <span className="text-white font-bold text-xs">
           {user.display_name?.charAt(0).toUpperCase() || "U"}
         </span>
       </div>
@@ -47,7 +47,7 @@ const UserSearchItem = ({ user, query, highlightText }) => {
           {/* User Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <h4 className="font-semibold text-stone-900 truncate">
+              <h4 className="text-sm font-semibold text-stone-900 truncate">
                 {highlightText(user.display_name || "Anonymous User", query)}
               </h4>
             </div>
