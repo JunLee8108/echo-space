@@ -58,9 +58,8 @@ const Search = () => {
       originalHandleTabChange(tab);
 
       // 스크롤을 최상단으로 이동
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
+      requestAnimationFrame(() => {
+        window.scrollTo(0, 0); // smooth 제거하고 즉시 이동
       });
     },
     [originalHandleTabChange]
