@@ -90,6 +90,7 @@ const Post = () => {
 
   // Section refs for scroll
   const dateRef = useRef(null);
+  const dateInputRef = useRef(null);
   const moodRef = useRef(null);
   const visibilityRef = useRef(null);
   const aiRef = useRef(null);
@@ -161,6 +162,18 @@ const Post = () => {
 
     return () => clearTimeout(searchDelay);
   }, [hashtagInput]);
+
+  const handleDateWrapperClick = () => {
+    if (dateInputRef.current?.showPicker) {
+      try {
+        dateInputRef.current.showPicker();
+      } catch {
+        dateInputRef.current?.click();
+      }
+    } else {
+      dateInputRef.current?.click();
+    }
+  };
 
   const handleBack = () => {
     const plainText = content.replace(/<[^>]*>/g, "").trim();
@@ -406,15 +419,30 @@ const Post = () => {
 
               {showDatePicker && (
                 <div className="absolute top-full mt-2 left-0 right-0 bg-white rounded-xl shadow-lg border border-stone-200 p-4 z-10">
-                  <input
-                    type="date"
-                    value={selectedDate.toISOString().split("T")[0]}
-                    onChange={(e) => {
-                      setSelectedDate(new Date(e.target.value));
-                      setShowDatePicker(false);
-                    }}
-                    className="text-sm w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div onClick={handleDateWrapperClick}>
+                    <input
+                      ref={dateInputRef}
+                      type="date"
+                      value={selectedDate.toISOString().split("T")[0]}
+                      onChange={(e) => {
+                        setSelectedDate(new Date(e.target.value));
+                        setShowDatePicker(false);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-sm w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{
+                        margin: "0",
+                        width: "100%",
+                        boxSizing: "border-box",
+                        paddingRight: "12px",
+                        paddingLeft: "12px",
+                      }}
+                    />
+                    <div
+                      className="absolute inset-0 "
+                      onClick={handleDateWrapperClick}
+                    />
+                  </div>
                 </div>
               )}
             </div>
