@@ -874,12 +874,32 @@ const Home = () => {
                         )}
 
                         <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-1">
+                          <div className="flex items-center space-x-1 mb-1">
                             <h3 className="font-medium text-stone-900 text-sm">
                               {post.ai_generated
                                 ? post.Character.name || "AI"
                                 : post.User_Profile?.display_name || "User"}
                             </h3>
+
+                            {/* Mood indicator */}
+                            {post.mood && MOODS[post.mood] && (
+                              <div
+                                className={`flex items-center justify-center w-4 h-4 rounded-full ${
+                                  MOODS[post.mood].bgColor
+                                }`}
+                              >
+                                {(() => {
+                                  const MoodIcon = MOODS[post.mood].icon;
+                                  return (
+                                    <MoodIcon
+                                      className={`w-3.5 h-3.5 ${
+                                        MOODS[post.mood].color
+                                      }`}
+                                    />
+                                  );
+                                })()}
+                              </div>
+                            )}
 
                             {/* Visibility Badge 추가 */}
                             {post.visibility === "public" ? (
@@ -895,26 +915,6 @@ const Home = () => {
                                 <span className="text-xs font-medium">
                                   Private
                                 </span>
-                              </div>
-                            )}
-
-                            {/* Mood indicator */}
-                            {post.mood && MOODS[post.mood] && (
-                              <div
-                                className={`flex items-center justify-center w-4 h-4 rounded-full ${
-                                  MOODS[post.mood].bgColor
-                                }`}
-                              >
-                                {(() => {
-                                  const MoodIcon = MOODS[post.mood].icon;
-                                  return (
-                                    <MoodIcon
-                                      className={`w-4 h-4 ${
-                                        MOODS[post.mood].color
-                                      }`}
-                                    />
-                                  );
-                                })()}
                               </div>
                             )}
                           </div>

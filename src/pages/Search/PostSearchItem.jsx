@@ -54,7 +54,7 @@ const PostSearchItem = ({ post, query, highlightText }) => {
   const handlePostClick = () => {
     // 포스트 상세 모달 또는 페이지로 이동
     // 현재는 홈으로 이동하고 해당 포스트로 스크롤
-    navigate("/", { state: { scrollToPost: post.id } });
+    navigate(`/post/${post.id}`);
   };
 
   return (

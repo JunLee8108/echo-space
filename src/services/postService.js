@@ -609,6 +609,113 @@ export async function fetchPostsWithCommentsAndLikes(
   }
 }
 
+export async function fetchSinglePost(postId, userId) {
+  if (!postId) throw new Error("postId가 없습니다.");
+  if (!userId) throw new Error("userId가 없습니다.");
+
+  try {
+    const { data, error } = await supabase
+      .from("Post")
+      .select(
+        `
+        id,
+        content,
+        mood,
+        visibility,
+        allow_ai_comments,
+        like,
+        ai_generated,
+        character_id,
+        created_at,
+        updated_at,
+        user_id,
+        Comment (
+          id,
+          character_id,
+          user_id,
+          message,
+          like,
+          created_at,
+          Character (
+            id,
+            name,
+            personality,
+            avatar_url,
+            description,
+            prompt_description,
+            User_Character (
+              affinity
+            )
+          ),
+          User_Profile (
+            id,
+            display_name
+          ),
+          Comment_Like (
+            user_id,
+            is_active
+          )
+        ),
+        Post_Like (
+          character_id,
+          Character (
+            id,
+            name,
+            personality,
+            avatar_url,
+            description,
+            prompt_description,
+            User_Character (
+              affinity
+            )
+          )
+        ),
+        Post_Hashtag (
+          hashtag_id,
+          Hashtag (
+            id,
+            name
+          )
+        ),
+        Character (
+          name,
+          avatar_url,
+          description,
+          personality,
+          User_Character (
+            affinity
+          )
+        ),
+        User_Profile (
+          display_name
+        )
+      `
+      )
+      .eq("id", postId)
+      .or(`user_id.eq.${userId},visibility.eq.public`)
+      .single();
+
+    if (error) {
+      console.error("❌ 포스트 불러오기 실패:", error.message);
+
+      // 404 에러 처리
+      if (error.code === "PGRST116") {
+        throw new Error("포스트를 찾을 수 없거나 접근 권한이 없습니다.");
+      }
+
+      throw error;
+    }
+
+    // 데이터 구조 평탄화
+    const formattedPost = formatPostData(data, userId);
+
+    return formattedPost;
+  } catch (error) {
+    console.error("Error in fetchSinglePost:", error);
+    throw error;
+  }
+}
+
 // 포스트 데이터 포맷팅 헬퍼 함수 - visibility 추가
 function formatPostData(post, userId) {
   return {
