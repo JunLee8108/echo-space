@@ -17,6 +17,7 @@ import {
   Hash,
   Check,
   ChevronRight,
+  ChevronLeft,
   Sparkles,
 } from "lucide-react";
 import CustomEditor from "./CustomEditor";
@@ -25,6 +26,227 @@ import { useCreatePost } from "../../components/hooks/useCreatePost";
 import { useUpdatePost } from "../../components/hooks/useUpdatePost";
 import { useUserLanguage } from "../../stores/userStore";
 import { createTranslator } from "../../components/utils/translations";
+
+// Custom Calendar Component
+const CustomCalendar = ({
+  selectedDate,
+  onSelectDate,
+  onClose,
+  userLanguage,
+}) => {
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    return selectedDate || new Date();
+  });
+
+  // Get calendar data
+  const getCalendarDays = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+
+    const firstDay = new Date(year, month, 1);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+    const days = [];
+    const current = new Date(startDate);
+
+    for (let i = 0; i < 42; i++) {
+      days.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+
+    return days;
+  };
+
+  const navigateMonth = (direction) => {
+    setCurrentMonth((prev) => {
+      const newMonth = new Date(prev);
+      newMonth.setMonth(newMonth.getMonth() + direction);
+      return newMonth;
+    });
+  };
+
+  const selectToday = () => {
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    onSelectDate(today);
+  };
+
+  const isToday = (date) => {
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
+  const isSelected = (date) => {
+    if (!selectedDate) return false;
+    return (
+      date.getDate() === selectedDate.getDate() &&
+      date.getMonth() === selectedDate.getMonth() &&
+      date.getFullYear() === selectedDate.getFullYear()
+    );
+  };
+
+  const isCurrentMonth = (date) => {
+    return date.getMonth() === currentMonth.getMonth();
+  };
+
+  const monthNames =
+    userLanguage === "Korean"
+      ? [
+          "1월",
+          "2월",
+          "3월",
+          "4월",
+          "5월",
+          "6월",
+          "7월",
+          "8월",
+          "9월",
+          "10월",
+          "11월",
+          "12월",
+        ]
+      : [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ];
+
+  const weekDays =
+    userLanguage === "Korean"
+      ? ["일", "월", "화", "수", "목", "금", "토"]
+      : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  return (
+    <div className="absolute top-full mt-2 left-0 right-0 bg-white rounded-2xl shadow-xl border border-stone-200 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-stone-100">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigateMonth(-1)}
+            className="p-2 hover:bg-white/60 rounded-lg transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4 text-stone-700" />
+          </button>
+
+          <h3 className="text-sm font-semibold text-stone-900">
+            {userLanguage === "Korean"
+              ? `${currentMonth.getFullYear()}년 ${
+                  monthNames[currentMonth.getMonth()]
+                }`
+              : `${
+                  monthNames[currentMonth.getMonth()]
+                } ${currentMonth.getFullYear()}`}
+          </h3>
+
+          <button
+            onClick={() => navigateMonth(1)}
+            className="p-2 hover:bg-white/60 rounded-lg transition-colors"
+          >
+            <ChevronRight className="w-4 h-4 text-stone-700" />
+          </button>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="px-4 py-2 border-b border-stone-100">
+        <button
+          onClick={selectToday}
+          className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors group"
+        >
+          <Sparkles className="w-3 h-3 text-blue-600" />
+          <span className="text-sm font-medium text-blue-900">
+            {userLanguage === "Korean" ? "오늘" : "Today"}
+          </span>
+        </button>
+      </div>
+
+      {/* Calendar Grid */}
+      <div className="p-4">
+        {/* Weekday Headers */}
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {weekDays.map((day) => (
+            <div
+              key={day}
+              className="text-center text-xs font-medium text-stone-500 py-2"
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+
+        {/* Date Grid */}
+        <div className="grid grid-cols-7 gap-1">
+          {getCalendarDays().map((date, index) => {
+            const isInCurrentMonth = isCurrentMonth(date);
+            const isTodayDate = isToday(date);
+            const isSelectedDate = isSelected(date);
+
+            return (
+              <button
+                key={index}
+                onClick={() => {
+                  if (isInCurrentMonth) {
+                    const newDate = new Date(date);
+                    newDate.setHours(12, 0, 0, 0);
+                    onSelectDate(newDate);
+                  }
+                }}
+                disabled={!isInCurrentMonth}
+                className={`
+                  relative aspect-square flex items-center justify-center rounded-lg text-sm transition-all
+                  ${
+                    !isInCurrentMonth
+                      ? "text-stone-300 cursor-not-allowed"
+                      : "text-stone-700 hover:bg-stone-50"
+                  }
+                  ${
+                    isTodayDate && !isSelectedDate
+                      ? "bg-blue-50 text-blue-600 font-semibold"
+                      : ""
+                  }
+                  ${
+                    isSelectedDate
+                      ? "bg-blue-500 text-white font-semibold hover:bg-blue-600"
+                      : ""
+                  }
+                `}
+              >
+                {date.getDate()}
+                {isTodayDate && !isSelectedDate && (
+                  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-2 py-1 bg-stone-50 border-t border-stone-100">
+        <button
+          onClick={onClose}
+          className="w-full px-4 py-2 text-sm font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors"
+        >
+          {userLanguage === "Korean" ? "닫기" : "Close"}
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const MOODS = [
   {
@@ -73,9 +295,13 @@ const Post = () => {
   const createPostMutation = useCreatePost();
   const updatePostMutation = useUpdatePost();
 
-  // State
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  // State - 날짜 초기화 수정
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const date = new Date();
+    date.setHours(12, 0, 0, 0); // 정오로 설정하여 시간대 문제 방지
+    return date;
+  });
+  const [showCalendar, setShowCalendar] = useState(false);
   const [content, setContent] = useState("");
   const [selectedMood, setSelectedMood] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,7 +316,7 @@ const Post = () => {
 
   // Section refs for scroll
   const dateRef = useRef(null);
-  const dateInputRef = useRef(null);
+  const calendarRef = useRef(null);
   const moodRef = useRef(null);
   const visibilityRef = useRef(null);
   const aiRef = useRef(null);
@@ -103,7 +329,9 @@ const Post = () => {
       setContent(editingPost.content || "");
 
       if (editingPost.created_at) {
-        setSelectedDate(new Date(editingPost.created_at));
+        const date = new Date(editingPost.created_at);
+        date.setHours(12, 0, 0, 0); // 시간대 문제 방지
+        setSelectedDate(date);
       }
 
       if (editingPost.mood && MOODS.find((m) => m.id === editingPost.mood)) {
@@ -125,12 +353,29 @@ const Post = () => {
     }
   }, [isEditMode, editingPost]);
 
+  // Handle outside clicks for calendar
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target)) {
+        setShowCalendar(false);
+      }
+    };
+
+    if (showCalendar) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showCalendar]);
+
   // ESC 키 처리
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape") {
-        if (showDatePicker) {
-          setShowDatePicker(false);
+        if (showCalendar) {
+          setShowCalendar(false);
         } else {
           handleBack();
         }
@@ -139,7 +384,7 @@ const Post = () => {
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [showDatePicker]);
+  }, [showCalendar]);
 
   // 해시태그 자동완성
   useEffect(() => {
@@ -163,16 +408,9 @@ const Post = () => {
     return () => clearTimeout(searchDelay);
   }, [hashtagInput]);
 
-  const handleDateWrapperClick = () => {
-    if (dateInputRef.current?.showPicker) {
-      try {
-        dateInputRef.current.showPicker();
-      } catch {
-        dateInputRef.current?.click();
-      }
-    } else {
-      dateInputRef.current?.click();
-    }
+  const handleDateSelect = (date) => {
+    setSelectedDate(date);
+    setShowCalendar(false);
   };
 
   const handleBack = () => {
@@ -202,13 +440,23 @@ const Post = () => {
       ""
     );
 
+    // 날짜를 정오로 설정하여 시간대 문제 방지
+    const postDate = new Date(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      12,
+      0,
+      0
+    );
+
     const postData = {
       content: processedContent,
       mood: selectedMood?.id || null,
       hashtags: selectedHashtags,
       visibility: visibility,
       allowAIComments: allowAIComments,
-      created_at: selectedDate.toISOString(),
+      created_at: postDate.toISOString(),
     };
 
     setIsSubmitting(true);
@@ -266,19 +514,21 @@ const Post = () => {
     setHashtagSuggestions([]);
   };
 
-  const setToday = () => {
-    setSelectedDate(new Date());
-    setShowDatePicker(false);
-  };
-
   const formatDate = (date) => {
+    if (!date) return "";
+
+    // 정오로 설정된 날짜로 포맷팅
+    const displayDate = new Date(date);
+    displayDate.setHours(12, 0, 0, 0);
+
     const options = {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
     };
-    return date.toLocaleDateString(
+
+    return displayDate.toLocaleDateString(
       userLanguage === "Korean" ? "ko-KR" : "en-US",
       options
     );
@@ -388,27 +638,15 @@ const Post = () => {
               </div>
               <div>
                 <h2 className="text-md font-semibold text-stone-900">Date</h2>
-                <p className="text-sm text-stone-500">Select the date</p>
               </div>
             </div>
             {isDateCompleted && <Check className="w-5 h-5 text-green-500" />}
           </div>
 
           <div className="space-y-3">
-            <button
-              onClick={setToday}
-              className="w-full flex items-center justify-between px-4 py-3 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors group"
-            >
-              <div className="flex items-center space-x-3">
-                <Sparkles className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-medium text-blue-900">Today</span>
-              </div>
-              <ChevronRight className="w-5 h-5 text-blue-600 group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            <div className="relative">
+            <div className="relative" ref={calendarRef}>
               <button
-                onClick={() => setShowDatePicker(!showDatePicker)}
+                onClick={() => setShowCalendar(!showCalendar)}
                 className="w-full flex items-center justify-between px-4 py-3 border border-stone-200 hover:border-stone-300 rounded-xl transition-colors"
               >
                 <span className="text-sm text-stone-700">
@@ -417,33 +655,14 @@ const Post = () => {
                 <Calendar className="w-5 h-5 text-stone-400" />
               </button>
 
-              {showDatePicker && (
-                <div className="absolute top-full mt-2 left-0 right-0 bg-white rounded-xl shadow-lg border border-stone-200 p-4 z-10">
-                  <div onClick={handleDateWrapperClick}>
-                    <input
-                      ref={dateInputRef}
-                      type="date"
-                      value={selectedDate.toISOString().split("T")[0]}
-                      onChange={(e) => {
-                        setSelectedDate(new Date(e.target.value));
-                        setShowDatePicker(false);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-sm w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      style={{
-                        margin: "0",
-                        width: "100%",
-                        boxSizing: "border-box",
-                        paddingRight: "12px",
-                        paddingLeft: "12px",
-                      }}
-                    />
-                    <div
-                      className="absolute inset-0 "
-                      onClick={handleDateWrapperClick}
-                    />
-                  </div>
-                </div>
+              {/* Custom Calendar */}
+              {showCalendar && (
+                <CustomCalendar
+                  selectedDate={selectedDate}
+                  onSelectDate={handleDateSelect}
+                  onClose={() => setShowCalendar(false)}
+                  userLanguage={userLanguage}
+                />
               )}
             </div>
           </div>
@@ -461,7 +680,6 @@ const Post = () => {
               </div>
               <div>
                 <h2 className="text-md font-semibold text-stone-900">Mood</h2>
-                <p className="text-sm text-stone-500">Choose your mood</p>
               </div>
             </div>
             {isMoodCompleted && <Check className="w-5 h-5 text-green-500" />}
@@ -523,7 +741,6 @@ const Post = () => {
                 <h2 className="text-md font-semibold text-stone-900">
                   Privacy
                 </h2>
-                <p className="text-sm text-stone-500">Who can see this post?</p>
               </div>
             </div>
           </div>
@@ -617,9 +834,6 @@ const Post = () => {
                 <h2 className="text-md font-semibold text-stone-900">
                   AI Comments
                 </h2>
-                <p className="text-sm text-stone-500">
-                  Allow AI to comment on your post?
-                </p>
               </div>
             </div>
           </div>
@@ -699,9 +913,6 @@ const Post = () => {
                 <h2 className="text-md font-semibold text-stone-900">
                   Hashtags
                 </h2>
-                <p className="text-sm text-stone-500">
-                  Add tags to categorize your post
-                </p>
               </div>
             </div>
             {selectedHashtags.length > 0 && (
@@ -813,12 +1024,10 @@ const Post = () => {
           )}
         </div>
 
-        {/* Content Section */}
-        <div
-          ref={contentRef}
-          className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6 transition-all"
-        >
-          <div className="flex items-center justify-between mb-4">
+        {/* Content Section - 심플 버전 */}
+        <div ref={contentRef} className="transition-all -mx-4 mt-10">
+          {/* Header */}
+          <div className="px-10 pb-4">
             <div className="flex items-center space-x-2">
               <div className="p-2 bg-rose-50 rounded-lg">
                 <svg
@@ -835,7 +1044,7 @@ const Post = () => {
                   />
                 </svg>
               </div>
-              <div>
+              <div className="flex-1">
                 <h2 className="text-md font-semibold text-stone-900">
                   Your Story
                 </h2>
@@ -843,29 +1052,35 @@ const Post = () => {
                   Write what's on your mind
                 </p>
               </div>
+              {isContentCompleted && (
+                <Check className="w-5 h-5 text-green-500" />
+              )}
             </div>
-            {isContentCompleted && <Check className="w-5 h-5 text-green-500" />}
           </div>
 
-          <div className="min-h-[300px]">
-            <CustomEditor
-              content={content}
-              onChange={setContent}
-              onHashtagAdd={(hashtag) => {
-                if (!selectedHashtags.includes(hashtag)) {
-                  setSelectedHashtags([...selectedHashtags, hashtag]);
-                }
-              }}
-            />
-          </div>
-
-          {plainTextContent && (
-            <div className="mt-4 pt-4 border-t border-stone-100">
-              <span className="text-sm text-stone-400">
-                {plainTextContent.length} / 500 characters
-              </span>
+          {/* Editor - 전체 너비, 미니멀 스타일 */}
+          <div className="bg-white border border-stone-100 border-b-0">
+            <div className="min-h-[450px] px-4 sm:px-6 py-6">
+              <CustomEditor
+                content={content}
+                onChange={setContent}
+                onHashtagAdd={(hashtag) => {
+                  if (!selectedHashtags.includes(hashtag)) {
+                    setSelectedHashtags([...selectedHashtags, hashtag]);
+                  }
+                }}
+              />
             </div>
-          )}
+
+            {/* Character count - 에디터 하단에 통합 */}
+            {plainTextContent && (
+              <div className="border-t border-stone-100 px-4 sm:px-6 py-3 bg-stone-50/50">
+                <span className="text-sm text-stone-400">
+                  {plainTextContent.length} / 500 characters
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
