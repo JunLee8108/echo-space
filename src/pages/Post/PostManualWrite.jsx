@@ -114,7 +114,7 @@ const PostManualWrite = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        <div className="px-4 py-6 overflow-y-auto h-full page-slide-in">
+        <div className="px-4 py-6 overflow-y-auto h-full">
           <div className="max-w-2xl mx-auto">
             <CustomEditor
               content={manualContent}

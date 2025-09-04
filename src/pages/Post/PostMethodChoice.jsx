@@ -26,7 +26,7 @@ const PostMethodChoice = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        <div className="px-4 py-8 overflow-y-auto h-full page-slide-in">
+        <div className="px-4 py-8 overflow-y-auto h-full">
           <div className="max-w-md mx-auto">
             <div className="text-center mb-8">
               <h2 className="text-lg font-bold text-stone-900 mb-2">

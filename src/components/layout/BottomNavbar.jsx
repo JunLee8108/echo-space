@@ -172,7 +172,7 @@ const BottomNavbar = () => {
                   key={tab.id}
                   onTouchEnd={(e) => handleTouchEnd(e, tab)}
                   onClick={() => handleAction(tab)}
-                  className={`navbar-button relative p-3 sm:p-4 rounded-xl transition-all duration-200
+                  className={`navbar-button relative p-3 rounded-xl transition-all duration-200
                     ${
                       tab.special
                         ? isActive

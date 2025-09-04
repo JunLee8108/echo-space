@@ -46,7 +46,7 @@ const PostAISelect = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        <div className="px-4 py-6 overflow-y-auto h-full page-slide-in">
+        <div className="px-4 py-6 overflow-y-auto h-full">
           <div className="max-w-2xl mx-auto">
             <div className="text-center mb-8">
               <Bot className="w-12 h-12 text-blue-500 mx-auto mb-3" />

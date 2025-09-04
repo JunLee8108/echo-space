@@ -198,7 +198,7 @@ const PostAIReview = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        <div className="px-4 py-6 overflow-y-auto h-full page-slide-in">
+        <div className="px-4 py-6 overflow-y-auto h-full ">
           <div className="max-w-2xl mx-auto">
             <div className="mb-6 text-center">
               <h2 className="text-xl font-bold text-stone-900 mb-2">

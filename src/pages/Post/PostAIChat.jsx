@@ -258,7 +258,7 @@ const PostAIChat = () => {
       </div>
 
       {/* Chat Content */}
-      <div className="flex-1 overflow-hidden flex flex-col page-slide-in">
+      <div className="flex-1 overflow-hidden flex flex-col ">
         {/* Chat Header */}
         <div className="px-4 py-3 bg-white border-b border-stone-100">
           <div className="flex items-center gap-3">
