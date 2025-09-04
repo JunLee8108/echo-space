@@ -1,8 +1,15 @@
 // pages/Post/PostAIChat.jsx
 import "./Post.css";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, Send, BookOpen, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  BookOpen,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
 import { useFollowedCharacters } from "../../stores/characterStore";
 import { useUserLanguage } from "../../stores/userStore";
 import { postStorage } from "../../components/utils/postStorage";
@@ -41,10 +48,19 @@ const PostAIChat = () => {
   const [hasSuggestedDiary, setHasSuggestedDiary] = useState(() =>
     postStorage.getSuggestedStatus(characterId)
   );
+  const [hasDiaryGenerated, setHasDiaryGenerated] = useState(() =>
+    postStorage.getDiaryGeneratedStatus(characterId)
+  );
   const [isGeneratingDiary, setIsGeneratingDiary] = useState(false);
 
   const chatContainerRef = useRef(null);
-  const inputRef = useRef(null);
+  const textareaRef = useRef(null);
+  const messagesEndRef = useRef(null);
+
+  // 대화 제한 설정
+  const MAX_CONVERSATIONS = 10;
+  const WARNING_THRESHOLD = 8;
+  const MAX_MESSAGE_LENGTH = 100;
 
   // 캐릭터가 없으면 선택 화면으로
   useEffect(() => {
@@ -84,13 +100,29 @@ const PostAIChat = () => {
     postStorage.saveSuggestedStatus(characterId, hasSuggestedDiary);
   }, [hasSuggestedDiary, characterId]);
 
-  // 스크롤 자동 이동
+  // 일기 생성 완료 상태 저장
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop =
-        chatContainerRef.current.scrollHeight;
+    postStorage.saveDiaryGeneratedStatus(characterId, hasDiaryGenerated);
+  }, [hasDiaryGenerated, characterId]);
+
+  // 개선된 자동 스크롤
+  useLayoutEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
     }
   }, [messages, isAITyping]);
+
+  // Textarea 자동 높이 조절
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      const scrollHeight = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = `${Math.min(scrollHeight, 120)}px`;
+    }
+  }, [inputMessage]);
 
   // AI 인사말 생성
   const getAIGreeting = (character) => {
@@ -132,9 +164,22 @@ const PostAIChat = () => {
     return data.response;
   };
 
+  // 메시지 전송 - Enter 키 처리
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   // 메시지 전송
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isAITyping) return;
+    if (
+      !inputMessage.trim() ||
+      isAITyping ||
+      conversationCount >= MAX_CONVERSATIONS
+    )
+      return;
 
     const userMessage = {
       id: Date.now(),
@@ -143,42 +188,34 @@ const PostAIChat = () => {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    // 시스템 메시지 제거 후 사용자 메시지 추가
+    const filteredMessages = messages.filter((msg) => msg.sender !== "system");
+    setMessages([...filteredMessages, userMessage]);
     setInputMessage("");
     setIsAITyping(true);
     setConversationCount((prev) => prev + 1);
 
     try {
       const aiResponse = await getAIResponse(selectedCharacter, [
-        ...messages,
+        ...filteredMessages,
         userMessage,
       ]);
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          sender: "ai",
-          content: aiResponse,
-          timestamp: new Date(),
-        },
-      ]);
+      const aiMessage = {
+        id: Date.now() + 1,
+        sender: "ai",
+        content: aiResponse,
+        timestamp: new Date(),
+      };
 
-      // 3번 이상 대화했고 아직 제안하지 않았으면 일기 생성 제안
-      if (conversationCount >= 2 && !hasSuggestedDiary) {
-        setTimeout(() => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: Date.now() + 2,
-              sender: "system",
-              content: "충분한 대화를 나눴네요! 일기를 작성해볼까요?",
-              timestamp: new Date(),
-              showDiaryButton: true,
-            },
-          ]);
-          setHasSuggestedDiary(true);
-        }, 1000);
+      setMessages((prev) => {
+        const filtered = prev.filter((msg) => msg.sender !== "system");
+        return [...filtered, aiMessage];
+      });
+
+      // 대화 횟수에 따른 일기 제안 상태 업데이트
+      if (conversationCount >= 2 && !hasDiaryGenerated) {
+        setHasSuggestedDiary(true);
       }
     } catch (error) {
       console.error("AI 응답 실패:", error);
@@ -217,6 +254,10 @@ const PostAIChat = () => {
       postStorage.saveGeneratedDiary(characterId, data.diary);
       postStorage.saveEditedDiary(characterId, data.diary);
 
+      // 일기 생성 완료 상태 저장
+      setHasDiaryGenerated(true);
+      postStorage.saveDiaryGeneratedStatus(characterId, true);
+
       // 리뷰 페이지로 이동
       navigate(`/post/new/ai/${characterId}/review`);
     } catch (error) {
@@ -227,9 +268,34 @@ const PostAIChat = () => {
     }
   };
 
+  // 일기 확인하기 (이미 생성된 경우)
+  const handleViewDiary = () => {
+    navigate(`/post/new/ai/${characterId}/review`);
+  };
+
+  // 남은 대화 횟수 계산
+  const remainingConversations = MAX_CONVERSATIONS - conversationCount;
+  const showWarning = conversationCount >= WARNING_THRESHOLD;
+  const isLimitReached = conversationCount >= MAX_CONVERSATIONS;
+
+  // 글자 수 표시 여부 및 색상 결정
+  const getCharCountColor = () => {
+    const length = inputMessage.length;
+    if (length >= 100) return "text-red-500";
+    if (length >= 95) return "text-orange-500";
+    if (length >= 85) return "text-stone-400";
+    return "";
+  };
+
+  const shouldShowCharCount = inputMessage.length >= 85;
+
   if (!selectedCharacter) {
     return null;
   }
+
+  // 시스템 메시지 렌더링 여부 확인
+  const shouldShowSystemMessage =
+    conversationCount >= 2 && !hasDiaryGenerated && hasSuggestedDiary;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white flex flex-col">
@@ -238,7 +304,7 @@ const PostAIChat = () => {
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center">
             <button
-              onClick={() => navigate("/post/new/ai")}
+              onClick={() => navigate(-1)}
               className="p-2 -ml-2 text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -258,7 +324,7 @@ const PostAIChat = () => {
       </div>
 
       {/* Chat Content */}
-      <div className="flex-1 overflow-hidden flex flex-col ">
+      <div className="flex-1 overflow-hidden flex flex-col">
         {/* Chat Header */}
         <div className="px-4 py-3 bg-white border-b border-stone-100">
           <div className="flex items-center gap-3">
@@ -296,45 +362,19 @@ const PostAIChat = () => {
                 message.sender === "user" ? "justify-end" : "justify-start"
               }`}
             >
-              {message.sender === "system" ? (
-                <div className="max-w-sm mx-auto text-center mb-4 mt-4">
-                  <p className="text-sm text-stone-600 mb-3">
-                    {message.content}
-                  </p>
-                  {message.showDiaryButton && (
-                    <button
-                      onClick={handleGenerateDiary}
-                      disabled={isGeneratingDiary}
-                      className="text-sm px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
-                    >
-                      {isGeneratingDiary ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          생성 중...
-                        </>
-                      ) : (
-                        <>
-                          <BookOpen className="w-3.5 h-3.5" />
-                          일기 생성하기
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div
-                  className={`max-w-xs px-4 py-2 rounded-2xl ${
-                    message.sender === "user"
-                      ? "bg-blue-500 text-white"
-                      : "bg-stone-100 text-stone-900"
-                  }`}
-                >
-                  <p className="text-sm">{message.content}</p>
-                </div>
-              )}
+              <div
+                className={`max-w-xs px-4 py-2 rounded-2xl ${
+                  message.sender === "user"
+                    ? "bg-blue-500 text-white"
+                    : "bg-stone-100 text-stone-900"
+                }`}
+              >
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              </div>
             </div>
           ))}
 
+          {/* AI Typing Indicator */}
           {isAITyping && (
             <div className="flex justify-start">
               <div className="bg-stone-100 px-4 py-2 rounded-2xl">
@@ -352,28 +392,125 @@ const PostAIChat = () => {
               </div>
             </div>
           )}
+
+          {/* 시스템 메시지 - 항상 마지막에 표시 */}
+          {shouldShowSystemMessage && (
+            <div className="max-w-sm mx-auto text-center mt-8 animate-fadeIn">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+                <p className="text-sm text-stone-700 mb-3">
+                  충분한 대화를 나눴네요! 일기를 작성해볼까요?
+                </p>
+                <button
+                  onClick={handleGenerateDiary}
+                  disabled={isGeneratingDiary}
+                  className="text-sm px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all transform inline-flex items-center gap-2 disabled:opacity-50 shadow-sm"
+                >
+                  {isGeneratingDiary ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      생성 중...
+                    </>
+                  ) : (
+                    <>
+                      <BookOpen className="w-3.5 h-3.5" />
+                      일기 생성하기
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 이미 일기가 생성된 경우 */}
+          {hasDiaryGenerated && !shouldShowSystemMessage && (
+            <div className="max-w-sm mx-auto text-center mt-8">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+                <p className="text-sm text-stone-700 mb-3">
+                  AI 일기가 이미 생성되었습니다. 확인해보시겠어요?
+                </p>
+                <button
+                  onClick={handleViewDiary}
+                  className="text-sm px-4 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all transform inline-flex items-center gap-2 shadow-sm"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  일기 확인하기
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 스크롤 앵커 */}
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
-        <div className="px-4 py-3 bg-white border-t border-stone-100">
-          <div className="flex gap-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-              placeholder="메시지를 입력하세요..."
-              className="flex-1 px-4 py-2 bg-stone-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={isAITyping}
-            />
-            <button
-              onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isAITyping}
-              className="p-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        {/* Input Area */}
+        <div className="bg-white border-t border-stone-100">
+          {/* 대화 제한 경고 */}
+          {showWarning && !isLimitReached && (
+            <div
+              className={`px-4 py-2 text-xs flex items-center gap-1 ${
+                remainingConversations === 1
+                  ? "text-red-600 bg-red-50"
+                  : remainingConversations === 2
+                  ? "text-orange-600 bg-orange-50"
+                  : "text-yellow-600 bg-yellow-50"
+              }`}
             >
-              <Send className="w-5 h-5" />
-            </button>
+              <AlertCircle className="w-3 h-3" />
+              <span>남은 대화 {remainingConversations}회</span>
+            </div>
+          )}
+
+          {/* 대화 제한 도달 */}
+          {isLimitReached && (
+            <div className="px-4 py-2 text-xs text-red-600 bg-red-50 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              <span>대화 횟수가 최대 10회에 도달했습니다</span>
+            </div>
+          )}
+
+          {/* Input */}
+          <div className="px-4 py-3">
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <textarea
+                  ref={textareaRef}
+                  value={inputMessage}
+                  onChange={(e) => {
+                    if (e.target.value.length <= MAX_MESSAGE_LENGTH) {
+                      setInputMessage(e.target.value);
+                    }
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    isLimitReached
+                      ? "대화 제한에 도달했습니다"
+                      : "메시지를 입력하세요..."
+                  }
+                  className="w-full px-4 py-2 bg-stone-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-all"
+                  disabled={isAITyping || isLimitReached}
+                  style={{
+                    minHeight: "40px",
+                    maxHeight: "120px",
+                  }}
+                />
+                {shouldShowCharCount && (
+                  <div
+                    className={`absolute bottom-2 right-3 text-xs ${getCharCountColor()}`}
+                  >
+                    {inputMessage.length}/{MAX_MESSAGE_LENGTH}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={handleSendMessage}
+                style={{ alignSelf: "center" }}
+                disabled={!inputMessage.trim() || isAITyping || isLimitReached}
+                className="p-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all self-end"
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

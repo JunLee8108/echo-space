@@ -8,9 +8,11 @@ import {
   Check,
   Globe,
   Lock,
-  Bot,
-  BotOff,
   Loader2,
+  Users,
+  Shield,
+  Sparkles,
+  X,
 } from "lucide-react";
 import { useFollowedCharacters } from "../../stores/characterStore";
 import { useCreatePost } from "../../components/hooks/useCreatePost";
@@ -157,8 +159,11 @@ const PostAIReview = () => {
 
   // 편집 모드 전환
   const toggleEditMode = () => {
-    const newEditMode = !isEditing;
-    setSearchParams({ edit: newEditMode.toString() });
+    if (isEditing) {
+      setSearchParams({}, { replace: true }); // 파라미터 제거
+    } else {
+      setSearchParams({ edit: "true" }, { replace: true });
+    }
   };
 
   // 로딩 중이거나 데이터가 없으면 로딩 스피너 표시
@@ -177,7 +182,7 @@ const PostAIReview = () => {
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center">
             <button
-              onClick={() => navigate(`/post/new/ai/${characterId}`)}
+              onClick={() => navigate(-1)}
               className="p-2 -ml-2 text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -198,7 +203,7 @@ const PostAIReview = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        <div className="px-4 py-6 overflow-y-auto h-full ">
+        <div className="px-4 py-6 overflow-y-auto h-full">
           <div className="max-w-2xl mx-auto">
             <div className="mb-6 text-center">
               <h2 className="text-xl font-bold text-stone-900 mb-2">
@@ -209,24 +214,51 @@ const PostAIReview = () => {
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-stone-200 p-6 mb-8">
+            {/* 일기 컨테이너 - 수정 버튼이 밖에 위치 */}
+            <div className="relative mb-8">
+              {/* 수정/완료 버튼 - 컨테이너 밖 우상단 */}
               {!isEditing ? (
-                <div className="prose prose-stone max-w-none">
-                  <div dangerouslySetInnerHTML={{ __html: editedDiary }} />
-                </div>
+                <button
+                  onClick={toggleEditMode}
+                  className="absolute -top-2 -right-2 z-10 p-2.5 bg-white text-stone-500 hover:text-stone-700 hover:bg-stone-50 rounded-full shadow-sm border border-stone-200 transition-colors"
+                  title="수정하기"
+                >
+                  <Edit3 className="w-4 h-4" />
+                </button>
               ) : (
-                <CustomEditor content={editedDiary} onChange={setEditedDiary} />
+                <button
+                  onClick={toggleEditMode}
+                  className="absolute -top-2 -right-2 z-10 p-2.5 bg-blue-500 text-white hover:bg-blue-600 rounded-full shadow-sm transition-colors"
+                  title="수정 완료"
+                >
+                  <Check className="w-4 h-4" />
+                </button>
               )}
+
+              {/* 일기 내용 - 전체 공간 활용 */}
+
+              <div className="bg-white rounded-2xl border border-stone-200 p-6">
+                {!isEditing ? (
+                  <div className="prose prose-stone max-w-none">
+                    <div dangerouslySetInnerHTML={{ __html: editedDiary }} />
+                  </div>
+                ) : (
+                  <CustomEditor
+                    content={editedDiary}
+                    onChange={setEditedDiary}
+                  />
+                )}
+              </div>
             </div>
 
-            {/* 게시물 설정 */}
-            <div className="mb-8">
-              {/* Privacy 설정 */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-stone-700 mb-2">
+            {/* 게시물 설정 - 기존 디자인 유지 */}
+            <div className="space-y-6 mb-8">
+              {/* 공개 범위 설정 - 카드형 디자인 */}
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-3">
                   공개 범위
                 </label>
-                <div className="flex gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() =>
                       setPostSettings((prev) => ({
@@ -234,15 +266,27 @@ const PostAIReview = () => {
                         visibility: "private",
                       }))
                     }
-                    className={`text-sm flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all ${
+                    className={`relative px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
                       postSettings.visibility === "private"
-                        ? "bg-purple-50 border-purple-500 text-purple-700"
-                        : "bg-white border-stone-200 text-stone-600"
+                        ? "bg-purple-50 border-purple-200 text-purple-700"
+                        : "bg-white border-stone-200 text-stone-500 hover:bg-stone-50 hover:border-stone-300"
                     }`}
                   >
-                    <Lock className="w-4 h-4" />
-                    <span>Private</span>
+                    <div className="flex items-center justify-center gap-2">
+                      {postSettings.visibility === "private" ? (
+                        <Shield className="w-4 h-4" />
+                      ) : (
+                        <Lock className="w-4 h-4" />
+                      )}
+                      <span className="text-sm font-medium">나만 보기</span>
+                    </div>
+                    {postSettings.visibility === "private" && (
+                      <div className="absolute top-1 right-1">
+                        <div className="w-2 h-2 bg-purple-400 rounded-full" />
+                      </div>
+                    )}
                   </button>
+
                   <button
                     onClick={() =>
                       setPostSettings((prev) => ({
@@ -250,116 +294,91 @@ const PostAIReview = () => {
                         visibility: "public",
                       }))
                     }
-                    className={`text-sm flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all ${
+                    className={`relative px-4 py-3 rounded-xl border-2 transition-all duration-200 ${
                       postSettings.visibility === "public"
-                        ? "bg-blue-50 border-blue-500 text-blue-700"
-                        : "bg-white border-stone-200 text-stone-600"
+                        ? "bg-blue-50 border-blue-200 text-blue-700"
+                        : "bg-white border-stone-200 text-stone-500 hover:bg-stone-50 hover:border-stone-300"
                     }`}
                   >
-                    <Globe className="w-4 h-4" />
-                    <span>Public</span>
+                    <div className="flex items-center justify-center gap-2">
+                      {postSettings.visibility === "public" ? (
+                        <Users className="w-4 h-4" />
+                      ) : (
+                        <Globe className="w-4 h-4" />
+                      )}
+                      <span className="text-sm font-medium">모두 공개</span>
+                    </div>
+                    {postSettings.visibility === "public" && (
+                      <div className="absolute top-1 right-1">
+                        <div className="w-2 h-2 bg-blue-400 rounded-full" />
+                      </div>
+                    )}
                   </button>
                 </div>
               </div>
 
-              {/* AI Comments 설정 */}
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">
-                  AI 댓글
-                </label>
-                <div className="flex gap-3">
+              {/* AI 댓글 설정 - 토글 스위치 디자인 */}
+              <div className="bg-gradient-to-r from-purple-50/50 to-blue-50/50 rounded-xl p-4 border border-stone-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white rounded-lg">
+                      <Sparkles className="w-5 h-5 text-purple-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-stone-700">
+                        AI 댓글
+                      </label>
+                      <p className="text-xs text-stone-500 mt-0.5">
+                        AI가 당신의 일기에 댓글을 남길 수 있어요
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 토글 스위치 */}
                   <button
                     onClick={() =>
                       setPostSettings((prev) => ({
                         ...prev,
-                        allowAIComments: true,
+                        allowAIComments: !prev.allowAIComments,
                       }))
                     }
-                    className={`text-sm flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all ${
-                      postSettings.allowAIComments
-                        ? "bg-green-50 border-green-500 text-green-700"
-                        : "bg-white border-stone-200 text-stone-600"
-                    }`}
+                    className="relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    style={{
+                      backgroundColor: postSettings.allowAIComments
+                        ? "#6a83ff"
+                        : "#E5E7EB",
+                    }}
                   >
-                    <Bot className="w-4 h-4" />
-                    <span>Enable</span>
-                  </button>
-                  <button
-                    onClick={() =>
-                      setPostSettings((prev) => ({
-                        ...prev,
-                        allowAIComments: false,
-                      }))
-                    }
-                    className={`text-sm flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all ${
-                      !postSettings.allowAIComments
-                        ? "bg-stone-100 border-stone-500 text-stone-700"
-                        : "bg-white border-stone-200 text-stone-600"
-                    }`}
-                  >
-                    <BotOff className="w-4 h-4" />
-                    <span>Disable</span>
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${
+                        postSettings.allowAIComments
+                          ? "translate-x-6"
+                          : "translate-x-1"
+                      }`}
+                    />
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-3">
-              {!isEditing ? (
+            {/* 저장 버튼 - 단독 배치, 자연스러운 색상 */}
+            <button
+              onClick={handleSaveDiary}
+              disabled={isSaving}
+              className="w-full px-4 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? (
                 <>
-                  <button
-                    onClick={toggleEditMode}
-                    className="flex-1 px-4 py-3 bg-stone-100 text-stone-700 rounded-xl hover:bg-stone-200 transition-colors inline-flex items-center justify-center gap-2"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                    수정하기
-                  </button>
-                  <button
-                    onClick={handleSaveDiary}
-                    disabled={isSaving}
-                    className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        저장 중...
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4" />
-                        저장하기
-                      </>
-                    )}
-                  </button>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  저장 중...
                 </>
               ) : (
                 <>
-                  <button
-                    onClick={toggleEditMode}
-                    className="flex-1 px-4 py-3 bg-stone-100 text-stone-700 rounded-xl hover:bg-stone-200 transition-colors"
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={handleSaveDiary}
-                    disabled={isSaving}
-                    className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        저장 중...
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4" />
-                        저장하기
-                      </>
-                    )}
-                  </button>
+                  <Check className="w-4 h-4" />
+                  저장하기
                 </>
               )}
-            </div>
+            </button>
           </div>
         </div>
       </div>

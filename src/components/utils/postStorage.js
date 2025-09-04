@@ -4,6 +4,7 @@ const STORAGE_KEYS = {
   CHAT_MESSAGES: "chat_messages_",
   CHAT_COUNT: "chat_count_",
   CHAT_SUGGESTED: "chat_suggested_",
+  CHAT_DIARY_GENERATED: "chat_diary_generated_", // 새로 추가
   DIARY_GENERATED: "diary_generated_",
   DIARY_EDITED: "diary_edited_",
   POST_SETTINGS: "post_settings",
@@ -62,6 +63,22 @@ export const postStorage = {
     return (
       sessionStorage.getItem(`${STORAGE_KEYS.CHAT_SUGGESTED}${characterId}`) ===
       "true"
+    );
+  },
+
+  // 일기 생성 완료 상태 (새로 추가)
+  saveDiaryGeneratedStatus: (characterId, generated) => {
+    sessionStorage.setItem(
+      `${STORAGE_KEYS.CHAT_DIARY_GENERATED}${characterId}`,
+      generated.toString()
+    );
+  },
+
+  getDiaryGeneratedStatus: (characterId) => {
+    return (
+      sessionStorage.getItem(
+        `${STORAGE_KEYS.CHAT_DIARY_GENERATED}${characterId}`
+      ) === "true"
     );
   },
 
@@ -147,6 +164,9 @@ export const postStorage = {
     sessionStorage.removeItem(`${STORAGE_KEYS.CHAT_MESSAGES}${characterId}`);
     sessionStorage.removeItem(`${STORAGE_KEYS.CHAT_COUNT}${characterId}`);
     sessionStorage.removeItem(`${STORAGE_KEYS.CHAT_SUGGESTED}${characterId}`);
+    sessionStorage.removeItem(
+      `${STORAGE_KEYS.CHAT_DIARY_GENERATED}${characterId}`
+    );
     sessionStorage.removeItem(`${STORAGE_KEYS.DIARY_GENERATED}${characterId}`);
     sessionStorage.removeItem(`${STORAGE_KEYS.DIARY_EDITED}${characterId}`);
   },

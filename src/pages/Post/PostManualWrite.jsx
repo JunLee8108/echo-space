@@ -100,7 +100,7 @@ const PostManualWrite = () => {
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center">
             <button
-              onClick={() => navigate("/post/new")}
+              onClick={() => navigate(-1)}
               className="p-2 -ml-2 text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
