@@ -129,6 +129,24 @@ const BottomNavbar = () => {
     },
   ];
 
+  // 활성 탭 체크 함수 개선
+  const isTabActive = (tab) => {
+    if (!tab.path) return false;
+
+    // 홈 탭: 정확히 "/" 일 때만 활성화
+    if (tab.path === "/") {
+      return pathname === "/";
+    }
+
+    // Post 탭: /post/new로 시작하는 모든 경로에서 활성화
+    if (tab.id === "add") {
+      return pathname.startsWith("/post/new");
+    }
+
+    // 나머지 탭들: 해당 경로로 시작할 때 활성화
+    return pathname.startsWith(tab.path);
+  };
+
   return (
     <>
       <style>{`
@@ -147,11 +165,7 @@ const BottomNavbar = () => {
         <div className="max-w-2xl mx-auto py-2 pb-8 sm:pb-2">
           <nav className="flex items-center justify-around h-14 px-4">
             {tabs.map((tab) => {
-              const isActive = tab.path
-                ? tab.path === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(tab.path)
-                : false;
+              const isActive = isTabActive(tab);
 
               return (
                 <button
@@ -161,7 +175,9 @@ const BottomNavbar = () => {
                   className={`navbar-button relative p-3 sm:p-4 rounded-xl transition-all duration-200
                     ${
                       tab.special
-                        ? "bg-gradient-to-br from-stone-700 to-stone-900 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
+                        ? isActive
+                          ? "bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-lg" // 활성화 시 더 진한 색
+                          : "bg-gradient-to-br from-stone-700 to-stone-900 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
                         : isActive
                         ? "text-stone-900 bg-stone-100"
                         : "text-stone-400 hover:text-stone-600 hover:bg-stone-50"

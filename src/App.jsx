@@ -7,7 +7,12 @@ import BottomNavbar from "./components/layout/BottomNavbar";
 import PWAInstallPrompt from "./components/utils/PWAInstallPrompt";
 import Home from "./pages/Home/Home";
 import Profile from "./pages/Profile/Profile";
-import Post from "./pages/Post/Post";
+// 기존 Post 대신 새로운 컴포넌트들 import
+import PostMethodChoice from "./pages/Post/PostMethodChoice";
+import PostAISelect from "./pages/Post/PostAISelect";
+import PostAIChat from "./pages/Post/PostAIChat";
+import PostAIReview from "./pages/Post/PostAIReview";
+import PostManualWrite from "./pages/Post/PostManualWrite";
 import PostDetail from "./pages/Post/PostDetail";
 import Search from "./pages/Search/Search";
 import AuthForm from "./pages/Home/AuthForm";
@@ -112,8 +117,21 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/search" element={<Search />} />
-                <Route path="/post/new" element={<Post />} />
-                <Route path="/post/edit/:id" element={<Post />} />
+
+                {/* 새로운 Post 라우트 구조 */}
+                <Route path="/post/new" element={<PostMethodChoice />} />
+                <Route path="/post/new/ai" element={<PostAISelect />} />
+                <Route
+                  path="/post/new/ai/:characterId"
+                  element={<PostAIChat />}
+                />
+                <Route
+                  path="/post/new/ai/:characterId/review"
+                  element={<PostAIReview />}
+                />
+                <Route path="/post/new/manual" element={<PostManualWrite />} />
+
+                {/* 기존 라우트들 */}
                 <Route path="/post/:id" element={<PostDetail />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
