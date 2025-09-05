@@ -510,6 +510,7 @@ export async function fetchPostsWithCommentsAndLikes(
             personality,
             avatar_url,
             description,
+            korean_description,
             prompt_description,
             User_Character (
               affinity
@@ -547,6 +548,7 @@ export async function fetchPostsWithCommentsAndLikes(
         ),
         Character (
           name,
+          korean_name,
           avatar_url,
           description,
           personality,
@@ -733,9 +735,11 @@ function formatPostData(post, userId) {
         // AI 댓글인 경우
         ...(comment.character_id && {
           character: comment.Character?.name || "Unknown",
+          korean_name: comment.Character?.korean_name || "알 수 없는 캐릭터",
           personality: comment.Character?.personality || [],
           avatar_url: comment.Character?.avatar_url || null,
           description: comment.Character?.description || "",
+          korean_description: comment.Character?.korean_description || "",
           prompt_description: comment.Character?.prompt_description || "",
           affinity: comment.Character?.User_Character[0]?.affinity || 0,
         }),

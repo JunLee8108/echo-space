@@ -13,13 +13,17 @@ import {
 import { useFollowedCharacters } from "../../stores/characterStore";
 import { useUserLanguage } from "../../stores/userStore";
 import { postStorage } from "../../components/utils/postStorage";
+import { createTranslator } from "../../components/utils/translations";
 import supabase from "../../services/supabaseClient";
+import ProfileModal from "../../components/UI/ProfileModal";
 
 const PostAIChat = () => {
   const navigate = useNavigate();
   const { characterId } = useParams();
 
   const userLanguage = useUserLanguage();
+  const translate = createTranslator(userLanguage);
+
   const followedCharacters = useFollowedCharacters();
 
   // 캐릭터 찾기 - ID 타입 체크
@@ -29,6 +33,9 @@ const PostAIChat = () => {
       c.id === parseInt(characterId) ||
       c.id === String(characterId)
   );
+
+  // ProfileModal 상태 추가
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // 사용자 상호작용 플래그 - sessionStorage에서 복원
   const [hasUserInteracted, setHasUserInteracted] = useState(() => {
@@ -391,7 +398,7 @@ const PostAIChat = () => {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <h1 className="ml-3 text-md font-semibold text-stone-900">
-              AI 일기 작성
+              {translate("postAIChat.title")}
             </h1>
           </div>
 
@@ -409,26 +416,34 @@ const PostAIChat = () => {
         {/* Chat Header */}
         <div className="px-4 py-3 bg-white border-b border-stone-100">
           <div className="flex items-center gap-3">
-            {selectedCharacter?.avatar_url ? (
-              <img
-                src={selectedCharacter.avatar_url}
-                alt={selectedCharacter.name}
-                className="w-8 h-8 rounded-lg object-cover"
-              />
-            ) : (
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">
-                  {selectedCharacter?.name[0]}
-                </span>
-              </div>
-            )}
+            {/* 아바타 클릭 가능하게 수정 */}
+            <div
+              onClick={() => setShowProfileModal(true)}
+              className="cursor-pointer"
+            >
+              {selectedCharacter?.avatar_url ? (
+                <img
+                  src={selectedCharacter.avatar_url}
+                  alt={selectedCharacter.name}
+                  className="w-8 h-8 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">
+                    {selectedCharacter?.name[0]}
+                  </span>
+                </div>
+              )}
+            </div>
             <div>
               <h3 className="text-sm font-semibold text-stone-900">
                 {userLanguage === "Korean"
                   ? selectedCharacter?.korean_name
                   : selectedCharacter?.name}
               </h3>
-              <p className="text-xs text-green-600">● 대화 중</p>
+              <p className="text-xs text-green-600">
+                ● {translate("postAIChat.chatting")}
+              </p>
             </div>
           </div>
         </div>
@@ -567,8 +582,8 @@ const PostAIChat = () => {
                   onKeyDown={handleKeyDown}
                   placeholder={
                     isLimitReached
-                      ? "대화 제한에 도달했습니다"
-                      : "메시지를 입력하세요..."
+                      ? translate("postAIChat.limitReached")
+                      : translate("postAIChat.messagePlaceholder")
                   }
                   className="w-full px-4 py-2 bg-stone-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-all"
                   disabled={isAITyping || isLimitReached}
@@ -597,6 +612,13 @@ const PostAIChat = () => {
           </div>
         </div>
       </div>
+
+      {/* ProfileModal 추가 */}
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        character={selectedCharacter}
+      />
     </div>
   );
 };

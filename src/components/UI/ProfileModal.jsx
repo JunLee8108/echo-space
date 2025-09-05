@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useUserLanguage } from "../../stores/userStore";
+import { createTranslator } from "../utils/translations";
 
 // Affinity 레벨별 설정
 const getAffinityTier = (affinity) => {
@@ -75,8 +77,9 @@ const getAffinityTier = (affinity) => {
 };
 
 // Affinity 정보 모달 컴포넌트
-const AffinityInfoModal = ({ isOpen, onClose, affinityTier }) => {
+const AffinityInfoModal = ({ isOpen, onClose, affinityTier, userLanguage }) => {
   const modalRef = useRef(null);
+  const translate = createTranslator(userLanguage);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -151,7 +154,7 @@ const AffinityInfoModal = ({ isOpen, onClose, affinityTier }) => {
             </svg>
           </div>
           <h3 className="text-md font-bold text-gray-900 mb-1">
-            How to Increase Affinity
+            {translate("profile.affinity.modalTitle")}
           </h3>
         </div>
 
@@ -174,11 +177,10 @@ const AffinityInfoModal = ({ isOpen, onClose, affinityTier }) => {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900 mb-1">
-                Comment on your posts
+                {translate("profile.affinity.method1Title")}
               </p>
               <p className="text-xs/4.5 text-gray-500">
-                When the character replies to your posts, there's a random
-                chance to gain affinity points
+                {translate("profile.affinity.method1Desc")}
               </p>
             </div>
           </div>
@@ -195,11 +197,10 @@ const AffinityInfoModal = ({ isOpen, onClose, affinityTier }) => {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900 mb-1">
-                Like their comments
+                {translate("profile.affinity.method2Title")}
               </p>
               <p className="text-xs/4.5 text-gray-500">
-                Liking the character's comments has a random chance to increase
-                your affinity level
+                {translate("profile.affinity.method2Desc")}
               </p>
             </div>
           </div>
@@ -212,6 +213,16 @@ const AffinityInfoModal = ({ isOpen, onClose, affinityTier }) => {
 const ProfileModal = ({ isOpen, onClose, character }) => {
   const modalRef = useRef(null);
   const [showAffinityInfo, setShowAffinityInfo] = useState(false);
+
+  const userLanguage = useUserLanguage();
+  const characterName =
+    userLanguage === "Korean"
+      ? character?.korean_name || "알 수없는 캐릭터"
+      : character?.name || character?.character || "Unknown Character";
+  const characterDes =
+    userLanguage === "Korean"
+      ? character?.korean_description
+      : character?.description;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -282,7 +293,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
                 {character.avatar_url ? (
                   <img
                     src={character.avatar_url}
-                    alt={character.name || character.character}
+                    alt={characterName}
                     className="w-full h-full object-cover rounded-t-3xl"
                     onError={(e) => {
                       e.target.style.display = "none";
@@ -295,22 +306,17 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
                   style={{ display: character.avatar_url ? "none" : "flex" }}
                 >
                   <span className="text-4xl text-white font-bold">
-                    {character.name?.charAt(0) ||
-                      character.character?.charAt(0) ||
-                      "?"}
+                    {characterName.charAt(0) || "?"}
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Name and Role */}
-            <div className="text-center mt-4 mb-3 px-4">
-              <h2 className="text-xl font-bold text-stone-900 mb-1">
-                {character.name || character.character || "Unknown Character"}
+            <div className="text-center mt-3 mb-3 px-4">
+              <h2 className="text-lg font-bold text-stone-900 mb-3">
+                {characterName}
               </h2>
-              <p className="text-xs text-stone-500 font-medium mb-3">
-                {character.isUser ? "User" : "AI Character"}
-              </p>
 
               {/* Array personality - 이름 바로 아래에 배치 */}
               {Array.isArray(character.personality) &&
@@ -392,7 +398,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
             )}
 
             {/* Description */}
-            {character.description && (
+            {characterDes && (
               <div className="px-4 mb-4 mt-6">
                 <h3 className="text-sm font-semibold text-stone-900 mb-1 flex items-center">
                   <svg
@@ -412,7 +418,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
                 </h3>
                 <div className="bg-stone-50 rounded-2xl p-4">
                   <p className="text-sm text-stone-700 leading-relaxed">
-                    {character.description}
+                    {characterDes}
                   </p>
                 </div>
               </div>
@@ -492,6 +498,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
         isOpen={showAffinityInfo}
         onClose={() => setShowAffinityInfo(false)}
         affinityTier={affinityTier}
+        userLanguage={userLanguage}
       />
     </>
   );

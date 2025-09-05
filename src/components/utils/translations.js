@@ -251,6 +251,49 @@ export const translations = {
     Korean: "시작하기",
   },
 
+  // ============= Post AI General =============
+  "postAI.title": {
+    English: "AI Diary Writing",
+    Korean: "AI 일기 작성",
+  },
+
+  // ============= Post AI Select Page =============
+  "postAISelect.title": {
+    English: "AI Select",
+    Korean: "AI 선택",
+  },
+  "postAISelect.subtitle": {
+    English: "Choose an AI friend to chat with",
+    Korean: "대화할 AI 친구를 선택하세요",
+  },
+  "postAISelect.noFollowedAI": {
+    English: "You haven't followed any AI characters yet",
+    Korean: "아직 팔로우한 AI 캐릭터가 없습니다",
+  },
+  "postAISelect.findAICharacters": {
+    English: "Find AI Characters",
+    Korean: "AI 캐릭터 찾기",
+  },
+
+  // ============= Post AI Chat Page =============
+  "postAIChat.title": {
+    English: "AI Chat",
+    Korean: "AI 대화",
+  },
+
+  "postAIChat.chatting": {
+    English: "Chatting",
+    Korean: "대화 중",
+  },
+  "postAIChat.messagePlaceholder": {
+    English: "Type your message...",
+    Korean: "메시지를 입력하세요...",
+  },
+  "postAIChat.limitReached": {
+    English: "Conversation limit reached",
+    Korean: "대화 제한에 도달했습니다",
+  },
+
   // Hashtag Modal
   "post.hashtag.title": {
     English: "Add Hashtags",
@@ -451,6 +494,38 @@ export const translations = {
   "profile.showingCount": {
     English: "Showing ${shown} of ${total}",
     Korean: "전체 ${total}개 중 ${shown}개 표시 중",
+  },
+
+  // ============= Profile Modal - Affinity Guide =============
+  "profile.affinity.modalTitle": {
+    English: "How to Increase Affinity",
+    Korean: "친밀도를 높이는 방법",
+  },
+  "profile.affinity.method1Title": {
+    English: "Comment on your posts",
+    Korean: "게시글에 댓글 달기",
+  },
+  "profile.affinity.method1Desc": {
+    English:
+      "When the character replies to your posts, there's a random chance to gain affinity points",
+    Korean: "캐릭터가 내 게시글에 댓글을 달면 일정 확률로 친밀도가 상승합니다",
+  },
+  "profile.affinity.method2Title": {
+    English: "Like their comments",
+    Korean: "댓글에 좋아요 누르기",
+  },
+  "profile.affinity.method2Desc": {
+    English:
+      "Liking the character's comments has a random chance to increase your affinity level",
+    Korean: "캐릭터의 댓글에 좋아요를 누르면 일정 확률로 친밀도가 상승합니다",
+  },
+  "profile.affinity.level": {
+    English: "Affinity Level",
+    Korean: "친밀도 레벨",
+  },
+  "profile.affinity.points": {
+    English: "Affinity Points",
+    Korean: "친밀도 포인트",
   },
 
   // ============= Home Page =============

@@ -17,6 +17,7 @@ export async function fetchUserCreatedAndSystemCharacters(userId) {
       visibility,
       is_system_default,
       description,
+      korean_description,
       prompt_description,
       avatar_url,
       greeting_messages,
@@ -46,6 +47,7 @@ export async function fetchUserCreatedAndSystemCharacters(userId) {
       visibility: character.visibility,
       is_system_default: character.is_system_default,
       description: character.description,
+      korean_description: character.korean_description,
       prompt_description: character.prompt_description,
       avatar_url: character.avatar_url,
       greeting_messages: character.greeting_messages, // 추가

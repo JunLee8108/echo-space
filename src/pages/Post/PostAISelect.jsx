@@ -3,11 +3,13 @@ import { useNavigate } from "react-router";
 import { ArrowLeft, Bot, ChevronRight } from "lucide-react";
 import { useFollowedCharacters } from "../../stores/characterStore";
 import { useUserLanguage } from "../../stores/userStore";
+import { createTranslator } from "../../components/utils/translations";
 
 const PostAISelect = () => {
   const navigate = useNavigate();
   const followedCharacters = useFollowedCharacters();
   const userLanguage = useUserLanguage();
+  const translate = createTranslator(userLanguage);
 
   const handleSelectCharacter = (character) => {
     // 캐릭터 ID를 URL로 전달
@@ -29,7 +31,7 @@ const PostAISelect = () => {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <h1 className="ml-3 text-md font-semibold text-stone-900">
-              AI 일기 작성
+              {translate("postAISelect.title")}
             </h1>
           </div>
 
@@ -46,12 +48,16 @@ const PostAISelect = () => {
       <div className="flex-1 overflow-hidden">
         <div className="px-4 py-6 overflow-y-auto h-full">
           <div className="max-w-2xl mx-auto">
-            <div className="text-center mb-8">
-              <Bot className="w-12 h-12 text-blue-500 mx-auto mb-3" />
-              <h2 className="text-md font-bold text-stone-900">
-                대화할 AI 친구를 선택하세요
-              </h2>
-            </div>
+            {followedCharacters.length > 0 ? (
+              <div className="text-center mb-8">
+                <Bot className="w-12 h-12 text-blue-500 mx-auto mb-3" />
+                <h2 className="text-md font-bold text-stone-900">
+                  {translate("postAISelect.subtitle")}
+                </h2>
+              </div>
+            ) : (
+              ""
+            )}
 
             <div className="grid gap-3">
               {followedCharacters.length > 0 ? (
@@ -91,13 +97,13 @@ const PostAISelect = () => {
                 <div className="text-center py-12">
                   <Bot className="w-16 h-16 text-stone-300 mx-auto mb-4" />
                   <p className="text-stone-600 mb-4">
-                    아직 팔로우한 AI 캐릭터가 없습니다
+                    {translate("postAISelect.noFollowedAI")}
                   </p>
                   <button
-                    onClick={() => navigate("/search")}
+                    onClick={() => navigate("/profile")}
                     className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
                   >
-                    AI 캐릭터 찾기
+                    {translate("postAISelect.findAICharacters")}
                   </button>
                 </div>
               )}

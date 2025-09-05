@@ -509,6 +509,7 @@ const Home = () => {
         // characterStore의 최신 데이터로 덮어쓰기
         id: latestCharInfo.id,
         name: latestCharInfo.name,
+        korean_name: latestCharInfo.korean_name,
         personality: latestCharInfo.personality,
         avatar_url: latestCharInfo.avatar_url,
         description: latestCharInfo.description,
