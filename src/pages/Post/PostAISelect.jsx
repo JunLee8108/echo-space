@@ -2,18 +2,16 @@
 import { useNavigate } from "react-router";
 import { ArrowLeft, Bot, ChevronRight } from "lucide-react";
 import { useFollowedCharacters } from "../../stores/characterStore";
+import { useUserLanguage } from "../../stores/userStore";
 
 const PostAISelect = () => {
   const navigate = useNavigate();
   const followedCharacters = useFollowedCharacters();
+  const userLanguage = useUserLanguage();
 
   const handleSelectCharacter = (character) => {
-    console.log("Selected character:", character); // 디버깅용
-    console.log("Character ID:", character.id, "Type:", typeof character.id);
-
     // 캐릭터 ID를 URL로 전달
     const path = `/post/new/ai/${character.id}`;
-    console.log("Navigating to:", path); // 디버깅용
 
     navigate(path);
   };
@@ -77,8 +75,10 @@ const PostAISelect = () => {
                       </div>
                     )}
                     <div className="flex-1 text-left">
-                      <h3 className="font-semibold text-stone-900">
-                        {character.name}
+                      <h3 className="text-sm font-semibold text-stone-900">
+                        {userLanguage === "Korean"
+                          ? character.korean_name
+                          : character.name}
                       </h3>
                       <p className="text-sm text-stone-600 line-clamp-1">
                         {character.description}

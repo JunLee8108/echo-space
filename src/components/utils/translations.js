@@ -217,6 +217,40 @@ export const translations = {
     Korean: "작성 중인 내용이 있습니다. 정말 나가시겠습니까?",
   },
 
+  // ============= Post Method Choice Page =============
+  "postMethod.title": {
+    English: "New Diary",
+    Korean: "새 일기 작성",
+  },
+  "postMethod.mainTitle": {
+    English: "Record Your Day",
+    Korean: "오늘 하루를 기록하기",
+  },
+  "postMethod.subtitle": {
+    English: "How would you like to write?",
+    Korean: "어떤 방식으로 작성하시겠어요?",
+  },
+  "postMethod.aiOption.title": {
+    English: "Write with AI Conversation",
+    Korean: "AI와 대화하며 작성",
+  },
+  "postMethod.aiOption.description": {
+    English: "Complete your diary with your AI friend",
+    Korean: "AI 친구와 대화를 나누며 자연스럽게 일기를 완성해보세요",
+  },
+  "postMethod.manualOption.title": {
+    English: "Write Directly",
+    Korean: "직접 작성하기",
+  },
+  "postMethod.manualOption.description": {
+    English: "Write your diary freely in your own style",
+    Korean: "나만의 스타일로 자유롭게 일기를 작성해보세요",
+  },
+  "postMethod.startButton": {
+    English: "Get Started",
+    Korean: "시작하기",
+  },
+
   // Hashtag Modal
   "post.hashtag.title": {
     English: "Add Hashtags",

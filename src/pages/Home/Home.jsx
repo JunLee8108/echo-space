@@ -776,28 +776,6 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* 새로운 필터 헤더 추가 */}
-      <div className="bg-white/80 backdrop-blur-lg z-40 border-b border-stone-100">
-        <div className="max-w-2xl mx-auto px-6 py-4">
-          {/* 헤더 타이틀과 필터 */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h1 className="text-md font-bold bg-gradient-to-r from-stone-900 to-stone-600 bg-clip-text text-transparent">
-                Feed
-              </h1>
-              <div
-                className="px-2 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full"
-                style={{ paddingBottom: "3px" }}
-              >
-                <span className="text-xs font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  {posts.length} Posts
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-2xl mx-auto px-6 py-8 min-h-[70dvh]">
         {/* Posts Feed */}
         <div className="space-y-6">

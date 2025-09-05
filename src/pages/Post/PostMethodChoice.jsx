@@ -1,9 +1,13 @@
 // pages/Post/PostMethodChoice.jsx
 import { useNavigate } from "react-router";
+import { useUserLanguage } from "../../stores/userStore";
+import { createTranslator } from "../../components/utils/translations";
 import { ArrowLeft, Bot, ChevronRight, PenTool } from "lucide-react";
 
 const PostMethodChoice = () => {
   const navigate = useNavigate();
+  const userLanguage = useUserLanguage();
+  const translate = createTranslator(userLanguage);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white flex flex-col">
@@ -18,7 +22,7 @@ const PostMethodChoice = () => {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <h1 className="ml-3 text-md font-semibold text-stone-900">
-              새 일기 작성
+              {translate("postMethod.title")}
             </h1>
           </div>
         </div>
@@ -29,11 +33,11 @@ const PostMethodChoice = () => {
         <div className="px-4 py-8 overflow-y-auto h-full">
           <div className="max-w-md mx-auto">
             <div className="text-center mb-8">
-              <h2 className="text-lg font-bold text-stone-900 mb-2">
-                오늘 하루를 기록하기
+              <h2 className="text-lg font-bold text-stone-900 mb-1">
+                {translate("postMethod.mainTitle")}
               </h2>
               <p className="text-sm text-stone-600">
-                어떤 방식으로 작성하시겠어요?
+                {translate("postMethod.subtitle")}
               </p>
             </div>
 
@@ -43,14 +47,14 @@ const PostMethodChoice = () => {
                 className="w-full p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200 hover:border-blue-300 transition-all group"
               >
                 <Bot className="w-10 h-10 text-blue-600 mx-auto mb-3" />
-                <h3 className="font-semibold text-stone-900 mb-2">
-                  AI와 대화하며 작성
+                <h3 className="text-sm font-semibold text-stone-900 mb-2">
+                  {translate("postMethod.aiOption.title")}
                 </h3>
-                <p className="text-sm text-stone-600">
-                  AI 친구와 대화를 나누며 자연스럽게 일기를 완성해보세요
+                <p className="text-xs text-stone-600">
+                  {translate("postMethod.aiOption.description")}
                 </p>
                 <div className="mt-4 inline-flex items-center text-blue-600 text-sm">
-                  <span>시작하기</span>
+                  <span>{translate("postMethod.startButton")}</span>
                   <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                 </div>
               </button>
@@ -60,14 +64,14 @@ const PostMethodChoice = () => {
                 className="w-full p-6 bg-white rounded-2xl border border-stone-200 hover:border-stone-300 transition-all group"
               >
                 <PenTool className="w-10 h-10 text-stone-600 mx-auto mb-3" />
-                <h3 className="font-semibold text-stone-900 mb-2">
-                  직접 작성하기
+                <h3 className="text-sm font-semibold text-stone-900 mb-2">
+                  {translate("postMethod.manualOption.title")}
                 </h3>
-                <p className="text-sm text-stone-600">
-                  나만의 스타일로 자유롭게 일기를 작성해보세요
+                <p className="text-xs text-stone-600">
+                  {translate("postMethod.manualOption.description")}
                 </p>
                 <div className="mt-4 inline-flex items-center text-stone-600 text-sm">
-                  <span>시작하기</span>
+                  <span>{translate("postMethod.startButton")}</span>
                   <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                 </div>
               </button>

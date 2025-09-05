@@ -32,6 +32,7 @@ const Profile = () => {
   const user = useUser();
   const displayName = useDisplayName();
   const userLanguage = useUserLanguage();
+
   const { updateDisplayName, updateLanguage, updatePassword } =
     useUserActions();
 
@@ -332,12 +333,12 @@ const Profile = () => {
 
         {/* Stats Section - 기존과 동일 */}
         <div className="bg-stone-50 rounded-2xl p-6 mb-4">
-          <h3 className="font-semibold text-center text-stone-900 mb-4">
+          <h3 className="text-sm font-semibold text-center text-stone-900 mb-4">
             {translate("profile.interactionStats")}
           </h3>
           <div className="grid grid-cols-2 gap-6">
             <div className="text-center">
-              <div className="text-xl font-bold text-stone-900 mb-1">
+              <div className="text-lg font-bold text-stone-900 mb-1">
                 {followedCharacterIds.size}
               </div>
               <div className="text-sm text-stone-600">
@@ -345,10 +346,10 @@ const Profile = () => {
               </div>
             </div>
             <div className="text-center">
-              <div className="text-xl font-bold text-stone-900 mb-1">
+              <div className="text-lg font-bold text-stone-900 mb-1">
                 {characters.length - followedCharacterIds.size}
               </div>
-              <div className="text-sm text-stone-600">
+              <div className="text-xs text-stone-600">
                 {translate("profile.inactive")}
               </div>
             </div>
@@ -531,8 +532,10 @@ const Profile = () => {
 
                       {/* Character Info */}
                       <div className="flex-1">
-                        <h3 className="font-semibold text-stone-900 mb-1">
-                          {character.name}
+                        <h3 className="text-sm font-semibold text-stone-900">
+                          {userLanguage === "Korean"
+                            ? character.korean_name
+                            : character.name}
                         </h3>
                         <p className="text-stone-600 text-sm leading-relaxed line-clamp-2">
                           {character.description}.

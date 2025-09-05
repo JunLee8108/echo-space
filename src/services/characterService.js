@@ -12,12 +12,14 @@ export async function fetchUserCreatedAndSystemCharacters(userId) {
       `
       id,
       name,
+      korean_name,
       personality,
       visibility,
       is_system_default,
       description,
       prompt_description,
       avatar_url,
+      greeting_messages,
       User_Character (
         id,
         is_following,
@@ -39,12 +41,14 @@ export async function fetchUserCreatedAndSystemCharacters(userId) {
     data?.map((character) => ({
       id: character.id,
       name: character.name,
+      korean_name: character.korean_name, // 추가
       personality: character.personality,
       visibility: character.visibility,
       is_system_default: character.is_system_default,
       description: character.description,
       prompt_description: character.prompt_description,
       avatar_url: character.avatar_url,
+      greeting_messages: character.greeting_messages, // 추가
       // User_Character 관계 데이터
       user_character_id: character.User_Character?.[0]?.id || null,
       is_following: character.User_Character?.[0]?.is_following || false,

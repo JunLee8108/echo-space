@@ -22,10 +22,6 @@ const PostAIChat = () => {
   const userLanguage = useUserLanguage();
   const followedCharacters = useFollowedCharacters();
 
-  // 디버깅용 로그
-  console.log("Character ID from URL:", characterId);
-  console.log("Followed characters:", followedCharacters);
-
   // 캐릭터 찾기 - ID 타입 체크
   const selectedCharacter = followedCharacters.find(
     (c) =>
@@ -34,12 +30,26 @@ const PostAIChat = () => {
       c.id === String(characterId)
   );
 
-  console.log("Selected character:", selectedCharacter);
+  // 사용자 상호작용 플래그 - sessionStorage에서 복원
+  const [hasUserInteracted, setHasUserInteracted] = useState(() => {
+    const savedMessages = postStorage.getMessages(characterId);
+    // 저장된 메시지 중 user 메시지가 있으면 이미 상호작용한 것
+    return savedMessages.some((msg) => msg.sender === "user");
+  });
 
-  // 상태 관리 - sessionStorage에서 복원
-  const [messages, setMessages] = useState(() =>
-    postStorage.getMessages(characterId)
-  );
+  // 상태 관리 - sessionStorage에서 복원 (사용자가 상호작용한 경우만)
+  const [messages, setMessages] = useState(() => {
+    const savedMessages = postStorage.getMessages(characterId);
+    // 저장된 메시지가 있고 사용자 메시지가 포함되어 있으면 복원
+    if (
+      savedMessages.length > 0 &&
+      savedMessages.some((msg) => msg.sender === "user")
+    ) {
+      return savedMessages;
+    }
+    return [];
+  });
+
   const [inputMessage, setInputMessage] = useState("");
   const [isAITyping, setIsAITyping] = useState(false);
   const [conversationCount, setConversationCount] = useState(() =>
@@ -52,6 +62,9 @@ const PostAIChat = () => {
     postStorage.getDiaryGeneratedStatus(characterId)
   );
   const [isGeneratingDiary, setIsGeneratingDiary] = useState(false);
+
+  // 초기 인사말을 별도로 관리 (저장하지 않음)
+  const [initialGreeting, setInitialGreeting] = useState(null);
 
   const chatContainerRef = useRef(null);
   const textareaRef = useRef(null);
@@ -69,26 +82,31 @@ const PostAIChat = () => {
       return;
     }
 
-    // 첫 진입시 인사말 추가
-    if (messages.length === 0) {
+    // 첫 진입시 인사말 생성 (저장하지 않음)
+    if (messages.length === 0 && !initialGreeting && !hasUserInteracted) {
       const greeting = getAIGreeting(selectedCharacter);
-      const initialMessage = {
+      const greetingMessage = {
         id: Date.now(),
         sender: "ai",
         content: greeting,
         timestamp: new Date(),
       };
-      setMessages([initialMessage]);
-      postStorage.saveMessages(characterId, [initialMessage]);
+      setInitialGreeting(greetingMessage);
     }
-  }, [selectedCharacter, characterId]);
+  }, [
+    selectedCharacter,
+    characterId,
+    messages.length,
+    initialGreeting,
+    hasUserInteracted,
+  ]);
 
-  // 메시지 변경시 저장
+  // 메시지 변경시 저장 - 사용자가 상호작용한 경우에만
   useEffect(() => {
-    if (messages.length > 0) {
+    if (hasUserInteracted && messages.length > 0) {
       postStorage.saveMessages(characterId, messages);
     }
-  }, [messages, characterId]);
+  }, [messages, characterId, hasUserInteracted]);
 
   // 대화 횟수 저장
   useEffect(() => {
@@ -113,7 +131,7 @@ const PostAIChat = () => {
         block: "end",
       });
     }
-  }, [messages, isAITyping]);
+  }, [messages, isAITyping, initialGreeting]);
 
   // Textarea 자동 높이 조절
   useEffect(() => {
@@ -126,11 +144,41 @@ const PostAIChat = () => {
 
   // AI 인사말 생성
   const getAIGreeting = (character) => {
-    const greetings = {
+    // 캐릭터에 greeting_messages가 있으면 사용
+    if (character.greeting_messages) {
+      const greetings =
+        character.greeting_messages[userLanguage] ||
+        character.greeting_messages.English ||
+        [];
+
+      if (greetings.length > 0) {
+        // 랜덤 선택
+        const template =
+          greetings[Math.floor(Math.random() * greetings.length)];
+
+        // ${name} 플레이스홀더를 실제 이름으로 치환
+        // Korean 언어일 때는 korean_name 사용, 없으면 기본 name 사용
+        const displayName =
+          userLanguage === "Korean" && character.korean_name
+            ? character.korean_name
+            : character.name;
+
+        return template.replace("${name}", displayName);
+      }
+    }
+
+    // Fallback: greeting_messages가 없는 경우 기존 방식 사용
+    const fallbackGreetings = {
       Korean: [
-        `안녕! 나는 ${character.name}이야. 오늘 하루는 어땠어?`,
-        `${character.name}이야! 오늘 있었던 일들을 들려줄래?`,
-        `반가워! ${character.name}이야. 오늘 기분은 어때?`,
+        `안녕! 나는 ${
+          character.korean_name || character.name
+        }이야. 오늘 하루는 어땠어?`,
+        `${
+          character.korean_name || character.name
+        }이야! 오늘 있었던 일들을 들려줄래?`,
+        `반가워! ${
+          character.korean_name || character.name
+        }이야. 오늘 기분은 어때?`,
       ],
       English: [
         `Hi! I'm ${character.name}. How was your day?`,
@@ -139,7 +187,8 @@ const PostAIChat = () => {
       ],
     };
 
-    const langGreetings = greetings[userLanguage] || greetings.English;
+    const langGreetings =
+      fallbackGreetings[userLanguage] || fallbackGreetings.English;
     return langGreetings[Math.floor(Math.random() * langGreetings.length)];
   };
 
@@ -188,18 +237,43 @@ const PostAIChat = () => {
       timestamp: new Date(),
     };
 
-    // 시스템 메시지 제거 후 사용자 메시지 추가
-    const filteredMessages = messages.filter((msg) => msg.sender !== "system");
-    setMessages([...filteredMessages, userMessage]);
+    // 첫 메시지인 경우 (사용자가 처음 상호작용)
+    if (!hasUserInteracted) {
+      setHasUserInteracted(true);
+
+      // 초기 인사말이 있으면 messages에 추가
+      if (initialGreeting) {
+        setMessages([initialGreeting, userMessage]);
+      } else {
+        setMessages([userMessage]);
+      }
+
+      // 초기 인사말 state 클리어
+      setInitialGreeting(null);
+    } else {
+      // 이미 상호작용한 경우 - 기존 로직
+      const filteredMessages = messages.filter(
+        (msg) => msg.sender !== "system"
+      );
+      setMessages([...filteredMessages, userMessage]);
+    }
+
     setInputMessage("");
     setIsAITyping(true);
     setConversationCount((prev) => prev + 1);
 
     try {
-      const aiResponse = await getAIResponse(selectedCharacter, [
-        ...filteredMessages,
-        userMessage,
-      ]);
+      // AI 응답을 위한 대화 내역 준비
+      const conversationForAI = hasUserInteracted
+        ? [...messages.filter((msg) => msg.sender !== "system"), userMessage]
+        : initialGreeting
+        ? [initialGreeting, userMessage]
+        : [userMessage];
+
+      const aiResponse = await getAIResponse(
+        selectedCharacter,
+        conversationForAI
+      );
 
       const aiMessage = {
         id: Date.now() + 1,
@@ -289,6 +363,13 @@ const PostAIChat = () => {
 
   const shouldShowCharCount = inputMessage.length >= 85;
 
+  // 렌더링할 메시지 목록 결정
+  const displayMessages = hasUserInteracted
+    ? messages
+    : initialGreeting
+    ? [initialGreeting, ...messages]
+    : messages;
+
   if (!selectedCharacter) {
     return null;
   }
@@ -342,8 +423,10 @@ const PostAIChat = () => {
               </div>
             )}
             <div>
-              <h3 className="font-semibold text-stone-900">
-                {selectedCharacter?.name}
+              <h3 className="text-sm font-semibold text-stone-900">
+                {userLanguage === "Korean"
+                  ? selectedCharacter?.korean_name
+                  : selectedCharacter?.name}
               </h3>
               <p className="text-xs text-green-600">● 대화 중</p>
             </div>
@@ -355,7 +438,7 @@ const PostAIChat = () => {
           ref={chatContainerRef}
           className="min-h-[20dvh] overflow-y-auto px-4 py-4 space-y-4"
         >
-          {messages.map((message) => (
+          {displayMessages.map((message) => (
             <div
               key={message.id}
               className={`flex ${
