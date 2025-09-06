@@ -317,6 +317,7 @@ const PostAIChat = () => {
             character: {
               name: selectedCharacter.name,
               personality: selectedCharacter.personality,
+              prompt_description: selectedCharacter.prompt_description,
             },
             conversation: messages
               .filter((msg) => msg.sender !== "system")
@@ -331,19 +332,50 @@ const PostAIChat = () => {
 
       if (error) throw error;
 
-      // 생성된 일기 저장
+      // AI 생성 데이터 모두 저장
       postStorage.saveGeneratedDiary(characterId, data.diary);
       postStorage.saveEditedDiary(characterId, data.diary);
+
+      // 새로 추가: AI mood와 hashtags 저장
+      if (data.mood) {
+        postStorage.saveAIMood(characterId, data.mood);
+        console.log("AI Mood 저장:", data.mood);
+      }
+
+      if (data.mood_confidence) {
+        postStorage.saveAIMoodConfidence(characterId, data.mood_confidence);
+        console.log("AI Mood 신뢰도:", data.mood_confidence);
+      }
+
+      if (data.hashtags && Array.isArray(data.hashtags)) {
+        postStorage.saveAIHashtags(characterId, data.hashtags);
+        console.log("AI Hashtags 저장:", data.hashtags);
+      }
 
       // 일기 생성 완료 상태 저장
       setHasDiaryGenerated(true);
       postStorage.saveDiaryGeneratedStatus(characterId, true);
 
+      // 메타데이터 로깅 (디버깅용)
+      if (data.metadata?.analysis) {
+        console.log("AI 분석 근거:", data.metadata.analysis);
+      }
+
       // 리뷰 페이지로 이동
       navigate(`/post/new/ai/${characterId}/review`);
     } catch (error) {
       console.error("일기 생성 실패:", error);
-      alert("일기 생성에 실패했습니다.");
+
+      // 에러 발생 시 기본값으로 폴백
+      const fallbackDiary = `<strong>${new Date().toLocaleDateString(
+        userLanguage === "Korean" ? "ko-KR" : "en-US",
+        { year: "numeric", month: "long", day: "numeric" }
+      )}</strong>\n<p>일기를 생성하는 중 문제가 발생했습니다. 다시 시도해주세요.</p>`;
+
+      postStorage.saveGeneratedDiary(characterId, fallbackDiary);
+      postStorage.saveEditedDiary(characterId, fallbackDiary);
+
+      alert("일기 생성에 실패했습니다. 다시 시도해주세요.");
     } finally {
       setIsGeneratingDiary(false);
     }
