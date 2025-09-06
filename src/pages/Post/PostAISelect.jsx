@@ -81,13 +81,15 @@ const PostAISelect = () => {
                       </div>
                     )}
                     <div className="flex-1 text-left">
-                      <h3 className="text-sm font-semibold text-stone-900">
+                      <h3 className="text-sm font-semibold text-stone-900 mb-0.5">
                         {userLanguage === "Korean"
                           ? character.korean_name
                           : character.name}
                       </h3>
-                      <p className="text-sm text-stone-600 line-clamp-1">
-                        {character.description}
+                      <p className="text-xs text-stone-600 line-clamp-1">
+                        {userLanguage === "Korean"
+                          ? character.korean_description
+                          : character.description}
                       </p>
                     </div>
                     <ChevronRight className="w-5 h-5 text-stone-400" />

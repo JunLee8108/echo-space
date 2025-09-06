@@ -485,6 +485,16 @@ const Profile = () => {
               const status = characterStatuses[character.id] || "online";
               const statusStyle = statusStyles[status];
 
+              const characterName =
+                userLanguage === "Korean"
+                  ? character.korean_name
+                  : character.name;
+
+              const characterDes =
+                userLanguage === "Korean"
+                  ? character.korean_description
+                  : character.description;
+
               return (
                 <div
                   key={character.id}
@@ -497,7 +507,7 @@ const Profile = () => {
                         {character.avatar_url ? (
                           <img
                             src={character.avatar_url}
-                            alt={character.name}
+                            alt={characterName}
                             className="w-14 h-14 cursor-pointer rounded-2xl object-cover shadow-sm"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -519,7 +529,7 @@ const Profile = () => {
                           }}
                         >
                           <span className="text-white text-lg font-bold">
-                            {character.name.charAt(0)}
+                            {characterName.charAt(0)}
                           </span>
                         </div>
 
@@ -532,13 +542,11 @@ const Profile = () => {
 
                       {/* Character Info */}
                       <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-stone-900">
-                          {userLanguage === "Korean"
-                            ? character.korean_name
-                            : character.name}
+                        <h3 className="text-sm font-semibold text-stone-900 mb-0.5">
+                          {characterName}
                         </h3>
-                        <p className="text-stone-600 text-sm leading-relaxed line-clamp-2">
-                          {character.description}.
+                        <p className="text-stone-600 text-xs leading-4 line-clamp-2">
+                          {characterDes}.
                         </p>
                       </div>
                     </div>
