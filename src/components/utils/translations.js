@@ -145,76 +145,98 @@ export const translations = {
     Korean: "기호",
   },
 
-  // ============= Post Page =============
-  "post.title": {
-    English: "New Post",
-    Korean: "새 글",
+  // ============= Post Manual Write Page =============
+  "postManual.title": {
+    English: "Write Diary",
+    Korean: "직접 작성",
   },
-  "post.editTitle": {
-    English: "Edit Post",
-    Korean: "글 수정",
+
+  // Mood Section
+  "postManual.mood.title": {
+    English: "Today's Mood",
+    Korean: "오늘의 기분",
   },
-  "post.selectMood": {
-    English: "Select your mood",
-    Korean: "기분을 선택하세요",
-  },
-  "post.mood.happy": {
+  "postManual.mood.happy": {
     English: "Happy",
     Korean: "행복",
   },
-  "post.mood.neutral": {
+  "postManual.mood.neutral": {
     English: "Neutral",
     Korean: "보통",
   },
-  "post.mood.sad": {
+  "postManual.mood.sad": {
     English: "Sad",
     Korean: "슬픔",
   },
-  "post.addHashtags": {
-    English: "Add hashtags (press Enter)",
-    Korean: "해시태그 추가 (엔터 키)",
+
+  // Hashtag Section
+  "postManual.hashtag.title": {
+    English: "Hashtags (${count}/5)",
+    Korean: "해시태그 (${count}/5)",
   },
-  "post.hashtagPlaceholder": {
-    English: "Type and press Enter",
-    Korean: "입력 후 엔터",
+  "postManual.hashtag.empty": {
+    English: "Add hashtags to your post",
+    Korean: "해시태그를 추가해주세요",
   },
-  "post.publishing": {
-    English: "Publishing...",
-    Korean: "게시 중...",
+  "postManual.hashtag.placeholder": {
+    English: "Add hashtag (max 5)",
+    Korean: "해시태그 추가 (최대 5개)",
   },
-  "post.publish": {
-    English: "Publish",
-    Korean: "게시",
+  "postManual.hashtag.maxReached": {
+    English: "Maximum 5 hashtags allowed",
+    Korean: "최대 5개까지 추가 가능합니다",
   },
-  "post.updating": {
-    English: "Updating...",
-    Korean: "수정 중...",
+  "postManual.hashtag.error.empty": {
+    English: "Please enter a hashtag",
+    Korean: "해시태그를 입력해주세요",
   },
-  "post.update": {
-    English: "Update",
-    Korean: "수정",
-  },
-  "post.titleAICommentEnabled": {
-    English: "AI Comments Enabled",
-    Korean: "AI 댓글 허용",
-  },
-  "post.titleAICommentDisabled": {
-    English: "AI Comments Disabled",
-    Korean: "AI 댓글 금지",
+  "postManual.hashtag.error.duplicate": {
+    English: "This hashtag already exists",
+    Korean: "이미 추가된 해시태그입니다",
   },
 
-  // Post Page - 새로 추가된 항목들
-  "post.button.post": {
-    English: "Post",
-    Korean: "게시",
+  // Visibility Section
+  "postManual.visibility.title": {
+    English: "Visibility",
+    Korean: "공개 범위",
   },
-  "post.button.update": {
-    English: "Update",
-    Korean: "수정",
+  "postManual.visibility.private": {
+    English: "Private",
+    Korean: "나만 보기",
   },
-  "post.exitConfirm": {
-    English: "You have unsaved changes. Are you sure you want to leave?",
-    Korean: "작성 중인 내용이 있습니다. 정말 나가시겠습니까?",
+  "postManual.visibility.public": {
+    English: "Public",
+    Korean: "모두 공개",
+  },
+
+  // AI Comments Section
+  "postManual.aiComments.title": {
+    English: "AI Comments",
+    Korean: "AI 댓글",
+  },
+  "postManual.aiComments.description": {
+    English: "AI can comment on your diary",
+    Korean: "AI가 당신의 일기에 댓글을 남길 수 있어요",
+  },
+
+  // Save Section
+  "postManual.save.button": {
+    English: "Save",
+    Korean: "저장하기",
+  },
+  "postManual.save.saving": {
+    English: "Saving...",
+    Korean: "저장 중...",
+  },
+
+  // Alert Messages
+  "postManual.alert.emptyContent": {
+    English: "Please write something in your diary.",
+    Korean: "일기 내용을 입력해주세요.",
+  },
+  "postManual.alert.saveFailed": {
+    English: "Failed to save. Please try again.",
+    Korean: "저장에 실패했습니다.",
   },
 
   // ============= Post Method Choice Page =============

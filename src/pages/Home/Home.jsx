@@ -741,7 +741,17 @@ const Home = () => {
     </div>
   );
 
-  usePostsRealtime(posts);
+  const { subscribedCount, subscribedPostIds } = usePostsRealtime(posts);
+
+  // 선택사항: 구독 상태 표시
+  useEffect(() => {
+    if (subscribedCount > 0) {
+      console.log(
+        `🔔 실시간 구독 중: ${subscribedCount}개 포스트`,
+        subscribedPostIds
+      );
+    }
+  }, [subscribedCount]);
 
   // 초기 로딩 상태
   if (isLoading) {
