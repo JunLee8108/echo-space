@@ -13,7 +13,9 @@ import {
   Sparkles,
   X,
   Plus,
+  AlertCircle, // 🔴 새로 추가
 } from "lucide-react";
+import { useFollowedCharacterIds } from "../../stores/characterStore"; // 🔴 새로 추가
 import { useCreatePost } from "../../components/hooks/useCreatePost";
 import { postStorage } from "../../components/utils/postStorage";
 import { useUserLanguage } from "../../stores/userStore";
@@ -25,6 +27,10 @@ const PostManualWrite = () => {
   const userLanguage = useUserLanguage();
   const translate = createTranslator(userLanguage);
   const createPostMutation = useCreatePost();
+  const followedCharacterIds = useFollowedCharacterIds(); // 🔴 새로 추가
+
+  // 🔴 팔로우 상태 체크
+  const hasFollowedCharacters = followedCharacterIds.size > 0;
 
   // 상태 관리 - sessionStorage에서 복원
   const [manualContent, setManualContent] = useState(() =>
@@ -37,12 +43,39 @@ const PostManualWrite = () => {
   const [customMood, setCustomMood] = useState(
     () => postStorage.getManualMood() || "neutral"
   );
-  const [postSettings, setPostSettings] = useState(() =>
-    postStorage.getPostSettings()
-  );
+
+  // 🔴 postSettings 초기화 수정 - 팔로우 체크 추가
+  const [postSettings, setPostSettings] = useState(() => {
+    const saved = postStorage.getPostSettings();
+    // 팔로우가 없으면 AI 댓글 강제 OFF
+    if (!hasFollowedCharacters) {
+      return {
+        ...saved,
+        allowAIComments: false,
+      };
+    } else {
+      return {
+        ...saved,
+        allowAIComments: true,
+      };
+    }
+    // return saved;
+  });
+
   const [isSaving, setIsSaving] = useState(false);
   const [newHashtag, setNewHashtag] = useState("");
   const [hashtagError, setHashtagError] = useState("");
+
+  // 🔴 팔로우 상태 변경 감지 - 새로 추가
+  useEffect(() => {
+    // 팔로우가 없어지면 AI 댓글 OFF
+    if (!hasFollowedCharacters && postSettings.allowAIComments) {
+      setPostSettings((prev) => ({
+        ...prev,
+        allowAIComments: false,
+      }));
+    }
+  }, [hasFollowedCharacters, postSettings.allowAIComments]);
 
   // 컨텐츠 저장
   useEffect(() => {
@@ -64,44 +97,31 @@ const PostManualWrite = () => {
     postStorage.savePostSettings(postSettings);
   }, [postSettings]);
 
-  // 해시태그 입력 핸들러 - 띄어쓰기 방지 및 소문자 변환
+  // 해시태그 입력 핸들러
   const handleHashtagInput = (e) => {
     let value = e.target.value;
-
-    // 띄어쓰기 제거
     value = value.replace(/\s/g, "");
-
-    // 소문자로 변환
     value = value.toLowerCase();
-
-    // 한글, 영문, 숫자, 언더스코어만 허용
     value = value.replace(/[^ㄱ-ㅣ가-힣a-zA-Z0-9_]/g, "");
-
     setNewHashtag(value);
-    setHashtagError(""); // 입력 시 에러 메시지 초기화
+    setHashtagError("");
   };
 
-  // 해시태그 추가 - 강화된 validation
+  // 해시태그 추가
   const handleAddHashtag = () => {
-    // 1. trim 및 소문자 변환
     let tag = newHashtag.trim().toLowerCase();
-
-    // 2. # 제거
     tag = tag.replace(/^#/, "");
 
-    // 3. 빈 문자열 체크
     if (!tag) {
       setHashtagError("해시태그를 입력해주세요");
       return;
     }
 
-    // 4. 최대 개수 체크 (5개)
     if (customHashtags.length >= 5) {
       setHashtagError("최대 5개까지 추가 가능합니다");
       return;
     }
 
-    // 5. 중복 체크 (대소문자 무시)
     const isDuplicate = customHashtags.some(
       (existingTag) => existingTag.toLowerCase() === tag
     );
@@ -111,7 +131,6 @@ const PostManualWrite = () => {
       return;
     }
 
-    // 6. 추가
     setCustomHashtags([...customHashtags, tag]);
     setNewHashtag("");
     setHashtagError("");
@@ -120,7 +139,7 @@ const PostManualWrite = () => {
   // 해시태그 삭제
   const handleRemoveHashtag = (tagToRemove) => {
     setCustomHashtags(customHashtags.filter((tag) => tag !== tagToRemove));
-    setHashtagError(""); // 삭제 시 에러 메시지 초기화
+    setHashtagError("");
   };
 
   // Mood 변경
@@ -128,12 +147,17 @@ const PostManualWrite = () => {
     setCustomMood(mood);
   };
 
-  // 일기 저장
+  // 🔴 일기 저장 - 팔로우 체크 추가
   const handleSaveDiary = async () => {
     if (!manualContent.trim()) {
       alert("일기 내용을 입력해주세요.");
       return;
     }
+
+    // 🔴 팔로우가 없으면 AI 댓글 강제 OFF
+    const finalAllowAIComments = hasFollowedCharacters
+      ? postSettings.allowAIComments
+      : false;
 
     setIsSaving(true);
 
@@ -143,14 +167,11 @@ const PostManualWrite = () => {
         mood: customMood,
         hashtags: customHashtags,
         visibility: postSettings.visibility,
-        allowAIComments: postSettings.allowAIComments,
+        allowAIComments: finalAllowAIComments, // 🔴 수정된 값 사용
       };
 
       await createPostMutation.mutateAsync(postData);
-
-      // 성공시 모든 데이터 클리어
       postStorage.clearAll();
-
       navigate("/");
     } catch (error) {
       console.error("일기 저장 실패:", error);
@@ -183,7 +204,7 @@ const PostManualWrite = () => {
       <div className="flex-1 overflow-hidden">
         <div className="px-4 py-6 overflow-y-auto h-full">
           <div className="max-w-2xl mx-auto">
-            {/* Editor - 전체 width 사용 */}
+            {/* Editor */}
             <div className="mb-6">
               <CustomEditor
                 content={manualContent}
@@ -264,7 +285,6 @@ const PostManualWrite = () => {
               </label>
 
               <div className="bg-white rounded-xl border border-stone-200 p-4">
-                {/* 해시태그 목록 */}
                 {customHashtags.length > 0 ? (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {customHashtags.map((tag, index) => (
@@ -289,7 +309,6 @@ const PostManualWrite = () => {
                   </p>
                 )}
 
-                {/* 해시태그 추가 입력 */}
                 {customHashtags.length < 5 && (
                   <div>
                     <div className="flex gap-2">
@@ -315,7 +334,6 @@ const PostManualWrite = () => {
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>
-                    {/* 에러 메시지 표시 */}
                     {hashtagError && (
                       <p className="text-xs text-red-500 mt-1">
                         {hashtagError}
@@ -402,46 +420,102 @@ const PostManualWrite = () => {
                 </div>
               </div>
 
-              {/* AI 댓글 설정 */}
-              <div className="bg-gradient-to-r from-purple-50/50 to-blue-50/50 rounded-xl p-4 border border-stone-100">
+              {/* 🔴 AI 댓글 설정 - 대폭 수정 */}
+              <div
+                className={`bg-gradient-to-r from-purple-50/50 to-blue-50/50 rounded-xl p-4 border ${
+                  !hasFollowedCharacters
+                    ? "border-amber-200"
+                    : "border-stone-100"
+                }`}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white rounded-lg">
-                      <Sparkles className="w-5 h-5 text-purple-500" />
+                      <Sparkles
+                        className={`w-5 h-5 ${
+                          !hasFollowedCharacters
+                            ? "text-stone-400"
+                            : "text-purple-500"
+                        }`}
+                      />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-stone-700">
+                      <label
+                        className={`block text-sm font-medium ${
+                          !hasFollowedCharacters
+                            ? "text-stone-500"
+                            : "text-stone-700"
+                        }`}
+                      >
                         {translate("postManual.aiComments.title")}
                       </label>
-                      <p className="text-xs text-stone-500 mt-0.5">
+                      <p
+                        className={`text-xs mt-0.5 ${
+                          !hasFollowedCharacters
+                            ? "text-stone-400"
+                            : "text-stone-500"
+                        }`}
+                      >
                         {translate("postManual.aiComments.description")}
                       </p>
                     </div>
                   </div>
 
                   <button
-                    onClick={() =>
+                    onClick={() => {
+                      // 🔴 팔로우가 없으면 클릭 무시
+                      if (!hasFollowedCharacters) return;
+
                       setPostSettings((prev) => ({
                         ...prev,
                         allowAIComments: !prev.allowAIComments,
-                      }))
-                    }
-                    className="relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                    style={{
-                      backgroundColor: postSettings.allowAIComments
-                        ? "#6a83ff"
-                        : "#E5E7EB",
+                      }));
                     }}
+                    disabled={!hasFollowedCharacters} // 🔴 disabled 추가
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 ${
+                      !hasFollowedCharacters
+                        ? "opacity-50 cursor-not-allowed"
+                        : "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    }`}
+                    style={{
+                      backgroundColor:
+                        postSettings.allowAIComments && hasFollowedCharacters
+                          ? "#6a83ff"
+                          : "#E5E7EB",
+                    }}
+                    aria-label={
+                      !hasFollowedCharacters
+                        ? "AI 댓글 비활성화됨 - 캐릭터를 팔로우해주세요"
+                        : `AI 댓글 ${
+                            postSettings.allowAIComments ? "활성화" : "비활성화"
+                          }`
+                    }
+                    aria-disabled={!hasFollowedCharacters}
                   >
                     <span
                       className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${
-                        postSettings.allowAIComments
+                        postSettings.allowAIComments && hasFollowedCharacters
                           ? "translate-x-6"
                           : "translate-x-1"
                       }`}
                     />
                   </button>
                 </div>
+
+                {/* 🔴 팔로우 안내 메시지 추가 */}
+                {!hasFollowedCharacters && (
+                  <div className="mt-3 flex items-start gap-2 px-2 py-2 bg-amber-50 rounded-lg">
+                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-amber-700 font-medium">
+                        AI 댓글을 받으려면 AI 캐릭터를 팔로우해주세요
+                      </p>
+                      <p className="text-xs text-amber-600 mt-1">
+                        프로필 페이지에서 원하는 캐릭터를 팔로우할 수 있습니다
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

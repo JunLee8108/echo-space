@@ -77,7 +77,6 @@ const useUserStore = create(
 
           // Update local state
           const currentUser = get().user;
-          console.log(currentUser);
           if (currentUser) {
             set({
               user: {

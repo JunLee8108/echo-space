@@ -513,6 +513,7 @@ const Home = () => {
         personality: latestCharInfo.personality,
         avatar_url: latestCharInfo.avatar_url,
         description: latestCharInfo.description,
+        korean_description: latestCharInfo.korean_description,
         prompt_description: latestCharInfo.prompt_description,
         affinity: latestCharInfo.affinity, // 최신 affinity
         // ProfileModal에서 사용하는 필드명 맞추기

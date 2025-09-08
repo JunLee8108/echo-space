@@ -678,6 +678,44 @@ export const translations = {
     English: "Profile updated successfully.",
     Korean: "프로필이 성공적으로 업데이트되었습니다.",
   },
+
+  // ============= PWA Install Prompt =============
+  "pwa.installTitle": {
+    English: "DiaryFriend works better as an app",
+    Korean: "DiaryFriend를 앱으로 사용해보세요",
+  },
+  "pwa.installBenefit": {
+    English: "Faster access & works offline",
+    Korean: "빠른 접근 • 오프라인 사용 가능",
+  },
+  "pwa.installButton": {
+    English: "Install App",
+    Korean: "앱 설치",
+  },
+  "pwa.installLater": {
+    English: "Not now",
+    Korean: "나중에",
+  },
+  "pwa.ios.instruction": {
+    English: "Tap",
+    Korean: "탭",
+  },
+  "pwa.ios.share": {
+    English: "Share",
+    Korean: "공유",
+  },
+  "pwa.ios.click": {
+    English: "Click",
+    Korean: "클릭",
+  },
+  "pwa.ios.addToHome": {
+    English: '"Add to Home Screen"',
+    Korean: '"홈 화면에 추가"',
+  },
+  "pwa.ios.add": {
+    English: "Add",
+    Korean: "추가",
+  },
 };
 
 // 번역 헬퍼 함수

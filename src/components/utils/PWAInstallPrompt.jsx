@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, SquarePlus, ArrowRight, Share } from "lucide-react";
+import { useUserLanguage } from "../../stores/userStore";
+import { createTranslator } from "../utils/translations";
 
 const PWAInstallPrompt = () => {
   const [supportsPWA, setSupportsPWA] = useState(false);
@@ -7,6 +9,9 @@ const PWAInstallPrompt = () => {
   const [isIOS, setIsIOS] = useState(false);
   const [isInStandaloneMode, setIsInStandaloneMode] = useState(false);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+
+  const language = useUserLanguage();
+  const translate = createTranslator(language);
 
   useEffect(() => {
     // Check if iOS
@@ -71,45 +76,47 @@ const PWAInstallPrompt = () => {
   // iOS Install Prompt
   if (isIOS && showIOSPrompt) {
     return (
-      <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-8 md:w-96 bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-2xl p-5 z-50 animate-slide-up">
+      <div className="fixed top-16 left-1/2 transform -translate-x-1/2 w-[300px] bg-white rounded-lg shadow-md border border-stone-200 p-5 z-50 animate-fadeSlideDown">
         <button
           onClick={handleDismiss}
-          className="absolute top-3 right-3 text-white/80 hover:text-white transition-colors"
+          className="absolute top-5 right-2 text-stone-400 hover:text-stone-600 transition-colors"
           aria-label="Close"
         >
-          <X size={20} />
+          <X size={16} />
         </button>
 
-        <div className="flex items-start space-x-3">
-          <div className="flex-shrink-0 w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-            <span className="text-2xl">📔</span>
+        <div className="pr-6">
+          {/* Title with icon */}
+          <div className="flex items-start gap-2.5 mb-2">
+            <div className="flex-1">
+              <h3 className="text-stone-900 font-medium text-sm leading-tight">
+                {translate("pwa.installTitle")}
+              </h3>
+              <p className="text-stone-500 text-xs mt-0.5">
+                {translate("pwa.installBenefit")}
+              </p>
+            </div>
           </div>
 
-          <div className="flex-1">
-            <h3 className="text-white font-semibold text-lg mb-1">
-              Install DiaryFriend
-            </h3>
-            <p className="text-white/90 text-sm mb-3">
-              Keep your thoughts close - Install for quick access
-            </p>
+          {/* iOS Installation Steps - Visual Guide */}
+          <div className="mt-3 bg-stone-50 rounded-md p-2.5">
+            <div className="flex items-center justify-between text-[11px]">
+              {/* Step 1 */}
+              <div className="flex items-center gap-1">
+                <Share className="w-3.5 h-3.5 text-stone-600" />
+                <span className="text-stone-700 font-medium">
+                  {translate("pwa.ios.click")}
+                </span>
+              </div>
 
-            <div className="bg-white/10 rounded-lg p-3 text-white/95 text-xs space-y-2">
-              <div className="flex items-center space-x-2">
-                <span className="text-base">1.</span>
-                <span>
-                  Tap the Share button (공유 버튼){" "}
-                  <span className="inline-block">⎙</span>
+              <ArrowRight className="w-3 h-3 text-stone-400 flex-shrink-0" />
+
+              {/* Step 2 */}
+              <div className="flex items-center gap-1">
+                <span className="text-stone-700 font-medium">
+                  {translate("pwa.ios.addToHome")}
                 </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-base">2.</span>
-                <span>
-                  Scroll and tap "Add to Home Screen" (홈 화면에 추가)
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-base">3.</span>
-                <span>Tap "Add" (추가)</span>
+                <SquarePlus className="w-3.5 h-3.5 text-stone-600" />
               </div>
             </div>
           </div>
@@ -121,41 +128,41 @@ const PWAInstallPrompt = () => {
   // Standard PWA Install Prompt (Chrome, Edge, etc.)
   if (supportsPWA && promptInstall) {
     return (
-      <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-8 md:w-96 bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-2xl p-5 z-50 animate-slide-up">
+      <div className="fixed top-16 left-1/2 transform -translate-x-1/2 w-[310px] bg-white rounded-lg shadow-md border border-stone-200 p-5 z-50 animate-fadeSlideDown">
         <button
           onClick={handleDismiss}
-          className="absolute top-3 right-3 text-white/80 hover:text-white transition-colors"
+          className="absolute top-5 right-2 text-stone-400 hover:text-stone-600 transition-colors"
           aria-label="Close"
         >
-          <X size={20} />
+          <X size={16} />
         </button>
 
-        <div className="flex items-start space-x-3">
-          <div className="flex-shrink-0 w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-            <span className="text-2xl">⚡</span>
-          </div>
+        <div className="pr-6">
+          {/* Title with icon */}
+          <div className="flex items-start gap-2.5">
+            <div className="flex-1">
+              <h3 className="text-stone-900 font-medium text-sm leading-tight">
+                {translate("pwa.installTitle")}
+              </h3>
+              <p className="text-stone-500 text-xs mt-0.5 mb-2.5">
+                {translate("pwa.installBenefit")}
+              </p>
 
-          <div className="flex-1">
-            <h3 className="text-white font-semibold text-lg mb-1">
-              Install DiaryFriend
-            </h3>
-            <p className="text-white/90 text-sm mb-4">
-              Your personal echo chamber - Always within reach
-            </p>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={handleInstallClick}
-                className="flex-1 bg-white text-blue-600 font-medium py-2.5 px-4 rounded-xl hover:bg-white/95 transition-all transform hover:scale-105"
-              >
-                Install Now
-              </button>
-              <button
-                onClick={handleDismiss}
-                className="px-4 py-2.5 text-white/90 hover:text-white transition-colors"
-              >
-                Maybe Later
-              </button>
+              {/* Action buttons */}
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleInstallClick}
+                  className="px-3 py-1.5 bg-stone-900 text-white text-xs font-medium rounded-md hover:bg-stone-800 transition-colors"
+                >
+                  {translate("pwa.installButton")}
+                </button>
+                <button
+                  onClick={handleDismiss}
+                  className="text-stone-500 text-xs hover:text-stone-700 transition-colors"
+                >
+                  {translate("pwa.installLater")}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -166,21 +173,19 @@ const PWAInstallPrompt = () => {
   return null;
 };
 
-// Add CSS for animation (add to your global CSS or as a styled component)
+// Add CSS for animation
 const styles = `
-  @keyframes slide-up {
+  @keyframes fadeSlideDown {
     from {
-      transform: translateY(100%);
       opacity: 0;
     }
     to {
-      transform: translateY(0);
       opacity: 1;
     }
   }
   
-  .animate-slide-up {
-    animation: slide-up 0.3s ease-out;
+  .animate-fadeSlideDown {
+    animation: fadeSlideDown 0.3s ease-out;
   }
 `;
 

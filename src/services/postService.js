@@ -2,6 +2,8 @@ import supabase from "./supabaseClient";
 import { createOrGetHashtags, attachHashtagsToPost } from "./hashtagService";
 import { deletePostImages, cleanupUnusedImages } from "./imageService";
 
+import useCharacterStore from "../stores/characterStore";
+
 // 사용자 댓글 추가 함수
 export async function addUserComment(postId, userId, message) {
   if (!userId) throw new Error("user_id가 없습니다.");
@@ -794,6 +796,13 @@ async function triggerAIProcessing(
   userId
 ) {
   try {
+    // 팔로우한 캐릭터 체크 추가
+    const { followedCharacterIds } = useCharacterStore.getState();
+    if (followedCharacterIds.size === 0) {
+      console.log("⚡ No followed characters - skipping AI processing");
+      return { skipped: true, reason: "no_followed_characters" };
+    }
+
     const { data, error } = await supabase.functions.invoke("process-post-ai", {
       body: {
         postId,

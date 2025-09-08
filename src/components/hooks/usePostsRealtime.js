@@ -198,10 +198,12 @@ import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import supabase from "../../services/supabaseClient";
 import { useUserId } from "../../stores/userStore";
+import { useFollowedCharacterIds } from "../../stores/characterStore";
 
 export const usePostsRealtime = (posts) => {
   const queryClient = useQueryClient();
   const userId = useUserId();
+  const followedCharacterIds = useFollowedCharacterIds();
 
   // Map 구조: postId -> {channel, timer, subscribedAt, lastActivityAt, activityCount}
   const subscriptionsRef = useRef(new Map());
@@ -210,49 +212,110 @@ export const usePostsRealtime = (posts) => {
   const getPostsNeedingSubscription = (posts) => {
     if (!posts || !userId) return [];
 
+    // Phase 1: 팔로우한 캐릭터 체크 (가장 먼저)
+    if (followedCharacterIds.size === 0) {
+      console.log("⚡ No followed characters - skipping ALL subscriptions");
+      return [];
+    }
+
+    console.log(`✅ Found ${followedCharacterIds.size} followed characters`);
+
     const now = Date.now();
     const FIVE_MINUTES = 5 * 60 * 1000;
 
-    return posts
-      .filter((post) => {
-        // 기본 유효성 체크
-        if (!post.id || post.isTemp) return false;
+    const eligiblePosts = [];
 
-        // 이미 구독 중이면 스킵
-        if (subscriptionsRef.current.has(post.id)) return false;
+    posts.forEach((post) => {
+      // 기본 유효성 체크
+      if (!post.id || post.isTemp) {
+        return;
+      }
 
-        // AI 댓글이 비활성화된 포스트 제외
-        if (post.allow_ai_comments === false) return false;
+      // 이미 구독 중이면 스킵
+      if (subscriptionsRef.current.has(post.id)) {
+        return;
+      }
 
-        // 구독 조건:
-        // 1. 5분 이내 생성된 포스트
-        const isRecent = now - new Date(post.created_at) < FIVE_MINUTES;
+      // Phase 1: AI 댓글 비활성화 체크
+      if (post.allow_ai_comments === false) {
+        console.log(`🚫 Post ${post.id}: AI comments disabled`);
+        return;
+      }
 
-        // 2. AI 활동이 아직 충분하지 않은 포스트
-        const aiCommentCount =
-          post.Comment?.filter((c) => c.character_id !== null).length || 0;
-        const aiLikeCount =
-          post.Post_Like?.filter((l) => l.character_id !== null).length || 0;
-        const totalAIActivity = aiCommentCount + aiLikeCount;
-        const needsMoreActivity = totalAIActivity < 5; // 평균 예상 활동 수
+      // 시간 조건 체크
+      const isRecent = now - new Date(post.created_at) < FIVE_MINUTES;
+      const recentlyUpdated =
+        post.updated_at &&
+        now - new Date(post.updated_at) < FIVE_MINUTES &&
+        post.updated_at !== post.created_at;
 
-        // 3. 최근 수정되었고 AI 활동이 부족한 경우
-        const recentlyUpdated =
-          post.updated_at &&
-          now - new Date(post.updated_at) < FIVE_MINUTES &&
-          post.updated_at !== post.created_at;
+      if (!isRecent && !recentlyUpdated) {
+        return;
+      }
 
-        return (isRecent || recentlyUpdated) && needsMoreActivity;
-      })
-      .slice(0, 5); // 최대 5개만 동시 구독
+      // AI 활동량 체크
+      const aiCommentCount =
+        post.Comment?.filter((c) => c.character_id !== null).length || 0;
+      const aiLikeCount =
+        post.Post_Like?.filter((l) => l.character_id !== null).length || 0;
+      const totalAIActivity = aiCommentCount + aiLikeCount;
+
+      if (totalAIActivity >= 5) {
+        console.log(
+          `✓ Post ${post.id}: Already has enough AI activity (${totalAIActivity})`
+        );
+        return;
+      }
+
+      // Phase 2: 우선순위 계산
+      const priority = calculatePriority(post, followedCharacterIds.size);
+
+      eligiblePosts.push({ post, priority });
+    });
+
+    // 우선순위 정렬 후 상위 5개만 반환
+    return eligiblePosts
+      .sort((a, b) => b.priority - a.priority)
+      .slice(0, 5)
+      .map((item) => item.post);
+  };
+
+  // Phase 2: 우선순위 계산 시스템
+  const calculatePriority = (post, followedCount) => {
+    let priority = 0;
+    const now = Date.now();
+
+    // 1. 시간 가중치 (최신일수록 높음)
+    const ageMinutes = (now - new Date(post.created_at)) / (60 * 1000);
+    priority += Math.max(0, 5 - ageMinutes); // 0-5점
+
+    // 2. 팔로우 수 가중치
+    priority += Math.min(followedCount, 10) * 0.5; // 최대 5점
+
+    // 3. 기존 AI 활동 역가중치 (적을수록 우선순위 높음)
+    const aiActivity =
+      (post.Comment?.filter((c) => c.character_id !== null).length || 0) +
+      (post.Post_Like?.filter((l) => l.character_id !== null).length || 0);
+    priority += Math.max(0, 5 - aiActivity); // 0-5점
+
+    // 4. 수정된 포스트 보너스
+    if (post.updated_at && post.updated_at !== post.created_at) {
+      priority += 2;
+    }
+
+    return priority;
   };
 
   // 구독 해제가 필요한 포스트 확인
   const getPostsToUnsubscribe = (currentPosts) => {
     const postsToUnsubscribe = [];
     const now = Date.now();
-    const MAX_SUBSCRIPTION_TIME = 3 * 60 * 1000; // 3분
-    const INACTIVITY_THRESHOLD = 30 * 1000; // 30초
+
+    // Phase 2: 동적 시간 조정
+    const baseTimeout =
+      followedCharacterIds.size > 5 ? 4 * 60 * 1000 : 3 * 60 * 1000;
+    const INACTIVITY_THRESHOLD =
+      followedCharacterIds.size > 3 ? 45 * 1000 : 30 * 1000;
 
     subscriptionsRef.current.forEach((subscription, postId) => {
       const post = currentPosts?.find((p) => p.id === postId);
@@ -263,10 +326,19 @@ export const usePostsRealtime = (posts) => {
         return;
       }
 
-      // 1. 절대 타임아웃 (3분 경과)
-      const isExpired = now - subscription.subscribedAt > MAX_SUBSCRIPTION_TIME;
+      // Phase 1: 팔로우가 0이 되면 즉시 해제
+      if (followedCharacterIds.size === 0) {
+        console.log(
+          `⚡ No followers - immediately unsubscribing from ${postId}`
+        );
+        postsToUnsubscribe.push(postId);
+        return;
+      }
 
-      // 2. 활동 기반 완료 판단
+      // 절대 타임아웃
+      const isExpired = now - subscription.subscribedAt > baseTimeout;
+
+      // 활동 기반 완료 판단
       const inactiveDuration = now - subscription.lastActivityAt;
       const hasBeenInactive = inactiveDuration > INACTIVITY_THRESHOLD;
 
@@ -277,24 +349,27 @@ export const usePostsRealtime = (posts) => {
         post.Post_Like?.filter((l) => l.character_id !== null).length || 0;
       const totalAIActivity = aiCommentCount + aiLikeCount;
 
-      // 충분한 활동(5개 이상) + 30초 비활성 = 완료
-      const seemsComplete = totalAIActivity >= 5 && hasBeenInactive;
+      // Phase 2: 지능형 완료 판단
+      const activityPerMinute =
+        subscription.activityCount /
+        ((now - subscription.subscribedAt) / 60000);
+      const seemsDead = activityPerMinute < 0.5 && hasBeenInactive;
 
-      // 또는 적어도 2개의 댓글과 일부 좋아요를 받고 30초 경과
-      const hasMinimumActivity =
-        aiCommentCount >= 2 && totalAIActivity >= 3 && hasBeenInactive;
+      // 충분한 활동 또는 활동 정체
+      const seemsComplete =
+        (totalAIActivity >= 5 && hasBeenInactive) ||
+        (totalAIActivity >= 3 && inactiveDuration > 60000) ||
+        seemsDead;
 
-      // 3. AI 댓글이 비활성화됨
+      // AI 댓글이 비활성화됨
       const aiDisabled = post.allow_ai_comments === false;
 
-      if (isExpired || seemsComplete || hasMinimumActivity || aiDisabled) {
-        console.log(`📊 구독 해제 판단 - Post ${postId}:`, {
-          expired: isExpired,
-          complete: seemsComplete,
-          minimum: hasMinimumActivity,
-          disabled: aiDisabled,
+      if (isExpired || seemsComplete || aiDisabled) {
+        console.log(`📊 Unsubscribe decision - Post ${postId}:`, {
+          reason: isExpired ? "timeout" : aiDisabled ? "disabled" : "complete",
           activity: totalAIActivity,
-          inactive: `${inactiveDuration / 1000}초`,
+          activityRate: activityPerMinute.toFixed(2),
+          inactive: `${(inactiveDuration / 1000).toFixed(0)}s`,
         });
         postsToUnsubscribe.push(postId);
       }
@@ -307,7 +382,9 @@ export const usePostsRealtime = (posts) => {
   const subscribeToPost = (post) => {
     if (subscriptionsRef.current.has(post.id)) return;
 
-    console.log(`🔔 Subscribing to post: ${post.id}`);
+    console.log(
+      `🔔 Subscribing to post: ${post.id} (${followedCharacterIds.size} followers)`
+    );
 
     const channel = supabase
       .channel(`post-${post.id}`)
@@ -321,6 +398,12 @@ export const usePostsRealtime = (posts) => {
         },
         async (payload) => {
           const comment = payload.new;
+
+          // 현재 사용자의 댓글은 무시
+          if (comment.user_id === userId) {
+            console.log(`⭕ Skipping user's own comment for post ${post.id}`);
+            return;
+          }
 
           // 활동 기록 업데이트
           const subscription = subscriptionsRef.current.get(post.id);
@@ -370,12 +453,13 @@ export const usePostsRealtime = (posts) => {
               }
 
               console.log(
-                `💬 AI comment received from ${data?.name} for post ${post.id}`
+                `💬 AI comment from ${data?.name} for post ${post.id}`
               );
             } catch (error) {
               console.error("Error fetching character:", error);
             }
           } else if (comment.user_id) {
+            // 다른 사용자의 댓글 (public 포스트에서만 가능)
             try {
               const { data } = await supabase
                 .from("User_Profile")
@@ -391,6 +475,10 @@ export const usePostsRealtime = (posts) => {
                 isLikedByUser: false,
                 like: 0,
               };
+
+              console.log(
+                `💬 User comment received from another user for post ${post.id}`
+              );
             } catch (error) {
               console.error("Error fetching user:", error);
             }
@@ -513,17 +601,19 @@ export const usePostsRealtime = (posts) => {
       )
       .subscribe((status, error) => {
         if (status === "SUBSCRIBED") {
-          console.log(`✅ Successfully subscribed to post ${post.id}`);
+          console.log(`✅ Subscribed to post ${post.id}`);
         } else if (error) {
           console.error(`❌ Failed to subscribe to post ${post.id}:`, error);
         }
       });
 
-    // 최대 시간 타이머 (3분)
+    // 동적 타임아웃 설정
+    const timeout =
+      followedCharacterIds.size > 5 ? 4 * 60 * 1000 : 3 * 60 * 1000;
     const timer = setTimeout(() => {
-      console.log(`⏰ Auto-unsubscribing from post ${post.id} (max timeout)`);
+      console.log(`⏰ Auto-unsubscribing from post ${post.id} (timeout)`);
       unsubscribeFromPost(post.id);
-    }, 3 * 60 * 1000);
+    }, timeout);
 
     // 구독 정보 저장
     subscriptionsRef.current.set(post.id, {
@@ -541,13 +631,31 @@ export const usePostsRealtime = (posts) => {
     if (!subscription) return;
 
     console.log(
-      `🔕 Unsubscribing from post: ${postId} (활동: ${subscription.activityCount}개)`
+      `📕 Unsubscribing from post: ${postId} (활동: ${subscription.activityCount}개)`
     );
 
     clearTimeout(subscription.timer);
     supabase.removeChannel(subscription.channel);
     subscriptionsRef.current.delete(postId);
   };
+
+  // Phase 2: 팔로우 상태 변경 감지
+  useEffect(() => {
+    // 팔로우가 0이 되면 모든 구독 해제
+    if (followedCharacterIds.size === 0 && subscriptionsRef.current.size > 0) {
+      console.log("⚡ No followers detected - clearing all subscriptions");
+      subscriptionsRef.current.forEach((_, postId) => {
+        unsubscribeFromPost(postId);
+      });
+      return;
+    }
+
+    // 팔로우가 0에서 1+로 변경되면 재평가
+    if (followedCharacterIds.size > 0 && posts && posts.length > 0) {
+      const eligiblePosts = getPostsNeedingSubscription(posts);
+      eligiblePosts.forEach((post) => subscribeToPost(post));
+    }
+  }, [followedCharacterIds.size]);
 
   // 메인 Effect
   useEffect(() => {
@@ -576,12 +684,10 @@ export const usePostsRealtime = (posts) => {
         Array.from(subscriptionsRef.current.keys())
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posts, userId]);
 
   // Cleanup
   useEffect(() => {
-    // ref를 로컬 변수에 복사 (권장)
     const subscriptions = subscriptionsRef.current;
 
     return () => {

@@ -98,10 +98,6 @@ const CustomEditor = ({ content, onChange, onHashtagAdd }) => {
 
   const editorRef = useRef(null);
   const fileInputRef = useRef(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-  const [selectedEmojiCategory, setSelectedEmojiCategory] =
-    useState("emotions");
   const [currentAlignment, setCurrentAlignment] = useState("left");
   const [activeStyles, setActiveStyles] = useState({
     bold: false,
@@ -698,13 +694,6 @@ const CustomEditor = ({ content, onChange, onHashtagAdd }) => {
     }
   };
 
-  // 이모지 삽입
-  const insertEmoji = (emoji) => {
-    insertAtCursor(emoji + " ");
-    setShowEmojiPicker(false);
-    setShowCategoryDropdown(false);
-  };
-
   // 이미지 업로드
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files || []);
@@ -982,25 +971,6 @@ const CustomEditor = ({ content, onChange, onHashtagAdd }) => {
     return () => clearTimeout(debounce);
   }, [content]);
 
-  // 모달 외부 클릭 감지
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (showEmojiPicker && !e.target.closest(".emoji-picker-container")) {
-        setShowEmojiPicker(false);
-        setShowCategoryDropdown(false);
-      }
-      if (
-        showCategoryDropdown &&
-        !e.target.closest(".emoji-category-dropdown")
-      ) {
-        setShowCategoryDropdown(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showEmojiPicker, showCategoryDropdown]);
-
   // beforeinput 이벤트 리스너 추가
   useEffect(() => {
     const editor = editorRef.current;
@@ -1147,97 +1117,6 @@ const CustomEditor = ({ content, onChange, onHashtagAdd }) => {
             <Clock className="w-3 h-3" />
             {translate("editor.button.time")}
           </button>
-
-          <div className="emoji-picker-container">
-            <button
-              type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="quick-btn"
-              title={translate("editor.tooltip.insertEmoji")}
-            >
-              <Smile className="w-3 h-3" />
-              {translate("editor.button.emoji")}
-            </button>
-
-            {showEmojiPicker && (
-              <div className="emoji-picker">
-                <div className="emoji-header">
-                  <div className="emoji-category-dropdown">
-                    <button
-                      type="button"
-                      className="category-dropdown-btn"
-                      onClick={() =>
-                        setShowCategoryDropdown(!showCategoryDropdown)
-                      }
-                    >
-                      <span className="category-icon">
-                        {selectedEmojiCategory === "emotions" && "😊"}
-                        {selectedEmojiCategory === "activities" && "⚡"}
-                        {selectedEmojiCategory === "weather" && "☀️"}
-                        {selectedEmojiCategory === "symbols" && "❤️"}
-                      </span>
-                      <span className="category-name">
-                        {EMOJI_CATEGORIES[selectedEmojiCategory].name}
-                      </span>
-                      <ChevronDown
-                        className={`dropdown-arrow ${
-                          showCategoryDropdown ? "rotate" : ""
-                        }`}
-                      />
-                    </button>
-
-                    {showCategoryDropdown && (
-                      <div className="category-dropdown-menu">
-                        {Object.entries(EMOJI_CATEGORIES).map(
-                          ([key, category]) => (
-                            <button
-                              key={key}
-                              type="button"
-                              onClick={() => {
-                                setSelectedEmojiCategory(key);
-                                setShowCategoryDropdown(false);
-                              }}
-                              className={`category-dropdown-item ${
-                                selectedEmojiCategory === key ? "active" : ""
-                              }`}
-                            >
-                              <span className="category-item-icon">
-                                {key === "emotions" && "😊"}
-                                {key === "activities" && "⚡"}
-                                {key === "weather" && "☀️"}
-                                {key === "symbols" && "❤️"}
-                              </span>
-                              <span className="category-item-name">
-                                {category.name}
-                              </span>
-                              {selectedEmojiCategory === key && (
-                                <span className="category-item-check">✔</span>
-                              )}
-                            </button>
-                          )
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="emoji-grid-small">
-                  {EMOJI_CATEGORIES[selectedEmojiCategory].emojis.map(
-                    (emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() => insertEmoji(emoji)}
-                        className="emoji-btn"
-                      >
-                        {emoji}
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
 
           <button
             type="button"

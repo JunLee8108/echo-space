@@ -44,7 +44,7 @@ export const useAddComment = (options = {}) => {
         created_at: new Date().toISOString(),
         isUserComment: true,
         character: displayName || "User",
-        avatar_url: null, // avatar_url이 없음
+        avatar_url: null,
         personality: [],
         description: "",
         prompt_description: "",
@@ -55,6 +55,7 @@ export const useAddComment = (options = {}) => {
           display_name: displayName || "User",
         },
         isLoading: true, // 로딩 상태 표시
+        isLocallyAdded: true, // 🔴 로컬에서 추가됨을 표시
       };
 
       // 캐시 업데이트
@@ -102,6 +103,7 @@ export const useAddComment = (options = {}) => {
                       return {
                         ...savedComment,
                         isLoading: false,
+                        isLocallyAdded: true, // 🔴 여전히 로컬 플래그 유지
                       };
                     }
                     return comment;
@@ -113,6 +115,36 @@ export const useAddComment = (options = {}) => {
           })),
         };
       });
+
+      // 🔴 3초 후 isLocallyAdded 플래그 제거 (선택적)
+      setTimeout(() => {
+        queryClient.setQueryData(["posts", userId], (old) => {
+          if (!old) return old;
+
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              posts: page.posts.map((post) => {
+                if (post.id === postId) {
+                  return {
+                    ...post,
+                    Comment: post.Comment.map((comment) => {
+                      if (comment.id === savedComment.id) {
+                        const { isLocallyAdded: _isLocallyAdded, ...rest } =
+                          comment;
+                        return rest;
+                      }
+                      return comment;
+                    }),
+                  };
+                }
+                return post;
+              }),
+            })),
+          };
+        });
+      }, 3000);
 
       // 성공 콜백
       if (options.onSuccess) {

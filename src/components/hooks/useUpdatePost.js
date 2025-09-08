@@ -22,19 +22,7 @@ export const useUpdatePost = (options = {}) => {
         let processedContent = content;
 
         if (content && content.includes("data:image")) {
-          console.log("🖼️ Processing images for update...");
-
-          processedContent = await processContentImages(
-            content,
-            userId,
-            (progress) => {
-              console.log(
-                `📤 Image upload progress: ${progress.current}/${progress.total} - ${progress.status}`
-              );
-            }
-          );
-
-          console.log("✅ Images processed successfully");
+          processedContent = await processContentImages(content, userId);
         }
 
         // 2. postService에서 updatePost 호출 (처리된 콘텐츠 사용)
