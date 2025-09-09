@@ -1,14 +1,26 @@
 import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
-import { ChevronLeft, Cloud, Sun, CloudRain } from "lucide-react";
+import { ChevronLeft, Smile, Meh, Frown } from "lucide-react";
 
 import { usePostsByDate, usePostActions } from "../../stores/postStore";
 import { useUserId } from "../../stores/userStore";
 
-const WEATHER_ICONS = {
-  happy: { icon: Sun, label: "맑음" },
-  neutral: { icon: Cloud, label: "흐림" },
-  sad: { icon: CloudRain, label: "비" },
+const MOOD_ICONS = {
+  happy: {
+    icon: Smile,
+    label: "기쁨",
+    color: "text-yellow-500",
+  },
+  neutral: {
+    icon: Meh,
+    label: "보통",
+    color: "text-gray-500",
+  },
+  sad: {
+    icon: Frown,
+    label: "슬픔",
+    color: "text-blue-500",
+  },
 };
 
 const PostDetail = () => {
@@ -17,21 +29,28 @@ const PostDetail = () => {
   const userId = useUserId();
 
   const posts = usePostsByDate(date);
-  const { loadRecentPosts } = usePostActions();
+  const { loadMonthData, hasMonthCache } = usePostActions();
 
   useEffect(() => {
-    // Store에 데이터가 없으면 로드 시도
-    if (!posts && userId) {
-      loadRecentPosts(userId)
-        .then((data) => {
-          // 로드 후에도 해당 날짜 데이터가 없으면 홈으로
-          if (!data?.entries?.[date]) {
+    // Store에 데이터가 없으면 해당 월 데이터 로드
+    if (!posts && userId && date) {
+      const monthKey = date.substring(0, 7); // "2024-01"
+
+      // 해당 월 캐시가 없으면 로드
+      if (!hasMonthCache(monthKey)) {
+        loadMonthData(userId, monthKey)
+          .then((data) => {
+            // 로드 후에도 해당 날짜 데이터가 없으면 홈으로
+            if (!data?.entries?.[date]) {
+              console.log(`No posts found for date ${date}`);
+              navigate("/");
+            }
+          })
+          .catch((error) => {
+            console.error("Failed to load month data:", error);
             navigate("/");
-          }
-        })
-        .catch(() => {
-          navigate("/");
-        });
+          });
+      }
     }
   }, [posts, userId, date]);
 
@@ -84,8 +103,8 @@ const PostDetail = () => {
           </span>
           {posts[0]?.mood &&
             (() => {
-              const WeatherIcon = WEATHER_ICONS[posts[0].mood].icon;
-              return <WeatherIcon className="w-5 h-5 text-gray-600" />;
+              const WeatherIcon = MOOD_ICONS[posts[0].mood].icon;
+              return <WeatherIcon className="w-4.5 h-4.5 text-gray-600" />;
             })()}
         </div>
 
@@ -140,32 +159,6 @@ const PostDetail = () => {
               )}
             </div>
           ))}
-        </div>
-
-        {/* Navigation to prev/next day */}
-        <div className="flex justify-between mt-12 pt-6 border-t border-gray-100">
-          <button
-            onClick={() => {
-              const prevDate = new Date(dateObj);
-              prevDate.setDate(prevDate.getDate() - 1);
-              const prevDateStr = prevDate.toISOString().split("T")[0];
-              navigate(`/post/${prevDateStr}`);
-            }}
-            className="text-xs text-gray-500 hover:text-gray-700"
-          >
-            ← Previous Day
-          </button>
-          <button
-            onClick={() => {
-              const nextDate = new Date(dateObj);
-              nextDate.setDate(nextDate.getDate() + 1);
-              const nextDateStr = nextDate.toISOString().split("T")[0];
-              navigate(`/post/${nextDateStr}`);
-            }}
-            className="text-xs text-gray-500 hover:text-gray-700"
-          >
-            Next Day →
-          </button>
         </div>
       </div>
     </div>

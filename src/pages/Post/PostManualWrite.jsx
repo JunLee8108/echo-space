@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useFollowedCharacterIds } from "../../stores/characterStore";
 import { useCreatePost } from "../../components/hooks/useCreatePost";
+import { usePostActions } from "../../stores/postStore";
 import { postStorage } from "../../components/utils/postStorage";
 import { useUserLanguage } from "../../stores/userStore";
 import { createTranslator } from "../../components/utils/translations";
@@ -29,6 +30,7 @@ const PostManualWrite = () => {
   const translate = createTranslator(userLanguage);
   const createPostMutation = useCreatePost();
   const followedCharacterIds = useFollowedCharacterIds();
+  const { setViewMonth } = usePostActions();
 
   // 팔로우 상태 체크
   const hasFollowedCharacters = followedCharacterIds.size > 0;
@@ -198,12 +200,29 @@ const PostManualWrite = () => {
           : new Date().toISOString(), // 선택된 날짜 사용
       };
 
-      await createPostMutation.mutateAsync(postData);
+      // createPostMutation이 내부적으로 addNewPost 호출
+      const savedPost = await createPostMutation.mutateAsync(postData);
+
+      // Home의 형식에 맞춰 날짜 키 생성
+      const postDate = new Date(savedPost.entryDate || savedPost.createdAt);
+      const year = postDate.getFullYear();
+      const month = postDate.getMonth(); // 0-based 그대로 사용
+      const day = postDate.getDate();
+
+      // Home의 formatDateKey와 동일한 형식
+      const dateKey = `${year}-${month}-${day}`;
+
+      // 해당 월로 뷰 변경
+      setViewMonth(postDate);
+
+      // 하이라이트용 날짜 저장
+      sessionStorage.setItem("just_created_date", dateKey);
 
       // 성공 후 모든 데이터 클리어
       postStorage.clearSelectedDate(); // 선택된 날짜 클리어
       postStorage.clearAll();
-      navigate("/");
+
+      navigate("/", { replace: true });
     } catch (error) {
       console.error("일기 저장 실패:", error);
       alert("저장에 실패했습니다.");
@@ -214,10 +233,6 @@ const PostManualWrite = () => {
 
   // 뒤로가기 핸들러
   const handleBack = () => {
-    // 선택된 날짜가 있으면 클리어
-    if (selectedDate) {
-      postStorage.clearSelectedDate();
-    }
     navigate(-1);
   };
 

@@ -1,59 +1,138 @@
 // pages/Home.jsx
-import { useState, useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   ChevronLeft,
   ChevronRight,
-  Cloud,
-  Sun,
-  CloudRain,
-  Plus,
+  Smile,
+  Meh,
+  Frown,
+  Loader2,
 } from "lucide-react";
-
 import {
-  useRecentPosts,
-  usePostsLoading,
+  useMonthlyCache,
+  useCurrentMonth,
+  useViewMonth,
+  useMonthLoading,
   usePostActions,
 } from "../../stores/postStore";
 import { useUserId } from "../../stores/userStore";
 import { postStorage } from "../../components/utils/postStorage";
 import "./Home.css";
 
-const WEATHER_ICONS = {
-  happy: { icon: Sun, label: "맑음" },
-  neutral: { icon: Cloud, label: "흐림" },
-  sad: { icon: CloudRain, label: "비" },
+const MOOD_ICONS = {
+  happy: {
+    icon: Smile,
+    label: "기쁨",
+    color: "text-emerald-500",
+  },
+  neutral: {
+    icon: Meh,
+    label: "보통",
+    color: "text-gray-500",
+  },
+  sad: {
+    icon: Frown,
+    label: "슬픔",
+    color: "text-blue-400",
+  },
 };
 
 const Home = () => {
   const userId = useUserId();
   const navigate = useNavigate();
 
-  const recentPosts = useRecentPosts();
-  const loading = usePostsLoading();
-  const { loadRecentPosts } = usePostActions();
+  const [justCreatedDate, setJustCreatedDate] = useState(null);
 
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const monthlyCache = useMonthlyCache();
+  const currentMonthKey = useCurrentMonth();
+  const viewMonth = useViewMonth(); // store에서 가져옴
+  const {
+    loadCurrentMonth,
+    loadMonthData,
+    prefetchAdjacentMonths,
+    hasMonthCache,
+    setViewMonth, // store의 setter 사용
+  } = usePostActions();
 
-  // 데이터 로드
+  const viewMonthKey = `${viewMonth.getFullYear()}-${String(
+    viewMonth.getMonth() + 1
+  ).padStart(2, "0")}`;
+  const isLoading = useMonthLoading(viewMonthKey);
+
+  // 초기 로드: 현재 월 데이터
   useEffect(() => {
-    if (userId && !recentPosts) {
-      loadRecentPosts(userId);
+    if (userId && !currentMonthKey) {
+      loadCurrentMonth(userId).then(() => {
+        // 현재 월 로드 후 인접 월 프리페치 (선택적)
+        const currentKey = `${new Date().getFullYear()}-${String(
+          new Date().getMonth() + 1
+        ).padStart(2, "0")}`;
+        prefetchAdjacentMonths(userId, currentKey);
+      });
     }
   }, [userId]);
 
-  // 캘린더 데이터
+  // sessionStorage에서 방금 작성한 날짜 확인
+  useEffect(() => {
+    const createdDate = sessionStorage.getItem("just_created_date");
+    if (createdDate && userId) {
+      const [year, month, day] = createdDate.split("-").map(Number);
+      const createdMonthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+      // 작성한 날짜의 월이 현재 뷰 월과 같으면 강제 리로드
+      if (createdMonthKey === viewMonthKey) {
+        console.log("Force reloading month after post creation:", viewMonthKey);
+        loadMonthData(userId, viewMonthKey, true); // true = forceReload
+      }
+
+      setJustCreatedDate(createdDate);
+      sessionStorage.removeItem("just_created_date");
+
+      setTimeout(() => {
+        setJustCreatedDate(null);
+      }, 3000);
+    }
+  }, [userId, viewMonthKey, loadMonthData]);
+
+  // 뷰 월이 변경되면 해당 월 데이터 로드
+  useEffect(() => {
+    if (userId && viewMonthKey && !hasMonthCache(viewMonthKey)) {
+      loadMonthData(userId, viewMonthKey);
+    }
+  }, [userId, viewMonthKey]);
+
+  // 현재 보고 있는 월의 캘린더 데이터
   const calendarData = useMemo(() => {
-    if (!recentPosts?.entries) return {};
+    const monthData = monthlyCache[viewMonthKey];
+    if (!monthData?.entries) return {};
 
     const calendar = {};
-    Object.keys(recentPosts.entries).forEach((dateStr) => {
+    Object.keys(monthData.entries).forEach((dateStr) => {
       const [year, month, day] = dateStr.split("-");
       const key = `${parseInt(year)}-${parseInt(month) - 1}-${parseInt(day)}`;
-      calendar[key] = recentPosts.entries[dateStr];
+      calendar[key] = monthData.entries[dateStr];
     });
     return calendar;
-  }, [recentPosts]);
+  }, [monthlyCache, viewMonthKey]);
+
+  // 최근 엔트리 (모든 캐시된 데이터에서)
+  const recentEntries = useMemo(() => {
+    const allEntries = [];
+
+    Object.values(monthlyCache).forEach((monthData) => {
+      if (monthData?.entries) {
+        Object.entries(monthData.entries).forEach(([dateStr, posts]) => {
+          allEntries.push({ dateStr, posts });
+        });
+      }
+    });
+
+    // 날짜순 정렬하고 최근 4개만
+    return allEntries
+      .sort((a, b) => b.dateStr.localeCompare(a.dateStr))
+      .slice(0, 4);
+  }, [monthlyCache]);
 
   const getDaysInMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -67,13 +146,22 @@ const Home = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const handleMonthChange = (direction) => {
-    const newMonth = new Date(currentMonth);
+  const handleMonthChange = async (direction) => {
+    const newMonth = new Date(viewMonth);
     newMonth.setMonth(newMonth.getMonth() + direction);
-    setCurrentMonth(newMonth);
+    setViewMonth(newMonth); // store의 setter 사용
+
+    // 새로운 월로 이동 시 데이터 로드 (useEffect에서 처리됨)
+    const newMonthKey = `${newMonth.getFullYear()}-${String(
+      newMonth.getMonth() + 1
+    ).padStart(2, "0")}`;
+
+    // 인접 월 프리페치
+    if (userId) {
+      prefetchAdjacentMonths(userId, newMonthKey);
+    }
   };
 
-  // 날짜 유효성 검사 (미래 날짜 방지)
   const isValidDate = (year, month, day) => {
     const selectedDate = new Date(year, month, day);
     const today = new Date();
@@ -81,20 +169,17 @@ const Home = () => {
     return selectedDate <= today;
   };
 
-  // 날짜 클릭 핸들러 - 수정됨
   const handleDateClick = (day) => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
+    const year = viewMonth.getFullYear();
+    const month = viewMonth.getMonth();
     const dateKey = formatDateKey(year, month, day);
     const posts = calendarData[dateKey];
 
     if (posts && posts.length > 0) {
-      // 기존: 작성된 일기가 있으면 해당 날짜 페이지로 이동
       const monthStr = String(month + 1).padStart(2, "0");
       const dayStr = String(day).padStart(2, "0");
       navigate(`/post/${year}-${monthStr}-${dayStr}`);
     } else if (isValidDate(year, month, day)) {
-      // 새로운: 빈 날짜이고 유효한 날짜면 일기 작성
       const selectedDate = new Date(year, month, day);
       postStorage.saveSelectedDate(selectedDate.toISOString());
       navigate("/post/new");
@@ -105,12 +190,8 @@ const Home = () => {
     navigate(`/post/${dateStr}`);
   };
 
-  const sortedDates = Object.keys(recentPosts?.entries || {})
-    .sort()
-    .reverse()
-    .slice(0, 3);
-
-  if (loading || !recentPosts) {
+  // 로딩 상태
+  if (!userId) {
     return (
       <div className="min-h-screen bg-white">
         <div className="max-w-2xl mx-auto px-6 py-8">
@@ -128,23 +209,29 @@ const Home = () => {
       <div className="max-w-2xl mx-auto px-6 py-8">
         {/* Month Navigation */}
         <div className="flex items-center justify-center gap-6 mb-6">
-          <button onClick={() => handleMonthChange(-1)}>
+          <button
+            onClick={() => handleMonthChange(-1)}
+            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+          >
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h2 className="text-md font-medium">
-            {currentMonth.toLocaleDateString("en-US", {
+          <h2 className="text-md font-medium min-w-[120px] text-center">
+            {viewMonth.toLocaleDateString("en-US", {
               month: "short",
               year: "numeric",
             })}
           </h2>
-          <button onClick={() => handleMonthChange(1)}>
+          <button
+            onClick={() => handleMonthChange(1)}
+            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+          >
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
 
         {/* Calendar Grid */}
         <div className="mb-8">
-          <div className="grid grid-cols-7 gap-4 mb-4">
+          <div className="grid grid-cols-7 gap-3 mb-4">
             {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day) => (
               <div
                 key={day}
@@ -155,35 +242,37 @@ const Home = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-4">
-            {Array.from({ length: getFirstDayOfMonth(currentMonth) }).map(
+          <div className="grid grid-cols-7 gap-3">
+            {Array.from({ length: getFirstDayOfMonth(viewMonth) }).map(
               (_, i) => (
                 <div key={`empty-${i}`} className="aspect-square" />
               )
             )}
 
-            {Array.from({ length: getDaysInMonth(currentMonth) }).map(
-              (_, i) => {
-                const day = i + 1;
-                const year = currentMonth.getFullYear();
-                const month = currentMonth.getMonth();
-                const dateKey = formatDateKey(year, month, day);
-                const hasEntry = calendarData[dateKey];
-                const isToday =
-                  new Date().toDateString() ===
-                  new Date(year, month, day).toDateString();
-                const isFuture = !isValidDate(year, month, day);
+            {Array.from({ length: getDaysInMonth(viewMonth) }).map((_, i) => {
+              const day = i + 1;
+              const year = viewMonth.getFullYear();
+              const month = viewMonth.getMonth();
+              const dateKey = formatDateKey(year, month, day);
+              const hasEntry = calendarData[dateKey];
+              const isToday =
+                new Date().toDateString() ===
+                new Date(year, month, day).toDateString();
+              const isFuture = !isValidDate(year, month, day);
+              const isJustCreated = justCreatedDate === dateKey;
 
-                return (
-                  <button
-                    key={day}
-                    onClick={() => handleDateClick(day)}
-                    className={`
+              return (
+                <button
+                  key={day}
+                  onClick={() => handleDateClick(day)}
+                  className={`
                      aspect-square rounded-full flex items-center justify-center text-sm
                      relative 
                      ${
                        hasEntry
-                         ? "bg-black text-white font-medium cursor-pointer"
+                         ? isJustCreated
+                           ? "bg-blue-500 text-white font-medium animate-pulse ring-2 ring-blue-300"
+                           : "bg-black text-white font-medium cursor-pointer"
                          : isToday
                          ? "ring-1 ring-gray-400 text-black font-medium hover:bg-gray-200"
                          : isFuture
@@ -191,75 +280,83 @@ const Home = () => {
                          : "text-gray-700 hover:bg-gray-200 cursor-pointer"
                      }
                    `}
-                    disabled={isFuture}
-                  >
-                    {String(day)}
-                  </button>
-                );
-              }
-            )}
+                  disabled={isFuture || isLoading}
+                >
+                  {String(day)}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <h3 className="p-2 mb-2 uppercase text-xs tracking-widest text-gray-500">
-          Recent
-        </h3>
         {/* Recent Entries */}
-        <div className="space-y-6">
-          {sortedDates.map((date) => {
-            const posts = recentPosts.entries[date];
-            const [year, month, day] = date.split("-");
-            const dateObj = new Date(
-              parseInt(year),
-              parseInt(month) - 1,
-              parseInt(day)
-            );
-            const firstPost = posts[0];
-            const WeatherIcon = firstPost.mood
-              ? WEATHER_ICONS[firstPost.mood].icon
-              : null;
+        {recentEntries.length > 0 && (
+          <>
+            <h3 className="p-2 mb-2 uppercase text-xs tracking-widest text-gray-500">
+              Recent
+            </h3>
+            <div className="space-y-6">
+              {recentEntries.map(({ dateStr, posts }) => {
+                const [year, month, day] = dateStr.split("-");
+                const dateObj = new Date(
+                  parseInt(year),
+                  parseInt(month) - 1,
+                  parseInt(day)
+                );
+                const firstPost = posts[0];
+                const MoodIcon = firstPost.mood
+                  ? MOOD_ICONS[firstPost.mood].icon
+                  : null;
 
-            return (
-              <button
-                key={date}
-                onClick={() => handleRecentEntryClick(date)}
-                className="w-full text-left rounded-lg p-2 transition-colors"
-              >
-                <div className="flex items-start gap-4">
-                  <span className="text-3xl font-bold">
-                    {String(dateObj.getDate()).padStart(2, "0")}
-                  </span>
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-500">
-                      {dateObj.toLocaleDateString("en-US", {
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </p>
-
-                    <div className="flex justify-between items-center gap-2">
-                      <span className="text-sm text-gray-500">
-                        {dateObj.toLocaleDateString("en-US", {
-                          weekday: "long",
-                        })}
+                return (
+                  <button
+                    key={dateStr}
+                    onClick={() => handleRecentEntryClick(dateStr)}
+                    className="w-full text-left rounded-lg p-2 transition-colors hover:bg-gray-50"
+                  >
+                    <div className="flex items-start gap-4">
+                      <span className="text-3xl font-bold">
+                        {String(dateObj.getDate()).padStart(2, "0")}
                       </span>
-                      {WeatherIcon && (
-                        <WeatherIcon className="w-5 h-5 text-gray-600" />
-                      )}
-                    </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-center gap-2">
+                          <p className="text-xs text-gray-500">
+                            {dateObj.toLocaleDateString("en-US", {
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </p>
+                          {MoodIcon && (
+                            <MoodIcon
+                              className={`w-4.5 h-4.5 ${
+                                firstPost.mood
+                                  ? MOOD_ICONS[firstPost.mood].color
+                                  : "text-gray-600"
+                              }`}
+                            />
+                          )}
+                        </div>
 
-                    <p className="text-sm text-gray-700 mt-2 line-clamp-2">
-                      {firstPost.content
-                        .replace(/<[^>]*>/g, "")
-                        .substring(0, 100)}
-                      ...
-                    </p>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                        <span className="text-sm text-gray-500">
+                          {dateObj.toLocaleDateString("en-US", {
+                            weekday: "long",
+                          })}
+                        </span>
+
+                        <p className="text-sm text-gray-700 mt-2 line-clamp-2">
+                          {firstPost.content
+                            .replace(/<[^>]*>/g, "")
+                            .substring(0, 100)}
+                          ...
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

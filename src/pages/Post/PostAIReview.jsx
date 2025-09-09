@@ -23,6 +23,7 @@ import { useFollowedCharacters } from "../../stores/characterStore";
 import { useUserLanguage } from "../../stores/userStore";
 import { createTranslator } from "../../components/utils/translations";
 import { useCreatePost } from "../../components/hooks/useCreatePost";
+import { usePostActions } from "../../stores/postStore";
 import { postStorage } from "../../components/utils/postStorage";
 import CustomEditor from "./CustomEditor";
 
@@ -34,6 +35,7 @@ const PostAIReview = () => {
   const userLanguage = useUserLanguage();
   const translate = createTranslator(userLanguage);
   const followedCharacters = useFollowedCharacters();
+  const { setViewMonth } = usePostActions();
   const createPostMutation = useCreatePost();
 
   const selectedCharacter = followedCharacters.find(
@@ -250,13 +252,28 @@ const PostAIReview = () => {
         },
       };
 
-      await createPostMutation.mutateAsync(postData);
+      const savedPost = await createPostMutation.mutateAsync(postData);
+
+      // Home의 형식에 맞춰 날짜 키 생성
+      const postDate = new Date(savedPost.entryDate || savedPost.createdAt);
+      const year = postDate.getFullYear();
+      const month = postDate.getMonth(); // 0-based 그대로 사용
+      const day = postDate.getDate();
+
+      // Home의 formatDateKey와 동일한 형식
+      const dateKey = `${year}-${month}-${day}`;
+
+      // 해당 월로 뷰 변경
+      setViewMonth(postDate);
+
+      // 하이라이트용 날짜 저장
+      sessionStorage.setItem("just_created_date", dateKey);
 
       // 성공시 모든 데이터 클리어
       postStorage.clearSelectedDate(); // 선택된 날짜 클리어
       postStorage.clearAll();
 
-      navigate("/");
+      navigate("/", { replace: true });
     } catch (error) {
       console.error("일기 저장 실패:", error);
       alert("저장에 실패했습니다.");

@@ -15,86 +15,8 @@ function formatDateKey(date) {
 
 // ===================== Home용 데이터 조회 =====================
 
-// 최근 3개월 포스트 조회 (Home 메인용)
-export async function getRecentPosts(userId) {
-  if (!userId) throw new Error("user_id가 없습니다.");
-
-  const threeMonthsAgo = new Date();
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-
-  try {
-    const { data, error } = await supabase
-      .from("Post")
-      .select(
-        `
-       id,
-       content,
-       mood,
-       entry_date,
-       created_at,
-       updated_at,
-       user_id,
-       ai_generated,
-       character_id,
-       Comment (
-         id,
-         character_id,
-         message,
-         created_at,
-         Character (
-           name,
-           korean_name,
-           avatar_url
-         )
-       ),
-       Post_Hashtag (
-         hashtag_id,
-         Hashtag (
-           name
-         )
-       ),
-       Character (
-         name,
-         korean_name,
-         avatar_url
-       ),
-       User_Profile (
-         display_name
-       )
-     `
-      )
-      .eq("user_id", userId)
-      .gte("entry_date", threeMonthsAgo.toISOString())
-      .order("entry_date", { ascending: false })
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    // 날짜별로 그룹핑
-    const groupedEntries = {};
-
-    data.forEach((post) => {
-      const dateKey = formatDateKey(post.entry_date || post.created_at);
-
-      if (!groupedEntries[dateKey]) {
-        groupedEntries[dateKey] = [];
-      }
-
-      groupedEntries[dateKey].push(formatPostForHome(post));
-    });
-
-    return {
-      entries: groupedEntries,
-      totalCount: data.length,
-    };
-  } catch (error) {
-    console.error("Error in getRecentPosts:", error);
-    throw error;
-  }
-}
-
-// 추가 날짜 범위 데이터 로드 (스크롤/네비게이션시)
-export async function loadPostsByDateRange(userId, startDate, endDate) {
+// 월별 포스트 조회 (새로 추가)
+export async function getMonthlyPosts(userId, startDate, endDate) {
   if (!userId) throw new Error("user_id가 없습니다.");
 
   try {
@@ -105,11 +27,11 @@ export async function loadPostsByDateRange(userId, startDate, endDate) {
        id,
        content,
        mood,
+       allow_ai_comments,
        entry_date,
        created_at,
        updated_at,
        user_id,
-       ai_generated,
        character_id,
        Comment (
          id,
@@ -119,7 +41,12 @@ export async function loadPostsByDateRange(userId, startDate, endDate) {
          Character (
            name,
            korean_name,
-           avatar_url
+           description,
+           korean_description,
+           avatar_url,
+           User_Character (
+              affinity
+           )
          )
        ),
        Post_Hashtag (
@@ -127,14 +54,6 @@ export async function loadPostsByDateRange(userId, startDate, endDate) {
          Hashtag (
            name
          )
-       ),
-       Character (
-         name,
-         korean_name,
-         avatar_url
-       ),
-       User_Profile (
-         display_name
        )
      `
       )
@@ -164,7 +83,7 @@ export async function loadPostsByDateRange(userId, startDate, endDate) {
       totalCount: data.length,
     };
   } catch (error) {
-    console.error("Error in loadPostsByDateRange:", error);
+    console.error("Error in getMonthlyPosts:", error);
     throw error;
   }
 }
@@ -199,8 +118,7 @@ export async function createPostImmediate(post, userId) {
        entry_date,
        created_at,
        updated_at,
-       user_id,
-       ai_generated
+       user_id
      `
       )
       .single();
@@ -244,22 +162,13 @@ export async function createPostImmediate(post, userId) {
       }
     }
 
-    // 3. User Profile 조회 (작성자 이름을 위해)
-    const { data: userProfile } = await supabase
-      .from("User_Profile")
-      .select("display_name")
-      .eq("user_id", userId)
-      .single();
-
     // 4. formatPostForHome 형식으로 데이터 구성
     const formattedPost = formatPostForHome({
       ...postData,
-      ai_generated: false, // 사용자가 작성한 포스트
       character_id: null,
       Comment: [], // 아직 댓글 없음
       Post_Hashtag: savedHashtags,
       Character: null, // AI 캐릭터 아님
-      User_Profile: userProfile || { display_name: "Me" },
     });
 
     // 5. 조건부 Edge Function 호출 - AI 댓글이 허용된 경우에만
@@ -336,22 +245,7 @@ function formatPostForHome(post) {
     entryDate: post.entry_date || post.created_at,
     createdAt: post.created_at,
     updatedAt: post.updated_at,
-    isAIGenerated: post.ai_generated,
-
-    // AI가 작성한 경우 캐릭터 정보
-    aiCharacter:
-      post.ai_generated && post.Character
-        ? {
-            name: post.Character.name,
-            koreanName: post.Character.korean_name,
-            avatarUrl: post.Character.avatar_url,
-          }
-        : null,
-
-    // 사용자 정보
-    author: post.ai_generated
-      ? post.Character?.name || "AI"
-      : post.User_Profile?.display_name || "Me",
+    allowAIComments: post.allow_ai_comments,
 
     // AI 리플렉션 (댓글)
     aiReflections:
@@ -363,6 +257,9 @@ function formatPostForHome(post) {
           character: {
             name: comment.Character?.name || "AI Friend",
             koreanName: comment.Character?.korean_name,
+            description: comment.Character?.description,
+            korean_description: comment.Character?.korean_description,
+            affinity: comment.Character?.User_Character[0]?.affinity || 0,
             avatarUrl: comment.Character?.avatar_url,
           },
         })) || [],
