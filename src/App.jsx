@@ -14,6 +14,7 @@ import PostAIChat from "./pages/Post/PostAIChat";
 import PostAIReview from "./pages/Post/PostAIReview";
 import PostManualWrite from "./pages/Post/PostManualWrite";
 import PostDetail from "./pages/Post/PostDetail";
+
 import Search from "./pages/Search/Search";
 import AuthForm from "./pages/Home/AuthForm";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -132,7 +133,7 @@ function App() {
                 <Route path="/post/new/manual" element={<PostManualWrite />} />
 
                 {/* 기존 라우트들 */}
-                <Route path="/post/:id" element={<PostDetail />} />
+                <Route path="/post/:date" element={<PostDetail />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
