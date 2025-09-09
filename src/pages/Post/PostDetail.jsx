@@ -54,9 +54,9 @@ const PostDetail = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-md mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-center mb-8">
+        <div className="flex items-center mb-6">
           <button
             onClick={() => navigate("/")}
             className="p-2 -m-2 hover:bg-gray-50 rounded-lg transition-colors"
