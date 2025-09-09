@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from "react-router";
 import { useRef } from "react";
 
-import { Calendar } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 
 const BottomNavbar = () => {
   const navigate = useNavigate();
@@ -102,10 +102,10 @@ const BottomNavbar = () => {
       ),
     },
     {
-      id: "calendar",
-      path: "/calendar",
+      id: "trend",
+      path: "/trend",
       icon: (
-        <Calendar className="w-4.5 h-4.5 sm:w-5 sm:h-5 pointer-events-none" />
+        <TrendingUp className="w-4.5 h-4.5 sm:w-5 sm:h-5 pointer-events-none" />
       ),
     },
     {

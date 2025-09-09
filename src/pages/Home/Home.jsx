@@ -92,7 +92,7 @@ const Home = () => {
   if (loading || !recentPosts) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="max-w-md mx-auto px-5 py-8">
+        <div className="max-w-2xl mx-auto px-6 py-8">
           <div className="animate-pulse">
             <div className="h-12 bg-gray-100 rounded mb-6"></div>
             <div className="h-96 bg-gray-100 rounded-2xl"></div>
@@ -104,7 +104,7 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-md mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto px-6 py-8">
         {/* Month Navigation */}
         <div className="flex items-center justify-center gap-6 mb-6">
           <button onClick={() => handleMonthChange(-1)}>
