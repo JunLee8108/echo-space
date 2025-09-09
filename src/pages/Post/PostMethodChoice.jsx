@@ -2,12 +2,40 @@
 import { useNavigate } from "react-router";
 import { useUserLanguage } from "../../stores/userStore";
 import { createTranslator } from "../../components/utils/translations";
-import { ArrowLeft, Bot, ChevronRight, PenTool } from "lucide-react";
+import { postStorage } from "../../components/utils/postStorage";
+import {
+  ArrowLeft,
+  Bot,
+  ChevronRight,
+  PenTool,
+  Calendar,
+  X,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
 const PostMethodChoice = () => {
   const navigate = useNavigate();
   const userLanguage = useUserLanguage();
   const translate = createTranslator(userLanguage);
+
+  // 선택된 날짜 가져오기
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  useEffect(() => {
+    const dateStr = postStorage.getSelectedDate();
+    if (dateStr) {
+      setSelectedDate(new Date(dateStr));
+    }
+  }, []);
+
+  // 뒤로가기 핸들러
+  const handleBack = () => {
+    // 선택된 날짜가 있으면 클리어
+    if (selectedDate) {
+      postStorage.clearSelectedDate();
+    }
+    navigate(-1);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white flex flex-col">
@@ -16,7 +44,7 @@ const PostMethodChoice = () => {
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center">
             <button
-              onClick={() => navigate(-1)}
+              onClick={handleBack}
               className="p-2 -ml-2 text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -34,7 +62,16 @@ const PostMethodChoice = () => {
           <div className="max-w-md mx-auto">
             <div className="text-center mb-8">
               <h2 className="text-lg font-bold text-stone-900 mb-1">
-                {translate("postMethod.mainTitle")}
+                {selectedDate
+                  ? userLanguage === "Korean"
+                    ? `${
+                        selectedDate.getMonth() + 1
+                      }월 ${selectedDate.getDate()}일 일기 작성하기`
+                    : `Write diary for ${selectedDate.toLocaleDateString(
+                        "en-US",
+                        { month: "short", day: "numeric" }
+                      )}`
+                  : translate("postMethod.mainTitle")}
               </h2>
               <p className="text-sm text-stone-600">
                 {translate("postMethod.subtitle")}

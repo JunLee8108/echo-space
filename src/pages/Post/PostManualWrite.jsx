@@ -13,9 +13,10 @@ import {
   Sparkles,
   X,
   Plus,
-  AlertCircle, // 🔴 새로 추가
+  AlertCircle,
+  Calendar,
 } from "lucide-react";
-import { useFollowedCharacterIds } from "../../stores/characterStore"; // 🔴 새로 추가
+import { useFollowedCharacterIds } from "../../stores/characterStore";
 import { useCreatePost } from "../../components/hooks/useCreatePost";
 import { postStorage } from "../../components/utils/postStorage";
 import { useUserLanguage } from "../../stores/userStore";
@@ -27,10 +28,35 @@ const PostManualWrite = () => {
   const userLanguage = useUserLanguage();
   const translate = createTranslator(userLanguage);
   const createPostMutation = useCreatePost();
-  const followedCharacterIds = useFollowedCharacterIds(); // 🔴 새로 추가
+  const followedCharacterIds = useFollowedCharacterIds();
 
-  // 🔴 팔로우 상태 체크
+  // 팔로우 상태 체크
   const hasFollowedCharacters = followedCharacterIds.size > 0;
+
+  // 선택된 날짜 가져오기
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  useEffect(() => {
+    const dateStr = postStorage.getSelectedDate();
+    if (dateStr) {
+      setSelectedDate(new Date(dateStr));
+    }
+  }, []);
+
+  // 날짜 포맷팅
+  const formatSelectedDate = (date) => {
+    if (!date) return null;
+
+    const options =
+      userLanguage === "Korean"
+        ? { year: "numeric", month: "long", day: "numeric", weekday: "long" }
+        : { weekday: "long", year: "numeric", month: "long", day: "numeric" };
+
+    return date.toLocaleDateString(
+      userLanguage === "Korean" ? "ko-KR" : "en-US",
+      options
+    );
+  };
 
   // 상태 관리 - sessionStorage에서 복원
   const [manualContent, setManualContent] = useState(() =>
@@ -44,7 +70,7 @@ const PostManualWrite = () => {
     () => postStorage.getManualMood() || "neutral"
   );
 
-  // 🔴 postSettings 초기화 수정 - 팔로우 체크 추가
+  // postSettings 초기화 수정 - 팔로우 체크 추가
   const [postSettings, setPostSettings] = useState(() => {
     const saved = postStorage.getPostSettings();
     // 팔로우가 없으면 AI 댓글 강제 OFF
@@ -59,14 +85,13 @@ const PostManualWrite = () => {
         allowAIComments: true,
       };
     }
-    // return saved;
   });
 
   const [isSaving, setIsSaving] = useState(false);
   const [newHashtag, setNewHashtag] = useState("");
   const [hashtagError, setHashtagError] = useState("");
 
-  // 🔴 팔로우 상태 변경 감지 - 새로 추가
+  // 팔로우 상태 변경 감지
   useEffect(() => {
     // 팔로우가 없어지면 AI 댓글 OFF
     if (!hasFollowedCharacters && postSettings.allowAIComments) {
@@ -147,14 +172,14 @@ const PostManualWrite = () => {
     setCustomMood(mood);
   };
 
-  // 🔴 일기 저장 - 팔로우 체크 추가
+  // 일기 저장 - entry_date 추가
   const handleSaveDiary = async () => {
     if (!manualContent.trim()) {
       alert("일기 내용을 입력해주세요.");
       return;
     }
 
-    // 🔴 팔로우가 없으면 AI 댓글 강제 OFF
+    // 팔로우가 없으면 AI 댓글 강제 OFF
     const finalAllowAIComments = hasFollowedCharacters
       ? postSettings.allowAIComments
       : false;
@@ -167,10 +192,16 @@ const PostManualWrite = () => {
         mood: customMood,
         hashtags: customHashtags,
         visibility: postSettings.visibility,
-        allowAIComments: finalAllowAIComments, // 🔴 수정된 값 사용
+        allowAIComments: finalAllowAIComments,
+        entry_date: selectedDate
+          ? selectedDate.toISOString()
+          : new Date().toISOString(), // 선택된 날짜 사용
       };
 
       await createPostMutation.mutateAsync(postData);
+
+      // 성공 후 모든 데이터 클리어
+      postStorage.clearSelectedDate(); // 선택된 날짜 클리어
       postStorage.clearAll();
       navigate("/");
     } catch (error) {
@@ -181,6 +212,15 @@ const PostManualWrite = () => {
     }
   };
 
+  // 뒤로가기 핸들러
+  const handleBack = () => {
+    // 선택된 날짜가 있으면 클리어
+    if (selectedDate) {
+      postStorage.clearSelectedDate();
+    }
+    navigate(-1);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white flex flex-col">
       {/* Header */}
@@ -188,7 +228,7 @@ const PostManualWrite = () => {
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center">
             <button
-              onClick={() => navigate(-1)}
+              onClick={handleBack}
               className="p-2 -ml-2 text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -204,6 +244,23 @@ const PostManualWrite = () => {
       <div className="flex-1 overflow-hidden">
         <div className="px-4 py-6 overflow-y-auto h-full">
           <div className="max-w-2xl mx-auto">
+            {/* 선택된 날짜 표시 */}
+            {selectedDate && (
+              <div className="mb-6 p-3 bg-blue-50 rounded-xl border border-blue-200">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <div className="flex-1">
+                    <p className="text-xs text-blue-600 font-medium">
+                      {userLanguage === "Korean" ? "작성 날짜" : "Entry Date"}
+                    </p>
+                    <p className="text-sm text-stone-900 font-semibold">
+                      {formatSelectedDate(selectedDate)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Editor */}
             <div className="mb-6">
               <CustomEditor
@@ -420,7 +477,7 @@ const PostManualWrite = () => {
                 </div>
               </div>
 
-              {/* 🔴 AI 댓글 설정 - 대폭 수정 */}
+              {/* AI 댓글 설정 */}
               <div
                 className={`bg-gradient-to-r from-purple-50/50 to-blue-50/50 rounded-xl p-4 border ${
                   !hasFollowedCharacters
@@ -463,7 +520,6 @@ const PostManualWrite = () => {
 
                   <button
                     onClick={() => {
-                      // 🔴 팔로우가 없으면 클릭 무시
                       if (!hasFollowedCharacters) return;
 
                       setPostSettings((prev) => ({
@@ -471,7 +527,7 @@ const PostManualWrite = () => {
                         allowAIComments: !prev.allowAIComments,
                       }));
                     }}
-                    disabled={!hasFollowedCharacters} // 🔴 disabled 추가
+                    disabled={!hasFollowedCharacters}
                     className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 ${
                       !hasFollowedCharacters
                         ? "opacity-50 cursor-not-allowed"
@@ -502,7 +558,7 @@ const PostManualWrite = () => {
                   </button>
                 </div>
 
-                {/* 🔴 팔로우 안내 메시지 추가 */}
+                {/* 팔로우 안내 메시지 */}
                 {!hasFollowedCharacters && (
                   <div className="mt-3 flex items-start gap-2 px-2 py-2 bg-amber-50 rounded-lg">
                     <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />

@@ -17,6 +17,7 @@ import {
   User,
   RefreshCw,
   Bot,
+  Calendar,
 } from "lucide-react";
 import { useFollowedCharacters } from "../../stores/characterStore";
 import { useUserLanguage } from "../../stores/userStore";
@@ -44,6 +45,31 @@ const PostAIReview = () => {
 
   const isEditing = searchParams.get("edit") === "true";
 
+  // 선택된 날짜 가져오기
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  useEffect(() => {
+    const dateStr = postStorage.getSelectedDate();
+    if (dateStr) {
+      setSelectedDate(new Date(dateStr));
+    }
+  }, []);
+
+  // 날짜 포맷팅
+  const formatSelectedDate = (date) => {
+    if (!date) return null;
+
+    const options =
+      userLanguage === "Korean"
+        ? { year: "numeric", month: "long", day: "numeric", weekday: "long" }
+        : { weekday: "long", year: "numeric", month: "long", day: "numeric" };
+
+    return date.toLocaleDateString(
+      userLanguage === "Korean" ? "ko-KR" : "en-US",
+      options
+    );
+  };
+
   // 기존 상태들
   const [generatedDiary] = useState(() =>
     postStorage.getGeneratedDiary(characterId)
@@ -54,7 +80,7 @@ const PostAIReview = () => {
       postStorage.getGeneratedDiary(characterId)
   );
 
-  // AI 생성 데이터 상태 (새로 추가)
+  // AI 생성 데이터 상태
   const [aiMood] = useState(() => postStorage.getAIMood(characterId));
   const [aiMoodConfidence] = useState(() =>
     postStorage.getAIMoodConfidence(characterId)
@@ -64,12 +90,9 @@ const PostAIReview = () => {
   // 사용자 커스텀 데이터 상태
   const [customMood, setCustomMood] = useState(aiMood || "neutral");
   const [customHashtags, setCustomHashtags] = useState(() => {
-    // AI 해시태그가 있으면 사용, 없으면 기본값
     if (aiHashtags && aiHashtags.length > 0) {
-      // 최대 5개로 제한
       return [...aiHashtags].slice(0, 5);
     }
-    // 폴백: 기본 해시태그
     return ["ai일기", selectedCharacter?.name || "ai"]
       .filter(Boolean)
       .slice(0, 5);
@@ -81,7 +104,7 @@ const PostAIReview = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [newHashtag, setNewHashtag] = useState("");
-  const [hashtagError, setHashtagError] = useState(""); // 에러 메시지 상태 추가
+  const [hashtagError, setHashtagError] = useState("");
 
   // 초기 로딩 체크
   useEffect(() => {
@@ -130,44 +153,31 @@ const PostAIReview = () => {
     postStorage.savePostSettings(postSettings);
   }, [postSettings]);
 
-  // 해시태그 입력 핸들러 - 띄어쓰기 방지 및 소문자 변환
+  // 해시태그 입력 핸들러
   const handleHashtagInput = (e) => {
     let value = e.target.value;
-
-    // 띄어쓰기 제거
     value = value.replace(/\s/g, "");
-
-    // 소문자로 변환
     value = value.toLowerCase();
-
-    // 한글, 영문, 숫자, 언더스코어만 허용
     value = value.replace(/[^ㄱ-ㅣ가-힣a-zA-Z0-9_]/g, "");
-
     setNewHashtag(value);
-    setHashtagError(""); // 입력 시 에러 메시지 초기화
+    setHashtagError("");
   };
 
-  // 해시태그 추가 - 강화된 validation
+  // 해시태그 추가
   const handleAddHashtag = () => {
-    // 1. trim 및 소문자 변환
     let tag = newHashtag.trim().toLowerCase();
-
-    // 2. # 제거
     tag = tag.replace(/^#/, "");
 
-    // 3. 빈 문자열 체크
     if (!tag) {
       setHashtagError("해시태그를 입력해주세요");
       return;
     }
 
-    // 4. 최대 개수 체크 (5개)
     if (customHashtags.length >= 5) {
       setHashtagError("최대 5개까지 추가 가능합니다");
       return;
     }
 
-    // 5. 중복 체크 (대소문자 무시)
     const isDuplicate = customHashtags.some(
       (existingTag) => existingTag.toLowerCase() === tag
     );
@@ -177,7 +187,6 @@ const PostAIReview = () => {
       return;
     }
 
-    // 6. 추가
     setCustomHashtags([...customHashtags, tag]);
     setNewHashtag("");
     setHashtagError("");
@@ -186,16 +195,14 @@ const PostAIReview = () => {
   // 해시태그 삭제
   const handleRemoveHashtag = (tagToRemove) => {
     setCustomHashtags(customHashtags.filter((tag) => tag !== tagToRemove));
-    setHashtagError(""); // 삭제 시 에러 메시지 초기화
+    setHashtagError("");
   };
 
   // AI 해시태그로 리셋
   const handleResetToAI = () => {
     if (aiHashtags && aiHashtags.length > 0) {
-      // 최대 5개로 제한
       setCustomHashtags([...aiHashtags].slice(0, 5));
     } else {
-      // AI 해시태그가 없으면 기본값 (최대 5개)
       setCustomHashtags(
         ["ai일기", selectedCharacter?.name || "ai"].filter(Boolean).slice(0, 5)
       );
@@ -203,15 +210,15 @@ const PostAIReview = () => {
     if (aiMood) {
       setCustomMood(aiMood);
     }
-    setHashtagError(""); // 리셋 시 에러 메시지 초기화
+    setHashtagError("");
   };
 
-  // Mood 변경 시 AI 배지 숨김
+  // Mood 변경
   const handleMoodChange = (mood) => {
     setCustomMood(mood);
   };
 
-  // 일기 저장
+  // 일기 저장 - entry_date 추가
   const handleSaveDiary = async () => {
     const finalContent = editedDiary || generatedDiary;
 
@@ -230,6 +237,9 @@ const PostAIReview = () => {
         hashtags: customHashtags,
         visibility: postSettings.visibility,
         allowAIComments: postSettings.allowAIComments,
+        entry_date: selectedDate
+          ? selectedDate.toISOString()
+          : new Date().toISOString(), // 선택된 날짜 사용
         metadata: {
           ai_generated: true,
           character_id: selectedCharacter.id,
@@ -243,6 +253,7 @@ const PostAIReview = () => {
       await createPostMutation.mutateAsync(postData);
 
       // 성공시 모든 데이터 클리어
+      postStorage.clearSelectedDate(); // 선택된 날짜 클리어
       postStorage.clearAll();
 
       navigate("/");
@@ -263,6 +274,15 @@ const PostAIReview = () => {
     }
   };
 
+  // 뒤로가기 핸들러
+  const handleBack = () => {
+    // 선택된 날짜가 있으면 클리어
+    if (selectedDate) {
+      postStorage.clearSelectedDate();
+    }
+    navigate(-1);
+  };
+
   if (isLoading || !selectedCharacter || !generatedDiary) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -278,7 +298,7 @@ const PostAIReview = () => {
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center">
             <button
-              onClick={() => navigate(-1)}
+              onClick={handleBack}
               className="p-2 -ml-2 text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -308,6 +328,23 @@ const PostAIReview = () => {
                 내용을 검토하고 필요하면 수정해주세요
               </p>
             </div>
+
+            {/* 선택된 날짜 표시 */}
+            {selectedDate && (
+              <div className="mb-6 p-3 bg-blue-50 rounded-xl border border-blue-200">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <div className="flex-1">
+                    <p className="text-xs text-blue-600 font-medium">
+                      {userLanguage === "Korean" ? "작성 날짜" : "Entry Date"}
+                    </p>
+                    <p className="text-sm text-stone-900 font-semibold">
+                      {formatSelectedDate(selectedDate)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* 일기 컨테이너 */}
             <div className="relative mb-6">
@@ -351,7 +388,6 @@ const PostAIReview = () => {
                 </label>
                 {aiMood &&
                   (customMood === aiMood ? (
-                    // 같을 때
                     <span className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
                       <Bot className="w-3 h-3" />
                       AI 추천
@@ -362,7 +398,6 @@ const PostAIReview = () => {
                       )}
                     </span>
                   ) : (
-                    // 다를 때
                     <span className="flex items-center gap-1 text-xs text-violet-600 bg-violet-50 px-2 py-1 rounded-full">
                       <User className="w-3 h-3" />
                       사용자 선택
@@ -498,7 +533,6 @@ const PostAIReview = () => {
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>
-                    {/* 에러 메시지 표시 */}
                     {hashtagError && (
                       <p className="text-xs text-red-500 mt-1">
                         {hashtagError}

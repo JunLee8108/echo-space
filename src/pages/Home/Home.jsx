@@ -1,6 +1,14 @@
+// pages/Home.jsx
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { ChevronLeft, ChevronRight, Cloud, Sun, CloudRain } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Cloud,
+  Sun,
+  CloudRain,
+  Plus,
+} from "lucide-react";
 
 import {
   useRecentPosts,
@@ -8,6 +16,7 @@ import {
   usePostActions,
 } from "../../stores/postStore";
 import { useUserId } from "../../stores/userStore";
+import { postStorage } from "../../components/utils/postStorage";
 import "./Home.css";
 
 const WEATHER_ICONS = {
@@ -64,19 +73,31 @@ const Home = () => {
     setCurrentMonth(newMonth);
   };
 
+  // 날짜 유효성 검사 (미래 날짜 방지)
+  const isValidDate = (year, month, day) => {
+    const selectedDate = new Date(year, month, day);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    return selectedDate <= today;
+  };
+
+  // 날짜 클릭 핸들러 - 수정됨
   const handleDateClick = (day) => {
-    const dateKey = formatDateKey(
-      currentMonth.getFullYear(),
-      currentMonth.getMonth(),
-      day
-    );
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const dateKey = formatDateKey(year, month, day);
     const posts = calendarData[dateKey];
 
     if (posts && posts.length > 0) {
-      const year = currentMonth.getFullYear();
-      const month = String(currentMonth.getMonth() + 1).padStart(2, "0");
+      // 기존: 작성된 일기가 있으면 해당 날짜 페이지로 이동
+      const monthStr = String(month + 1).padStart(2, "0");
       const dayStr = String(day).padStart(2, "0");
-      navigate(`/post/${year}-${month}-${dayStr}`);
+      navigate(`/post/${year}-${monthStr}-${dayStr}`);
+    } else if (isValidDate(year, month, day)) {
+      // 새로운: 빈 날짜이고 유효한 날짜면 일기 작성
+      const selectedDate = new Date(year, month, day);
+      postStorage.saveSelectedDate(selectedDate.toISOString());
+      navigate("/post/new");
     }
   };
 
@@ -144,35 +165,33 @@ const Home = () => {
             {Array.from({ length: getDaysInMonth(currentMonth) }).map(
               (_, i) => {
                 const day = i + 1;
-                const dateKey = formatDateKey(
-                  currentMonth.getFullYear(),
-                  currentMonth.getMonth(),
-                  day
-                );
+                const year = currentMonth.getFullYear();
+                const month = currentMonth.getMonth();
+                const dateKey = formatDateKey(year, month, day);
                 const hasEntry = calendarData[dateKey];
                 const isToday =
                   new Date().toDateString() ===
-                  new Date(
-                    currentMonth.getFullYear(),
-                    currentMonth.getMonth(),
-                    day
-                  ).toDateString();
+                  new Date(year, month, day).toDateString();
+                const isFuture = !isValidDate(year, month, day);
 
                 return (
                   <button
                     key={day}
                     onClick={() => handleDateClick(day)}
                     className={`
-                      aspect-square rounded-full flex items-center justify-center text-sm
-                      ${
-                        hasEntry
-                          ? "bg-black text-white font-medium cursor-pointer"
-                          : isToday
-                          ? "ring-1 ring-black text-black font-medium"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }
-                    `}
-                    disabled={!hasEntry}
+                     aspect-square rounded-full flex items-center justify-center text-sm
+                     relative 
+                     ${
+                       hasEntry
+                         ? "bg-black text-white font-medium cursor-pointer"
+                         : isToday
+                         ? "ring-1 ring-black text-black font-medium hover:bg-blue-50"
+                         : isFuture
+                         ? "text-gray-300 cursor-not-allowed"
+                         : "text-gray-700 hover:bg-gray-200 cursor-pointer"
+                     }
+                   `}
+                    disabled={isFuture}
                   >
                     {String(day)}
                   </button>

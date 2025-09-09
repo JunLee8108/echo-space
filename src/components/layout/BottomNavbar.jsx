@@ -81,26 +81,26 @@ const BottomNavbar = () => {
         </svg>
       ),
     },
-    {
-      id: "add",
-      path: "/post/new",
-      special: true,
-      icon: (
-        <svg
-          className="w-4.5 h-4.5 sm:w-5 sm:h-5 pointer-events-none"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
-      ),
-    },
+    // {
+    //   id: "add",
+    //   path: "/post/new",
+    //   special: true,
+    //   icon: (
+    //     <svg
+    //       className="w-4.5 h-4.5 sm:w-5 sm:h-5 pointer-events-none"
+    //       fill="none"
+    //       stroke="currentColor"
+    //       strokeWidth="2"
+    //       viewBox="0 0 24 24"
+    //     >
+    //       <path
+    //         strokeLinecap="round"
+    //         strokeLinejoin="round"
+    //         d="M12 4v16m8-8H4"
+    //       />
+    //     </svg>
+    //   ),
+    // },
     {
       id: "trend",
       path: "/trend",

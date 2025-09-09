@@ -13,14 +13,43 @@ const STORAGE_KEYS = {
   MANUAL_HASHTAGS: "manual_hashtags",
   MANUAL_MOOD: "manual_mood",
 
-  // 새로 추가 - AI 생성 데이터
+  // AI 생성 데이터
   AI_MOOD: "ai_generated_mood_",
   AI_HASHTAGS: "ai_generated_hashtags_",
   AI_MOOD_CONFIDENCE: "ai_mood_confidence_",
+
+  // 날짜 선택 (새로 추가)
+  SELECTED_DATE: "selected_entry_date",
 };
 
 export const postStorage = {
-  // 기존 대화 관련 메서드들
+  // ==================== 날짜 관련 메서드 (새로 추가) ====================
+  saveSelectedDate: (date) => {
+    try {
+      sessionStorage.setItem(STORAGE_KEYS.SELECTED_DATE, date);
+    } catch (error) {
+      console.error("Failed to save selected date:", error);
+    }
+  },
+
+  getSelectedDate: () => {
+    try {
+      return sessionStorage.getItem(STORAGE_KEYS.SELECTED_DATE) || null;
+    } catch (error) {
+      console.error("Failed to get selected date:", error);
+      return null;
+    }
+  },
+
+  clearSelectedDate: () => {
+    try {
+      sessionStorage.removeItem(STORAGE_KEYS.SELECTED_DATE);
+    } catch (error) {
+      console.error("Failed to clear selected date:", error);
+    }
+  },
+
+  // ==================== 기존 대화 관련 메서드들 ====================
   saveMessages: (characterId, messages) => {
     try {
       sessionStorage.setItem(
@@ -87,7 +116,7 @@ export const postStorage = {
     );
   },
 
-  // 기존 일기 관련 메서드들
+  // ==================== 일기 관련 메서드들 ====================
   saveGeneratedDiary: (characterId, diary) => {
     sessionStorage.setItem(
       `${STORAGE_KEYS.DIARY_GENERATED}${characterId}`,
@@ -112,7 +141,7 @@ export const postStorage = {
     );
   },
 
-  // AI 생성 Mood 관련 메서드 (새로 추가)
+  // ==================== AI 생성 데이터 메서드들 ====================
   saveAIMood: (characterId, mood) => {
     if (!mood) return;
     sessionStorage.setItem(`${STORAGE_KEYS.AI_MOOD}${characterId}`, mood);
@@ -124,7 +153,6 @@ export const postStorage = {
     );
   },
 
-  // AI Mood 신뢰도 저장 (새로 추가)
   saveAIMoodConfidence: (characterId, confidence) => {
     sessionStorage.setItem(
       `${STORAGE_KEYS.AI_MOOD_CONFIDENCE}${characterId}`,
@@ -139,7 +167,6 @@ export const postStorage = {
     return confidence ? parseFloat(confidence) : 0;
   },
 
-  // AI 생성 Hashtags 관련 메서드 (새로 추가)
   saveAIHashtags: (characterId, hashtags) => {
     if (!hashtags || !Array.isArray(hashtags)) return;
     sessionStorage.setItem(
@@ -160,7 +187,7 @@ export const postStorage = {
     }
   },
 
-  // 게시물 설정
+  // ==================== 게시물 설정 ====================
   savePostSettings: (settings) => {
     sessionStorage.setItem(
       STORAGE_KEYS.POST_SETTINGS,
@@ -179,7 +206,7 @@ export const postStorage = {
     }
   },
 
-  // 수동 작성 관련
+  // ==================== 수동 작성 관련 ====================
   saveManualContent: (content) => {
     sessionStorage.setItem(STORAGE_KEYS.MANUAL_CONTENT, content);
   },
@@ -212,7 +239,7 @@ export const postStorage = {
     return sessionStorage.getItem(STORAGE_KEYS.MANUAL_MOOD) || null;
   },
 
-  // 특정 캐릭터의 데이터만 클리어 (수정)
+  // ==================== 데이터 클리어 메서드들 ====================
   clearCharacterData: (characterId) => {
     sessionStorage.removeItem(`${STORAGE_KEYS.CHAT_MESSAGES}${characterId}`);
     sessionStorage.removeItem(`${STORAGE_KEYS.CHAT_COUNT}${characterId}`);
@@ -222,7 +249,6 @@ export const postStorage = {
     );
     sessionStorage.removeItem(`${STORAGE_KEYS.DIARY_GENERATED}${characterId}`);
     sessionStorage.removeItem(`${STORAGE_KEYS.DIARY_EDITED}${characterId}`);
-    // AI 생성 데이터도 클리어
     sessionStorage.removeItem(`${STORAGE_KEYS.AI_MOOD}${characterId}`);
     sessionStorage.removeItem(`${STORAGE_KEYS.AI_HASHTAGS}${characterId}`);
     sessionStorage.removeItem(
@@ -230,8 +256,8 @@ export const postStorage = {
     );
   },
 
-  // 모든 post 관련 데이터 클리어 (수정)
   clearAll: () => {
+    // 모든 post 관련 데이터 클리어
     Object.keys(sessionStorage).forEach((key) => {
       if (
         key.startsWith("chat_") ||
@@ -241,7 +267,8 @@ export const postStorage = {
         key === STORAGE_KEYS.POST_SETTINGS ||
         key === STORAGE_KEYS.MANUAL_CONTENT ||
         key === STORAGE_KEYS.MANUAL_HASHTAGS ||
-        key === STORAGE_KEYS.MANUAL_MOOD
+        key === STORAGE_KEYS.MANUAL_MOOD ||
+        key === STORAGE_KEYS.SELECTED_DATE // 날짜도 클리어
       ) {
         sessionStorage.removeItem(key);
       }

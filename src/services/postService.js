@@ -1,3 +1,4 @@
+// services/postService.js
 import supabase from "./supabaseClient";
 import useCharacterStore from "../stores/characterStore";
 import { createOrGetHashtags, attachHashtagsToPost } from "./hashtagService";
@@ -26,41 +27,41 @@ export async function getRecentPosts(userId) {
       .from("Post")
       .select(
         `
-        id,
-        content,
-        mood,
-        entry_date,
-        created_at,
-        updated_at,
-        user_id,
-        ai_generated,
-        character_id,
-        Comment (
-          id,
-          character_id,
-          message,
-          created_at,
-          Character (
-            name,
-            korean_name,
-            avatar_url
-          )
-        ),
-        Post_Hashtag (
-          hashtag_id,
-          Hashtag (
-            name
-          )
-        ),
-        Character (
-          name,
-          korean_name,
-          avatar_url
-        ),
-        User_Profile (
-          display_name
-        )
-      `
+       id,
+       content,
+       mood,
+       entry_date,
+       created_at,
+       updated_at,
+       user_id,
+       ai_generated,
+       character_id,
+       Comment (
+         id,
+         character_id,
+         message,
+         created_at,
+         Character (
+           name,
+           korean_name,
+           avatar_url
+         )
+       ),
+       Post_Hashtag (
+         hashtag_id,
+         Hashtag (
+           name
+         )
+       ),
+       Character (
+         name,
+         korean_name,
+         avatar_url
+       ),
+       User_Profile (
+         display_name
+       )
+     `
       )
       .eq("user_id", userId)
       .gte("entry_date", threeMonthsAgo.toISOString())
@@ -101,41 +102,41 @@ export async function loadPostsByDateRange(userId, startDate, endDate) {
       .from("Post")
       .select(
         `
-        id,
-        content,
-        mood,
-        entry_date,
-        created_at,
-        updated_at,
-        user_id,
-        ai_generated,
-        character_id,
-        Comment (
-          id,
-          character_id,
-          message,
-          created_at,
-          Character (
-            name,
-            korean_name,
-            avatar_url
-          )
-        ),
-        Post_Hashtag (
-          hashtag_id,
-          Hashtag (
-            name
-          )
-        ),
-        Character (
-          name,
-          korean_name,
-          avatar_url
-        ),
-        User_Profile (
-          display_name
-        )
-      `
+       id,
+       content,
+       mood,
+       entry_date,
+       created_at,
+       updated_at,
+       user_id,
+       ai_generated,
+       character_id,
+       Comment (
+         id,
+         character_id,
+         message,
+         created_at,
+         Character (
+           name,
+           korean_name,
+           avatar_url
+         )
+       ),
+       Post_Hashtag (
+         hashtag_id,
+         Hashtag (
+           name
+         )
+       ),
+       Character (
+         name,
+         korean_name,
+         avatar_url
+       ),
+       User_Profile (
+         display_name
+       )
+     `
       )
       .eq("user_id", userId)
       .gte("entry_date", startDate)
@@ -168,8 +169,165 @@ export async function loadPostsByDateRange(userId, startDate, endDate) {
   }
 }
 
-// ===================== 데이터 포맷팅 =====================
+// ===================== 데이터 생성 =====================
+export async function createPostImmediate(post, userId) {
+  if (!userId) throw new Error("user_id가 없습니다.");
 
+  try {
+    // 1. Post 저장 - entry_date 파라미터로 받기
+    const { data: postData, error: postError } = await supabase
+      .from("Post")
+      .insert([
+        {
+          content: post.content,
+          mood: post.mood || null,
+          visibility: post.visibility || "private",
+          allow_ai_comments: post.allowAIComments !== false, // 기본값 true
+          like: 0,
+          user_id: userId,
+          entry_date: post.entry_date || new Date().toISOString(), // 파라미터로 받은 날짜 사용
+        },
+      ])
+      .select(
+        `
+       id,
+       content,
+       mood,
+       visibility,
+       allow_ai_comments,
+       like,
+       entry_date,
+       created_at,
+       updated_at,
+       user_id,
+       ai_generated
+     `
+      )
+      .single();
+
+    if (postError) {
+      console.error("❌ Post 저장 실패:", postError.message);
+      throw postError;
+    }
+
+    const postId = postData.id;
+
+    // 2. 해시태그 저장
+    let savedHashtags = [];
+    if (post.hashtags && post.hashtags.length > 0) {
+      try {
+        const hashtagIds = await createOrGetHashtags(post.hashtags);
+        await attachHashtagsToPost(postId, hashtagIds);
+
+        const { data: hashtagData } = await supabase
+          .from("Post_Hashtag")
+          .select(
+            `
+           hashtag_id,
+           Hashtag (
+             id,
+             name
+           )
+         `
+          )
+          .eq("post_id", postId);
+
+        savedHashtags =
+          hashtagData?.map((ph) => ({
+            hashtag_id: ph.hashtag_id,
+            Hashtag: {
+              name: ph.Hashtag?.name || "",
+            },
+          })) || [];
+      } catch (hashtagError) {
+        console.error("❌ 해시태그 저장 실패:", hashtagError.message);
+      }
+    }
+
+    // 3. User Profile 조회 (작성자 이름을 위해)
+    const { data: userProfile } = await supabase
+      .from("User_Profile")
+      .select("display_name")
+      .eq("user_id", userId)
+      .single();
+
+    // 4. formatPostForHome 형식으로 데이터 구성
+    const formattedPost = formatPostForHome({
+      ...postData,
+      ai_generated: false, // 사용자가 작성한 포스트
+      character_id: null,
+      Comment: [], // 아직 댓글 없음
+      Post_Hashtag: savedHashtags,
+      Character: null, // AI 캐릭터 아님
+      User_Profile: userProfile || { display_name: "Me" },
+    });
+
+    // 5. 조건부 Edge Function 호출 - AI 댓글이 허용된 경우에만
+    if (post.allowAIComments !== false) {
+      console.log("🤖 AI 댓글 처리 시작 (allow_ai_comments: true)");
+
+      triggerAIProcessing(
+        postId,
+        post.content,
+        post.hashtags,
+        post.mood,
+        post.visibility,
+        post.allowAIComments,
+        userId
+      )
+        .then(() => console.log("✅ AI 처리 시작됨"))
+        .catch((error) => console.error("❌ AI 처리 트리거 실패:", error));
+    } else {
+      console.log("🚫 AI 댓글 비활성화됨 (allow_ai_comments: false)");
+    }
+
+    // 6. formatPostForHome 형식으로 반환
+    return formattedPost;
+  } catch (error) {
+    console.error("Error in createPostImmediate:", error);
+    throw error;
+  }
+}
+
+// ===================== AI 프로세싱 =====================
+async function triggerAIProcessing(
+  postId,
+  content,
+  hashtags,
+  mood,
+  visibility,
+  allowAIComments,
+  userId
+) {
+  try {
+    // 팔로우한 캐릭터 체크 추가
+    const { followedCharacterIds } = useCharacterStore.getState();
+    if (followedCharacterIds.size === 0) {
+      console.log("⚡ No followed characters - skipping AI processing");
+      return { skipped: true, reason: "no_followed_characters" };
+    }
+
+    const { data, error } = await supabase.functions.invoke("process-post-ai", {
+      body: {
+        postId,
+        content,
+        hashtags: hashtags || [],
+        mood: mood || null,
+        visibility: visibility || "private",
+        allowAIComments: allowAIComments !== false, // 명시적으로 전달
+        userId: userId,
+      },
+    });
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Edge Function 호출 실패:", error);
+    throw error;
+  }
+}
+
+// ===================== 데이터 포맷팅 =====================
 function formatPostForHome(post) {
   return {
     id: post.id,
@@ -213,146 +371,4 @@ function formatPostForHome(post) {
     hashtags:
       post.Post_Hashtag?.map((ph) => ph.Hashtag?.name).filter(Boolean) || [],
   };
-}
-
-export async function createPostImmediate(post, userId) {
-  if (!userId) throw new Error("user_id가 없습니다.");
-
-  try {
-    // 1. Post 저장 - allowAIComments 추가
-    const { data: postData, error: postError } = await supabase
-      .from("Post")
-      .insert([
-        {
-          content: post.content,
-          mood: post.mood || null,
-          visibility: post.visibility || "private",
-          allow_ai_comments: post.allowAIComments !== false, // 기본값 true
-          like: 0,
-          user_id: userId,
-        },
-      ])
-      .select(
-        `
-        id,
-        content,
-        mood,
-        visibility,
-        allow_ai_comments,
-        like,
-        created_at,
-        updated_at,
-        user_id
-      `
-      )
-      .single();
-
-    if (postError) {
-      console.error("❌ Post 저장 실패:", postError.message);
-      throw postError;
-    }
-
-    const postId = postData.id;
-
-    // 2. 해시태그 저장
-    let savedHashtags = [];
-    if (post.hashtags && post.hashtags.length > 0) {
-      try {
-        const hashtagIds = await createOrGetHashtags(post.hashtags);
-        await attachHashtagsToPost(postId, hashtagIds);
-
-        const { data: hashtagData } = await supabase
-          .from("Post_Hashtag")
-          .select(
-            `
-            hashtag_id,
-            Hashtag (
-              id,
-              name
-            )
-          `
-          )
-          .eq("post_id", postId);
-
-        savedHashtags =
-          hashtagData?.map((ph) => ({
-            hashtag_id: ph.hashtag_id,
-            name: ph.Hashtag?.name || "",
-          })) || [];
-      } catch (hashtagError) {
-        console.error("❌ 해시태그 저장 실패:", hashtagError.message);
-      }
-    }
-
-    // 3. 조건부 Edge Function 호출 - AI 댓글이 허용된 경우에만
-    if (post.allowAIComments !== false) {
-      console.log("🤖 AI 댓글 처리 시작 (allow_ai_comments: true)");
-
-      triggerAIProcessing(
-        postId,
-        post.content,
-        post.hashtags,
-        post.mood,
-        post.visibility,
-        post.allowAIComments,
-        userId
-      )
-        .then(() => console.log("✅ AI 처리 시작됨"))
-        .catch((error) => console.error("❌ AI 처리 트리거 실패:", error));
-    } else {
-      console.log("🚫 AI 댓글 비활성화됨 (allow_ai_comments: false)");
-    }
-
-    // 4. 완성된 Post 반환
-    const formattedPost = {
-      ...postData,
-      visibility: postData.visibility || "private",
-      allow_ai_comments: postData.allow_ai_comments,
-      Comment: [],
-      Post_Like: [],
-      Post_Hashtag: savedHashtags,
-    };
-
-    return formattedPost;
-  } catch (error) {
-    console.error("Error in createPostImmediate:", error);
-    throw error;
-  }
-}
-
-async function triggerAIProcessing(
-  postId,
-  content,
-  hashtags,
-  mood,
-  visibility,
-  allowAIComments,
-  userId
-) {
-  try {
-    // 팔로우한 캐릭터 체크 추가
-    const { followedCharacterIds } = useCharacterStore.getState();
-    if (followedCharacterIds.size === 0) {
-      console.log("⚡ No followed characters - skipping AI processing");
-      return { skipped: true, reason: "no_followed_characters" };
-    }
-
-    const { data, error } = await supabase.functions.invoke("process-post-ai", {
-      body: {
-        postId,
-        content,
-        hashtags: hashtags || [],
-        mood: mood || null,
-        visibility: visibility || "private",
-        allowAIComments: allowAIComments !== false, // 명시적으로 전달
-        userId: userId,
-      },
-    });
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error("Edge Function 호출 실패:", error);
-    throw error;
-  }
 }
