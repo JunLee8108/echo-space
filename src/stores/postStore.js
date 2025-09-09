@@ -199,70 +199,6 @@ const usePostStore = create(
       }
     },
 
-    // AI 댓글 업데이트 메서드 (새로 추가)
-    updatePostComments: (postId, newComment) => {
-      set((state) => {
-        const newCache = { ...state.monthlyCache };
-
-        // 모든 월 캐시를 순회하며 해당 포스트 찾기
-        Object.keys(newCache).forEach((monthKey) => {
-          const monthData = newCache[monthKey];
-          if (!monthData?.entries) return;
-
-          // 각 날짜의 포스트들 확인
-          Object.keys(monthData.entries).forEach((dateKey) => {
-            const posts = monthData.entries[dateKey];
-            if (!posts) return;
-
-            // 해당 포스트 찾기
-            const postIndex = posts.findIndex((p) => p.id === postId);
-            if (postIndex === -1) return;
-
-            // 포스트 복사 및 댓글 추가
-            const updatedPosts = [...posts];
-            const updatedPost = { ...updatedPosts[postIndex] };
-
-            // AI 댓글 배열이 없으면 생성
-            if (!updatedPost.aiReflections) {
-              updatedPost.aiReflections = [];
-            }
-
-            // 중복 체크 (댓글 ID로)
-            const exists = updatedPost.aiReflections.some(
-              (ref) => ref.id === newComment.id
-            );
-
-            if (!exists) {
-              // 새 댓글 추가
-              updatedPost.aiReflections = [
-                ...updatedPost.aiReflections,
-                {
-                  id: newComment.id,
-                  message: newComment.message,
-                  createdAt: newComment.created_at,
-                  character: {
-                    name: newComment.Character?.name || "AI Friend",
-                    koreanName: newComment.Character?.korean_name,
-                    description: newComment.Character?.description,
-                    korean_description:
-                      newComment.Character?.korean_description,
-                    affinity:
-                      newComment.Character?.User_Character?.[0]?.affinity || 0,
-                    avatarUrl: newComment.Character?.avatar_url,
-                  },
-                },
-              ];
-
-              updatedPosts[postIndex] = updatedPost;
-              monthData.entries[dateKey] = updatedPosts;
-            }
-          });
-        });
-
-        return { monthlyCache: newCache };
-      });
-    },
-
     // 여러 월 데이터 병합 조회 (PostDetail 등에서 사용)
     getAllCachedPosts: () => {
       const { monthlyCache } = get();
@@ -320,6 +256,47 @@ const usePostStore = create(
 
         monthData.entries = updatedEntries;
         newCache[monthKey] = monthData;
+
+        return { monthlyCache: newCache };
+      });
+    },
+
+    // 통합된 단일 포스트 업데이트 메서드
+    updateSinglePost: (dateStr, updatedPost) => {
+      set((state) => {
+        const monthKey = dateStr.substring(0, 7);
+        const newCache = { ...state.monthlyCache };
+
+        if (!newCache[monthKey]?.entries?.[dateStr]) {
+          console.warn(`No posts found for date ${dateStr}`);
+          return state;
+        }
+
+        // 날짜별 포스트 배열 복사
+        const posts = [...newCache[monthKey].entries[dateStr]];
+        const postIndex = posts.findIndex((p) => p.id === updatedPost.id);
+
+        if (postIndex === -1) {
+          console.warn(
+            `Post with id ${updatedPost.id} not found on ${dateStr}`
+          );
+          return state;
+        }
+
+        // 포스트 업데이트 - 전체 교체가 아닌 병합
+        posts[postIndex] = {
+          ...posts[postIndex],
+          ...updatedPost,
+        };
+
+        // 캐시 업데이트
+        newCache[monthKey] = {
+          ...newCache[monthKey],
+          entries: {
+            ...newCache[monthKey].entries,
+            [dateStr]: posts,
+          },
+        };
 
         return { monthlyCache: newCache };
       });
@@ -409,6 +386,7 @@ export const usePostActions = () => {
   const loadCurrentMonth = usePostStore((state) => state.loadCurrentMonth);
   const loadMonthData = usePostStore((state) => state.loadMonthData);
   const addNewPost = usePostStore((state) => state.addNewPost);
+  const updateSinglePost = usePostStore((state) => state.updateSinglePost);
   const getPostsByDate = usePostStore((state) => state.getPostsByDate);
   const clearCache = usePostStore((state) => state.clearCache);
   const clearMonthCache = usePostStore((state) => state.clearMonthCache);
@@ -417,19 +395,18 @@ export const usePostActions = () => {
   );
   const hasMonthCache = usePostStore((state) => state.hasMonthCache);
   const setViewMonth = usePostStore((state) => state.setViewMonth);
-  const updatePostComments = usePostStore((state) => state.updatePostComments);
 
   return {
     loadCurrentMonth,
     loadMonthData,
     addNewPost,
+    updateSinglePost,
     getPostsByDate,
     clearCache,
     clearMonthCache,
     prefetchAdjacentMonths,
     hasMonthCache,
     setViewMonth,
-    updatePostComments, // 새로 추가
   };
 };
 

@@ -28,6 +28,7 @@ export async function getMonthlyPosts(userId, startDate, endDate) {
        content,
        mood,
        allow_ai_comments,
+       ai_processing_status,
        entry_date,
        created_at,
        updated_at,
@@ -88,6 +89,54 @@ export async function getMonthlyPosts(userId, startDate, endDate) {
   }
 }
 
+// ===================== 단일 포스트 전체 데이터 fetch (AI 댓글 포함) =====================
+export async function fetchSinglePost(postId) {
+  const { data, error } = await supabase
+    .from("Post")
+    .select(
+      `
+      id,
+      content,
+      mood,
+      allow_ai_comments,
+      ai_processing_status,
+      entry_date,
+      created_at,
+      updated_at,
+      user_id,
+      Comment (
+        id,
+        character_id,
+        message,
+        created_at,
+        Character (
+          name,
+          korean_name,
+          description,
+          korean_description,
+          avatar_url,
+          User_Character (
+            affinity
+          )
+        )
+      ),
+      Post_Hashtag (
+        hashtag_id,
+        Hashtag (
+          name
+        )
+      )
+    `
+    )
+    .eq("id", postId)
+    .single();
+
+  if (error) throw error;
+
+  // formatPostForHome 형식으로 반환
+  return formatPostForHome(data);
+}
+
 // ===================== 데이터 생성 =====================
 export async function createPostImmediate(post, userId) {
   if (!userId) throw new Error("user_id가 없습니다.");
@@ -103,6 +152,9 @@ export async function createPostImmediate(post, userId) {
           visibility: post.visibility || "private",
           allow_ai_comments: post.allowAIComments !== false, // 기본값 true
           like: 0,
+          ai_processing_status: post.allowAIComments
+            ? "not_started"
+            : "fetched",
           user_id: userId,
           entry_date: post.entry_date || new Date().toISOString(), // 파라미터로 받은 날짜 사용
         },
@@ -113,6 +165,7 @@ export async function createPostImmediate(post, userId) {
        content,
        mood,
        visibility,
+       ai_processing_status,
        allow_ai_comments,
        like,
        entry_date,
@@ -199,6 +252,28 @@ export async function createPostImmediate(post, userId) {
 }
 
 // ===================== AI 프로세싱 =====================
+export async function updatePostAIProcessingStatus(postId, status) {
+  try {
+    // 유효한 상태값 체크
+    const validStatuses = ["not_started", "completed", "fetched"];
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Invalid status: ${status}`);
+    }
+
+    const { error } = await supabase
+      .from("Post")
+      .update({ ai_processing_status: status })
+      .eq("id", postId);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error(`Failed to update post status to ${status}:`, error);
+    throw error;
+  }
+}
+
+// ===================== AI 프로세싱 =====================
 async function triggerAIProcessing(
   postId,
   content,
@@ -246,6 +321,7 @@ function formatPostForHome(post) {
     createdAt: post.created_at,
     updatedAt: post.updated_at,
     allowAIComments: post.allow_ai_comments,
+    aiProcessingStatus: post.ai_processing_status,
 
     // AI 리플렉션 (댓글)
     aiReflections:

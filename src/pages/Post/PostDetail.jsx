@@ -4,6 +4,10 @@ import { ChevronLeft, Smile, Meh, Frown } from "lucide-react";
 
 import { usePostsByDate, usePostActions } from "../../stores/postStore";
 import { useUserId } from "../../stores/userStore";
+import {
+  fetchSinglePost,
+  updatePostAIProcessingStatus,
+} from "../../services/postService";
 
 const MOOD_ICONS = {
   happy: {
@@ -27,8 +31,8 @@ const PostDetail = () => {
   const { date } = useParams(); // "2024-01-15" 형식
   const navigate = useNavigate();
   const userId = useUserId();
-
   const posts = usePostsByDate(date);
+  const { updateSinglePost } = usePostActions();
   const { loadMonthData, hasMonthCache } = usePostActions();
 
   useEffect(() => {
@@ -53,6 +57,49 @@ const PostDetail = () => {
       }
     }
   }, [posts, userId, date]);
+
+  useEffect(() => {
+    if (!posts || posts.length === 0) return;
+
+    const post = posts[0];
+    if (post.aiProcessingStatus === "fetched") return;
+
+    const handleStatus = async () => {
+      // Edge case: 이미 completed이고 댓글도 있음
+      if (
+        post.aiProcessingStatus === "completed" &&
+        post.aiReflections?.length > 0
+      ) {
+        await updatePostAIProcessingStatus(post.id, "fetched");
+        // 상태만 업데이트
+        updateSinglePost(date, {
+          id: post.id,
+          aiProcessingStatus: "fetched",
+        });
+
+        return;
+      }
+
+      // 나머지 경우: fetch 필요
+      try {
+        const updatedPost = await fetchSinglePost(post.id);
+
+        if (
+          updatedPost.aiProcessingStatus === "completed" &&
+          updatedPost.aiReflections?.length > 0
+        ) {
+          await updatePostAIProcessingStatus(post.id, "fetched");
+          updatedPost.aiProcessingStatus = "fetched";
+        }
+
+        updateSinglePost(date, updatedPost);
+      } catch (error) {
+        console.error("Failed to fetch post:", error);
+      }
+    };
+
+    handleStatus();
+  }, [posts?.[0]?.id, posts?.[0]?.aiProcessingStatus]);
 
   if (!posts) {
     return (
