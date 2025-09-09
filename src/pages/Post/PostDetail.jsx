@@ -100,7 +100,7 @@ const PostDetail = () => {
 
               {/* Content */}
               <div
-                className="text-gray-700 text-sm leading-relaxed prose prose-sm max-w-none"
+                className="text-gray-700 text-base leading-relaxed prose prose-sm max-w-none"
                 dangerouslySetInnerHTML={{ __html: post.content }}
               />
 

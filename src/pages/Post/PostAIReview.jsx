@@ -320,7 +320,7 @@ const PostAIReview = () => {
       <div className="flex-1 overflow-hidden">
         <div className="px-4 py-6 overflow-y-auto h-full">
           <div className="max-w-2xl mx-auto">
-            <div className="mb-6 text-center">
+            <div className="mb-8 text-center">
               <h2 className="text-lg font-bold text-stone-900 mb-2">
                 AI가 작성한 일기
               </h2>
@@ -331,14 +331,11 @@ const PostAIReview = () => {
 
             {/* 선택된 날짜 표시 */}
             {selectedDate && (
-              <div className="mb-6 p-3 bg-blue-50 rounded-xl border border-blue-200">
+              <div className="mb-4">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <Calendar className="w-4 h-4 text-gray-600" />
                   <div className="flex-1">
-                    <p className="text-xs text-blue-600 font-medium">
-                      {userLanguage === "Korean" ? "작성 날짜" : "Entry Date"}
-                    </p>
-                    <p className="text-sm text-stone-900 font-semibold">
+                    <p className="text-sm text-stone-900 font-medium">
                       {formatSelectedDate(selectedDate)}
                     </p>
                   </div>

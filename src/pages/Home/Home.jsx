@@ -185,7 +185,7 @@ const Home = () => {
                        hasEntry
                          ? "bg-black text-white font-medium cursor-pointer"
                          : isToday
-                         ? "ring-1 ring-black text-black font-medium hover:bg-blue-50"
+                         ? "ring-1 ring-gray-400 text-black font-medium hover:bg-gray-200"
                          : isFuture
                          ? "text-gray-300 cursor-not-allowed"
                          : "text-gray-700 hover:bg-gray-200 cursor-pointer"

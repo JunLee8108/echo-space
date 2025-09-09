@@ -246,14 +246,11 @@ const PostManualWrite = () => {
           <div className="max-w-2xl mx-auto">
             {/* 선택된 날짜 표시 */}
             {selectedDate && (
-              <div className="mb-6 p-3 bg-blue-50 rounded-xl border border-blue-200">
+              <div className="mb-6">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <Calendar className="w-4 h-4 text-gray-600" />
                   <div className="flex-1">
-                    <p className="text-xs text-blue-600 font-medium">
-                      {userLanguage === "Korean" ? "작성 날짜" : "Entry Date"}
-                    </p>
-                    <p className="text-sm text-stone-900 font-semibold">
+                    <p className="text-sm text-stone-900 font-medium">
                       {formatSelectedDate(selectedDate)}
                     </p>
                   </div>
