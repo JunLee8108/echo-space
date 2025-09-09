@@ -48,7 +48,7 @@ const BottomNavbar = () => {
       path: "/",
       icon: (
         <svg
-          className="w-4.5 h-4.5 sm:w-5 sm:h-5 pointer-events-none"
+          className="w-5 h-5 sm:w-5 sm:h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -67,7 +67,7 @@ const BottomNavbar = () => {
       path: "/search",
       icon: (
         <svg
-          className="w-4.5 h-4.5 sm:w-5 sm:h-5 pointer-events-none"
+          className="w-5 h-5 sm:w-5 sm:h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -105,7 +105,7 @@ const BottomNavbar = () => {
       id: "trend",
       path: "/trend",
       icon: (
-        <TrendingUp className="w-4.5 h-4.5 sm:w-5 sm:h-5 pointer-events-none" />
+        <TrendingUp className="w-5 h-5 sm:w-5 sm:h-5 pointer-events-none" />
       ),
     },
     {
@@ -113,7 +113,7 @@ const BottomNavbar = () => {
       path: "/profile",
       icon: (
         <svg
-          className="w-4.5 h-4.5 sm:w-5 sm:h-5 pointer-events-none"
+          className="w-5 h-5 sm:w-5 sm:h-5 pointer-events-none"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -162,7 +162,7 @@ const BottomNavbar = () => {
       `}</style>
 
       <div className="fixed w-full max-w-[500px] mx-auto bottom-0 left-0 right-0 z-50 bg-white border-t border-stone-100">
-        <div className="max-w-2xl mx-auto py-2 pb-8 sm:pb-2">
+        <div className="max-w-2xl mx-auto py-2 pb-4 sm:pb-2">
           <nav className="flex items-center justify-around h-14 px-4">
             {tabs.map((tab) => {
               const isActive = isTabActive(tab);
