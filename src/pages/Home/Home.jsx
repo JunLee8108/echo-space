@@ -77,7 +77,7 @@ const Home = () => {
   useEffect(() => {
     const createdDate = sessionStorage.getItem("just_created_date");
     if (createdDate && userId) {
-      const [year, month, day] = createdDate.split("-").map(Number);
+      const [year, month] = createdDate.split("-").map(Number);
       const createdMonthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
 
       // 작성한 날짜의 월이 현재 뷰 월과 같으면 강제 리로드
@@ -149,6 +149,12 @@ const Home = () => {
   const handleMonthChange = async (direction) => {
     const newMonth = new Date(viewMonth);
     newMonth.setMonth(newMonth.getMonth() + direction);
+
+    // 미래 월로 이동 방지
+    if (isCurrentOrFutureMonth(newMonth)) {
+      return; // 또는 토스트 메시지 표시
+    }
+
     setViewMonth(newMonth); // store의 setter 사용
 
     // 새로운 월로 이동 시 데이터 로드 (useEffect에서 처리됨)
@@ -160,6 +166,17 @@ const Home = () => {
     if (userId) {
       prefetchAdjacentMonths(userId, newMonthKey);
     }
+  };
+
+  const isCurrentOrFutureMonth = (date) => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+
+    return (
+      date.getFullYear() > currentYear ||
+      (date.getFullYear() === currentYear && date.getMonth() > currentMonth)
+    );
   };
 
   const isValidDate = (year, month, day) => {
@@ -208,12 +225,12 @@ const Home = () => {
     <div className="min-h-screen bg-white">
       <div className="max-w-2xl mx-auto px-6 py-8">
         {/* Month Navigation */}
-        <div className="flex items-center justify-center gap-6 mb-6">
+        <div className="flex items-center justify-center gap-4 mb-6">
           <button
             onClick={() => handleMonthChange(-1)}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-6 h-6" />
           </button>
           <h2 className="text-md font-medium min-w-[120px] text-center">
             {viewMonth.toLocaleDateString("en-US", {
@@ -223,9 +240,9 @@ const Home = () => {
           </h2>
           <button
             onClick={() => handleMonthChange(1)}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-6 h-6" />
           </button>
         </div>
 
@@ -272,12 +289,12 @@ const Home = () => {
                        hasEntry
                          ? isJustCreated
                            ? "bg-blue-500 text-white font-medium animate-pulse ring-2 ring-blue-300"
-                           : "bg-black text-white font-medium cursor-pointer"
+                           : "text-shadow-sm text-gray-900 underline underline-offset-4 font-semibold cursor-pointer hover:bg-gray-300"
                          : isToday
-                         ? "ring-1 ring-gray-400 text-black font-medium hover:bg-gray-200"
+                         ? "text-black font-medium hover:bg-gray-200"
                          : isFuture
                          ? "text-gray-300 cursor-not-allowed"
-                         : "text-gray-700 hover:bg-gray-200 cursor-pointer"
+                         : "text-gray-500 hover:bg-gray-200 cursor-pointer"
                      }
                    `}
                   disabled={isFuture || isLoading}
