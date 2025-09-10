@@ -15,9 +15,7 @@ import PostAIReview from "./pages/Post/PostAIReview";
 import PostManualWrite from "./pages/Post/PostManualWrite";
 import PostDetail from "./pages/Post/PostDetail";
 
-import Search from "./pages/Search/Search";
 import AuthForm from "./pages/Home/AuthForm";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // userStore imports
 import {
@@ -26,22 +24,6 @@ import {
   setupAuthListener,
   useUserActions,
 } from "./stores/userStore";
-
-// QueryClient를 컴포넌트 밖에서 생성 (싱글톤 패턴)
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnMount: "always",
-      refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5분
-      cacheTime: 10 * 60 * 1000, // 10분
-    },
-    mutations: {
-      retry: 1,
-    },
-  },
-});
 
 // Main App Component
 function App() {
@@ -90,62 +72,59 @@ function App() {
   // Authenticated layout
   return (
     <>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <div className="min-h-screen bg-white">
-            <Toaster
-              position="top-center"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: "#1f2937",
-                  color: "#fff",
-                  padding: "16px",
-                  borderRadius: "12px",
-                  fontSize: "14px",
-                },
-              }}
-            />
+      <BrowserRouter>
+        <div className="min-h-screen bg-white">
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: "#1f2937",
+                color: "#fff",
+                padding: "16px",
+                borderRadius: "12px",
+                fontSize: "14px",
+              },
+            }}
+          />
 
-            <ScrollToTop />
+          <ScrollToTop />
 
-            {/* Global Header */}
-            <Header />
+          {/* Global Header */}
+          <Header />
 
-            {/* Main Content */}
-            <main className="pb-25 md:pb-20">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/search" element={<Search />} />
+          {/* Main Content */}
+          <main className="pb-25 md:pb-20">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/profile" element={<Profile />} />
 
-                {/* 새로운 Post 라우트 구조 */}
-                <Route path="/post/new" element={<PostMethodChoice />} />
-                <Route path="/post/new/ai" element={<PostAISelect />} />
-                <Route
-                  path="/post/new/ai/:characterId"
-                  element={<PostAIChat />}
-                />
-                <Route
-                  path="/post/new/ai/:characterId/review"
-                  element={<PostAIReview />}
-                />
-                <Route path="/post/new/manual" element={<PostManualWrite />} />
+              {/* 새로운 Post 라우트 구조 */}
+              <Route path="/post/new" element={<PostMethodChoice />} />
+              <Route path="/post/new/ai" element={<PostAISelect />} />
+              <Route
+                path="/post/new/ai/:characterId"
+                element={<PostAIChat />}
+              />
+              <Route
+                path="/post/new/ai/:characterId/review"
+                element={<PostAIReview />}
+              />
+              <Route path="/post/new/manual" element={<PostManualWrite />} />
+              <Route path="/post/:date" element={<PostDetail />} />
 
-                {/* 기존 라우트들 */}
-                <Route path="/post/:date" element={<PostDetail />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </main>
+              {/* 기존 라우트들 */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
 
-            {/* Bottom Navigation */}
-            <BottomNavbar />
+          {/* Bottom Navigation */}
+          <BottomNavbar />
 
-            {/* PWA Install Prompt - Add this component */}
-            {/* <PWAInstallPrompt /> */}
-          </div>
-        </BrowserRouter>
-      </QueryClientProvider>
+          {/* PWA Install Prompt - Add this component */}
+          {/* <PWAInstallPrompt /> */}
+        </div>
+      </BrowserRouter>
     </>
   );
 }

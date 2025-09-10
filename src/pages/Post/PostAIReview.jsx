@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useFollowedCharacters } from "../../stores/characterStore";
 import { useUserLanguage } from "../../stores/userStore";
-import { createTranslator } from "../../components/utils/translations";
+// import { createTranslator } from "../../components/utils/translations";
 import { useCreatePost } from "../../components/hooks/useCreatePost";
 import { usePostActions } from "../../stores/postStore";
 import { postStorage } from "../../components/utils/postStorage";
@@ -33,7 +33,7 @@ const PostAIReview = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const userLanguage = useUserLanguage();
-  const translate = createTranslator(userLanguage);
+  //   const translate = createTranslator(userLanguage);
   const followedCharacters = useFollowedCharacters();
   const { setViewMonth } = usePostActions();
   const createPostMutation = useCreatePost();

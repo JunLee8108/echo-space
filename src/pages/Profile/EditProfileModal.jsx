@@ -1,7 +1,5 @@
 // EditProfileModal.jsx 수정된 버전
 import { useState, useEffect, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useUserId } from "../../stores/userStore";
 import { Eye, EyeOff } from "lucide-react";
 
 import { signOut } from "../../services/authService";
@@ -16,9 +14,6 @@ const EditProfileModal = ({
   onPasswordChange,
   onLanguageChange,
 }) => {
-  const queryClient = useQueryClient();
-  const userId = useUserId();
-
   const [name, setName] = useState(currentName);
   const [language, setLanguage] = useState(currentLanguage || "English"); // 추가
   const [loading, setLoading] = useState(false);
@@ -105,7 +100,6 @@ const EditProfileModal = ({
       // 이름이 변경되었으면 업데이트
       if (nameChanged) {
         await onConfirm(name.trim());
-        queryClient.invalidateQueries({ queryKey: ["posts", userId] });
       }
 
       // 언어가 변경되었으면 업데이트
