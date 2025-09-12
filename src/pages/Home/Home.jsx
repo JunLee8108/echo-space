@@ -88,7 +88,6 @@ const Home = () => {
       )}`;
 
       // 작성한 날짜의 월이 현재 뷰 월과 같으면 강제 리로드
-
       if (createdMonthKey === viewMonthKey) {
         console.log("Force reloading month after post creation:", viewMonthKey);
         loadMonthData(userId, viewMonthKey, true); // true = forceReload

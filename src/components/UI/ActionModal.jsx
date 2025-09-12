@@ -19,7 +19,7 @@ const ActionModal = ({ isOpen, onClose, onAddEntry, onEdit, onDelete }) => {
       // 애니메이션이 끝난 후 DOM에서 제거
       const timer = setTimeout(() => {
         setIsVisible(false);
-      }, 300);
+      }, 400);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -51,19 +51,17 @@ const ActionModal = ({ isOpen, onClose, onAddEntry, onEdit, onDelete }) => {
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-60 transition-opacity duration-300 ${
-          isAnimating ? "bg-black/30" : "bg-transparent"
-        }`}
+        className={`fixed inset-0 z-60 transition-opacity duration-300`}
         onClick={onClose}
       >
         {/* Modal - Bottom Sheet Style */}
         <div
-          className={`absolute max-w-[500px] min-h-[50dvh] mx-auto bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-xl transform transition-transform duration-300 ease-out ${
+          className={`absolute max-w-[500px] min-h-[50dvh] mx-auto bottom-0 left-0 right-0 bg-white border-t border-gray-300 shadow-xl transform transition-transform duration-300 ease-out ${
             isAnimating ? "translate-y-0" : "translate-y-full"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-2 pb-safe">
+          <div className="p-2 pt-6 pb-safe">
             {/* Handle bar */}
             <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
 
@@ -76,7 +74,9 @@ const ActionModal = ({ isOpen, onClose, onAddEntry, onEdit, onDelete }) => {
                     key={index}
                     onClick={() => {
                       onClose();
-                      item.onClick?.();
+                      setTimeout(() => {
+                        item.onClick?.();
+                      }, 100);
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${item.className}`}
                   >
