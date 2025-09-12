@@ -114,195 +114,175 @@ import { FileText, Edit3, Trash2, X } from "lucide-react";
 const ActionModal = ({ isOpen, onClose, onAddEntry, onEdit, onDelete }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragY, setDragY] = useState(0);
 
   const modalRef = useRef(null);
-  const startYRef = useRef(0);
-  const startTimeRef = useRef(0);
-  const currentYRef = useRef(0);
-  const rafRef = useRef(null);
+  const dragStateRef = useRef({
+    isDragging: false,
+    startY: 0,
+    currentY: 0,
+    startTime: 0,
+    rafId: null,
+  });
+  const modalTransformRef = useRef(0);
   const isClosingRef = useRef(false);
-  const touchStartedRef = useRef(false);
 
   // Constants for swipe behavior
-  const VELOCITY_THRESHOLD = 0.5; // px/ms - 속도 임계값
-  const DISTANCE_THRESHOLD = 50; // px - 최소 스와이프 거리
-  const RUBBER_BAND_FACTOR = 0.3; // 위로 당길 때 저항 계수
-  const ANIMATION_DURATION = 300; // ms
+  const VELOCITY_THRESHOLD = 0.3; // px/ms - 속도 임계값 (더 민감하게)
+  const DISTANCE_THRESHOLD = 40; // px - 최소 스와이프 거리 (더 민감하게)
+  const ANIMATION_DURATION = 280; // ms (더 빠르게)
 
   // 모달 열기/닫기 처리
   useEffect(() => {
     if (isOpen) {
       setIsVisible(true);
       isClosingRef.current = false;
+      modalTransformRef.current = 0;
       // DOM 마운트 후 애니메이션 시작
       setTimeout(() => {
         setIsAnimating(true);
-      }, 50);
+      }, 10);
     } else {
       setIsAnimating(false);
       const timer = setTimeout(() => {
         setIsVisible(false);
-        setDragY(0);
       }, ANIMATION_DURATION);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
-  // 터치/마우스 시작
-  const handleStart = useCallback((e) => {
-    if (isClosingRef.current || !modalRef.current) return;
-
-    // 이미 처리된 이벤트면 무시 (중복 방지)
-    if (touchStartedRef.current) return;
-    touchStartedRef.current = true;
-
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-    setIsDragging(true);
-    startYRef.current = clientY;
-    startTimeRef.current = Date.now();
-    currentYRef.current = 0;
-
-    // 포인터 캡처 (마우스의 경우)
-    if (e.type === "mousedown" && e.target.setPointerCapture) {
-      e.target.setPointerCapture(e.pointerId || 1);
-    }
-
-    e.preventDefault();
+  // Transform 직접 적용 함수
+  const applyTransform = useCallback((value) => {
+    if (!modalRef.current) return;
+    modalTransformRef.current = value;
+    modalRef.current.style.transform = `translateY(${Math.max(0, value)}px)`;
   }, []);
 
-  // 터치/마우스 이동
-  const handleMove = useCallback(
+  // 터치 시작
+  const handleTouchStart = useCallback((e) => {
+    if (isClosingRef.current || !modalRef.current) return;
+
+    const touch = e.touches[0];
+    dragStateRef.current = {
+      isDragging: true,
+      startY: touch.clientY,
+      currentY: 0,
+      startTime: Date.now(),
+      rafId: null,
+    };
+
+    // transition 제거
+    modalRef.current.style.transition = "none";
+  }, []);
+
+  // 터치 이동 (최적화)
+  const handleTouchMove = useCallback(
     (e) => {
-      if (!isDragging || isClosingRef.current) return;
+      const state = dragStateRef.current;
+      if (!state.isDragging || isClosingRef.current) return;
 
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      const deltaY = clientY - startYRef.current;
+      const touch = e.touches[0];
+      const deltaY = touch.clientY - state.startY;
 
-      // 위로 스와이프 시 저항 적용
-      const adjustedDeltaY = deltaY < 0 ? deltaY * RUBBER_BAND_FACTOR : deltaY;
+      // 위로 스와이프는 무시 (0 이하로 가지 않음)
+      const clampedDeltaY = Math.max(0, deltaY);
+      state.currentY = clampedDeltaY;
 
-      currentYRef.current = adjustedDeltaY;
-
-      // requestAnimationFrame으로 부드러운 업데이트
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-
-      rafRef.current = requestAnimationFrame(() => {
-        setDragY(adjustedDeltaY);
-      });
-
-      e.preventDefault();
+      // RAF 없이 직접 적용 (더 빠른 반응)
+      applyTransform(clampedDeltaY);
     },
-    [isDragging]
+    [applyTransform]
   );
 
-  // 터치/마우스 종료
-  const handleEnd = useCallback(
-    (e) => {
-      if (!isDragging || isClosingRef.current) return;
+  // 터치 종료
+  const handleTouchEnd = useCallback(() => {
+    const state = dragStateRef.current;
+    if (!state.isDragging || isClosingRef.current) return;
 
-      touchStartedRef.current = false;
-      setIsDragging(false);
+    state.isDragging = false;
 
-      const endTime = Date.now();
-      const deltaTime = endTime - startTimeRef.current;
-      const deltaY = currentYRef.current;
-      const velocity = deltaY / deltaTime;
+    const endTime = Date.now();
+    const deltaTime = Math.max(1, endTime - state.startTime); // 0 방지
+    const velocity = state.currentY / deltaTime;
 
-      // 포인터 릴리즈 (마우스의 경우)
-      if (e.type === "mouseup" && e.target.releasePointerCapture) {
-        e.target.releasePointerCapture(e.pointerId || 1);
-      }
+    // 닫기 조건 판단 (더 민감하게)
+    const shouldClose =
+      state.currentY > DISTANCE_THRESHOLD || velocity > VELOCITY_THRESHOLD;
 
-      // 닫기 조건 판단
-      const shouldClose =
-        deltaY > DISTANCE_THRESHOLD || // 충분한 거리
-        velocity > VELOCITY_THRESHOLD; // 충분한 속도
-
-      if (shouldClose && deltaY > 0) {
-        // 부드럽게 닫기
-        animateClose();
-      } else {
-        // 원위치로 복귀
-        resetPosition();
-      }
-
-      e.preventDefault();
-    },
-    [isDragging]
-  );
+    if (shouldClose) {
+      animateClose(state.currentY);
+    } else {
+      animateReset();
+    }
+  }, []);
 
   // 부드러운 닫기 애니메이션
   const animateClose = useCallback(() => {
-    if (isClosingRef.current) return;
+    if (isClosingRef.current || !modalRef.current) return;
 
     isClosingRef.current = true;
-    const modalHeight = modalRef.current?.offsetHeight || 500;
+    const modalHeight = modalRef.current.offsetHeight;
 
-    // 현재 위치에서 완전히 아래로 애니메이션
-    const startY = currentYRef.current;
-    const targetY = modalHeight;
-    const startTime = Date.now();
+    // CSS transition으로 처리 (더 부드럽게)
+    modalRef.current.style.transition = `transform ${ANIMATION_DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+    modalRef.current.style.transform = `translateY(${modalHeight}px)`;
 
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / ANIMATION_DURATION, 1);
-
-      // easeOutCubic 이징 함수
-      const easeProgress = 1 - Math.pow(1 - progress, 3);
-      const currentY = startY + (targetY - startY) * easeProgress;
-
-      setDragY(currentY);
-
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(animate);
-      } else {
-        // 애니메이션 완료 후 모달 닫기
-        onClose();
-      }
-    };
-
-    animate();
+    // 애니메이션 후 닫기
+    setTimeout(() => {
+      onClose();
+    }, ANIMATION_DURATION);
   }, [onClose]);
 
-  // 원위치로 복귀 애니메이션
-  const resetPosition = useCallback(() => {
-    const startY = currentYRef.current;
-    const startTime = Date.now();
+  // 원위치 복귀 애니메이션
+  const animateReset = useCallback(() => {
+    if (!modalRef.current) return;
 
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / ANIMATION_DURATION, 1);
-
-      // easeOutCubic 이징 함수
-      const easeProgress = 1 - Math.pow(1 - progress, 3);
-      const currentY = startY * (1 - easeProgress);
-
-      setDragY(currentY);
-
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(animate);
-      } else {
-        setDragY(0);
-        currentYRef.current = 0;
-      }
-    };
-
-    animate();
+    modalRef.current.style.transition = `transform ${ANIMATION_DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+    modalRef.current.style.transform = "translateY(0)";
+    modalTransformRef.current = 0;
   }, []);
 
-  // Cleanup
+  // 전역 터치 이벤트 (non-passive로 명시적 설정)
   useEffect(() => {
-    return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
+    if (!isVisible) return;
+
+    const handleBar = modalRef.current?.querySelector("[data-handle-bar]");
+    if (!handleBar) return;
+
+    // 터치 이벤트만 사용 (데스크탑 제외)
+    const touchMoveHandler = (e) => {
+      if (dragStateRef.current.isDragging) {
+        e.preventDefault(); // 스크롤 방지
+        handleTouchMove(e);
       }
     };
-  }, []);
+
+    const touchEndHandler = () => {
+      if (dragStateRef.current.isDragging) {
+        handleTouchEnd();
+      }
+    };
+
+    // Handle bar에 이벤트 등록
+    handleBar.addEventListener("touchstart", handleTouchStart, {
+      passive: true,
+    });
+
+    // Document에 이벤트 등록 (non-passive)
+    document.addEventListener("touchmove", touchMoveHandler, {
+      passive: false,
+    });
+    document.addEventListener("touchend", touchEndHandler, { passive: true });
+    document.addEventListener("touchcancel", touchEndHandler, {
+      passive: true,
+    });
+
+    return () => {
+      handleBar.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchmove", touchMoveHandler);
+      document.removeEventListener("touchend", touchEndHandler);
+      document.removeEventListener("touchcancel", touchEndHandler);
+    };
+  }, [isVisible, handleTouchStart, handleTouchMove, handleTouchEnd]);
 
   // ESC 키로 닫기
   useEffect(() => {
@@ -317,44 +297,6 @@ const ActionModal = ({ isOpen, onClose, onAddEntry, onEdit, onDelete }) => {
       return () => document.removeEventListener("keydown", handleEscape);
     }
   }, [isOpen, onClose]);
-
-  // 전역 이벤트 리스너 (모바일 대응)
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleGlobalMove = (e) => {
-      if (isDragging) {
-        handleMove(e);
-      }
-    };
-
-    const handleGlobalEnd = (e) => {
-      if (isDragging) {
-        handleEnd(e);
-      }
-    };
-
-    // Touch events
-    document.addEventListener("touchmove", handleGlobalMove, {
-      passive: false,
-    });
-    document.addEventListener("touchend", handleGlobalEnd, { passive: false });
-    document.addEventListener("touchcancel", handleGlobalEnd, {
-      passive: false,
-    });
-
-    // Mouse events
-    document.addEventListener("mousemove", handleGlobalMove);
-    document.addEventListener("mouseup", handleGlobalEnd);
-
-    return () => {
-      document.removeEventListener("touchmove", handleGlobalMove);
-      document.removeEventListener("touchend", handleGlobalEnd);
-      document.removeEventListener("touchcancel", handleGlobalEnd);
-      document.removeEventListener("mousemove", handleGlobalMove);
-      document.removeEventListener("mouseup", handleGlobalEnd);
-    };
-  }, [isOpen, isDragging, handleMove, handleEnd]);
 
   if (!isVisible) return null;
 
@@ -379,46 +321,32 @@ const ActionModal = ({ isOpen, onClose, onAddEntry, onEdit, onDelete }) => {
     },
   ];
 
-  // 드래그 중이거나 dragY가 있을 때의 transform 스타일
-  const modalStyle = {
-    transform:
-      isDragging || dragY !== 0
-        ? `translateY(${Math.max(0, dragY)}px)`
-        : isAnimating
-        ? "translateY(0)"
-        : "translateY(100%)",
-    transition: isDragging
-      ? "none"
-      : `transform ${ANIMATION_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`,
-    willChange: isDragging ? "transform" : "auto",
-  };
-
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-60 transition-opacity duration-300"
+        className="fixed inset-0 z-60"
         onClick={onClose}
         style={{
           pointerEvents: isAnimating ? "auto" : "none",
-          touchAction: "none",
         }}
       >
         {/* Modal - Bottom Sheet Style */}
         <div
           ref={modalRef}
           className="absolute max-w-[500px] min-h-[50dvh] mx-auto bottom-0 left-0 right-0 bg-white border-t border-gray-300 shadow-xl select-none"
-          style={modalStyle}
+          style={{
+            transform: isAnimating ? "translateY(0)" : "translateY(100%)",
+            transition: isAnimating
+              ? `transform ${ANIMATION_DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`
+              : "none",
+            willChange: "transform",
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-2 pb-safe">
             {/* Handle bar - 드래그 가능 영역 */}
-            <div
-              className="py-4 cursor-grab active:cursor-grabbing"
-              style={{ touchAction: "none" }}
-              onTouchStart={handleStart}
-              onMouseDown={handleStart}
-            >
+            <div data-handle-bar className="py-4 touch-none">
               <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto pointer-events-none"></div>
             </div>
 
@@ -437,7 +365,6 @@ const ActionModal = ({ isOpen, onClose, onAddEntry, onEdit, onDelete }) => {
                       }, 100);
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${item.className}`}
-                    style={{ touchAction: "manipulation" }}
                   >
                     <Icon className="w-5 h-5" />
                     <span className="text-base">{item.label}</span>
@@ -454,7 +381,6 @@ const ActionModal = ({ isOpen, onClose, onAddEntry, onEdit, onDelete }) => {
                   onClose();
                 }}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
-                style={{ touchAction: "manipulation" }}
               >
                 <X className="w-5 h-5" />
                 <span className="text-base">Cancel</span>
