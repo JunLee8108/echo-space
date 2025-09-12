@@ -68,6 +68,7 @@ const Home = () => {
         const currentKey = `${new Date().getFullYear()}-${String(
           new Date().getMonth() + 1
         ).padStart(2, "0")}`;
+
         prefetchAdjacentMonths(userId, currentKey);
       });
     }
@@ -78,13 +79,16 @@ const Home = () => {
     const createdDate = sessionStorage.getItem("just_created_date");
     if (createdDate && userId) {
       const [year, month, day] = createdDate.split("-").map(Number);
-      const createdMonthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+      const createdMonthKey = `${year}-${String(month).padStart(2, "0")}`;
+
       const createdDateKey = `${createdMonthKey}-${String(day).padStart(
         2,
         "0"
       )}`;
 
       // 작성한 날짜의 월이 현재 뷰 월과 같으면 강제 리로드
+
       if (createdMonthKey === viewMonthKey) {
         console.log("Force reloading month after post creation:", viewMonthKey);
         loadMonthData(userId, viewMonthKey, true); // true = forceReload
@@ -191,7 +195,6 @@ const Home = () => {
     const posts = calendarData[dateKey];
 
     if (posts && posts.length > 0) {
-      // 이미 올바른 형식
       navigate(`/post/${dateKey}`);
     } else if (isValidDate(year, month, day)) {
       const selectedDate = new Date(year, month, day);

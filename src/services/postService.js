@@ -59,8 +59,8 @@ export async function getMonthlyPosts(userId, startDate, endDate) {
      `
       )
       .eq("user_id", userId)
-      .gte("entry_date", startDate)
-      .lte("entry_date", endDate)
+      .gte("entry_date", startDate.split("T")[0])
+      .lte("entry_date", endDate.split("T")[0])
       .order("entry_date", { ascending: false })
       .order("created_at", { ascending: false });
 
@@ -70,7 +70,7 @@ export async function getMonthlyPosts(userId, startDate, endDate) {
     const groupedEntries = {};
 
     data.forEach((post) => {
-      const dateKey = formatDateKey(post.entry_date || post.created_at);
+      const dateKey = post.entry_date || formatDateKey(post.created_at);
 
       if (!groupedEntries[dateKey]) {
         groupedEntries[dateKey] = [];
@@ -156,7 +156,9 @@ export async function createPostImmediate(post, userId) {
             ? "not_started"
             : "fetched",
           user_id: userId,
-          entry_date: post.entry_date || new Date().toISOString(), // 파라미터로 받은 날짜 사용
+          entry_date: post.entry_date
+            ? post.entry_date.split("T")[0] // ISO string에서 날짜만 추출
+            : new Date().toISOString().split("T")[0],
         },
       ])
       .select(
@@ -317,7 +319,7 @@ function formatPostForHome(post) {
     id: post.id,
     content: post.content,
     mood: post.mood,
-    entryDate: post.entry_date || post.created_at,
+    entryDate: post.entry_date || post.created_at.split("T")[0],
     createdAt: post.created_at,
     updatedAt: post.updated_at,
     allowAIComments: post.allow_ai_comments,

@@ -1,6 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router";
-import { ChevronLeft, Smile, Meh, Frown, EllipsisVertical } from "lucide-react";
+import {
+  ChevronLeft,
+  Smile,
+  Meh,
+  Frown,
+  EllipsisVertical,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
 import { usePostsByDate, usePostActions } from "../../stores/postStore";
 import { useUserId } from "../../stores/userStore";
@@ -27,6 +35,180 @@ const MOOD_ICONS = {
     label: "슬픔",
     color: "text-blue-500",
   },
+};
+
+// Collapsible Comments Component with Performance Optimization
+const CollapsibleComments = ({ postId, reflections }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [height, setHeight] = useState(0);
+  const contentRef = useRef(null);
+  const animationRef = useRef(null);
+  const isAnimatingRef = useRef(false);
+
+  // Memoized toggle handler
+  const handleToggle = useCallback(() => {
+    if (isAnimatingRef.current) return;
+
+    isAnimatingRef.current = true;
+
+    // Use requestAnimationFrame for smooth animation
+    const animate = () => {
+      if (!contentRef.current) {
+        isAnimatingRef.current = false;
+        return;
+      }
+
+      if (!isExpanded) {
+        // Expanding
+        const targetHeight = contentRef.current.scrollHeight;
+        setHeight(targetHeight);
+
+        animationRef.current = requestAnimationFrame(() => {
+          setIsExpanded(true);
+
+          // Reset height to auto after animation completes
+          setTimeout(() => {
+            setHeight("auto");
+            isAnimatingRef.current = false;
+          }, 300);
+        });
+      } else {
+        // Collapsing
+        const currentHeight = contentRef.current.scrollHeight;
+        setHeight(currentHeight);
+
+        animationRef.current = requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setHeight(0);
+            setIsExpanded(false);
+
+            setTimeout(() => {
+              isAnimatingRef.current = false;
+            }, 300);
+          });
+        });
+      }
+    };
+
+    animate();
+  }, [isExpanded]);
+
+  // Cleanup animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
+
+  const commentCount = reflections.length;
+  const displayAvatars = reflections.slice(0, 3);
+  const remainingCount = Math.max(0, commentCount - 3);
+
+  return (
+    <div className="space-y-3 pt-4 mt-6 border-t border-gray-100">
+      {/* Collapsed View */}
+      <button
+        onClick={handleToggle}
+        className="w-full group"
+        aria-expanded={isExpanded}
+        aria-controls={`comments-${postId}`}
+      >
+        <div className="flex items-center justify-between hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors">
+          <div
+            className={`flex items-center gap-3 transition-opacity duration-200 ${
+              isExpanded ? "opacity-0" : "opacity-100"
+            }`}
+          >
+            {/* Stacked Avatars */}
+            <div className="flex items-center">
+              {displayAvatars.map((reflection, index) => (
+                <div
+                  key={reflection.id}
+                  className="relative transition-all duration-200"
+                  style={{
+                    marginLeft: index > 0 ? "-12px" : "0",
+                    zIndex: displayAvatars.length - index,
+                  }}
+                >
+                  <img
+                    src={reflection.character.avatarUrl}
+                    alt={reflection.character.name}
+                    className="w-8 h-8 rounded-2xl object-cover border-2 border-white shadow-sm"
+                  />
+                </div>
+              ))}
+              {remainingCount > 0 && (
+                <div
+                  className="relative flex items-center justify-center w-8 h-8 rounded-2xl bg-gray-100 border-2 border-white shadow-sm"
+                  style={{
+                    marginLeft: "-8px",
+                    zIndex: 0,
+                  }}
+                >
+                  <span className="text-xs font-medium text-gray-600">
+                    +{remainingCount}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Comment Count */}
+            <span className="text-xs text-gray-600 font-medium">
+              {commentCount} {commentCount === 1 ? "response" : "responses"}
+            </span>
+          </div>
+
+          {/* Expand/Collapse Icon */}
+          <div className="p-1 rounded-md group-hover:bg-gray-100 transition-colors">
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-gray-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-400" />
+            )}
+          </div>
+        </div>
+      </button>
+
+      {/* Expanded Comments */}
+      <div
+        id={`comments-${postId}`}
+        ref={contentRef}
+        className="overflow-hidden transition-all duration-300 ease-in-out"
+        style={{
+          height: height === "auto" ? "auto" : `${height}px`,
+          opacity: isExpanded ? 1 : 0,
+        }}
+      >
+        <div className="space-y-6 pt-2">
+          {reflections.map((reflection, index) => (
+            <div
+              key={reflection.id}
+              className="flex gap-3 animate-fadeIn"
+              style={{
+                animationDelay: `${index * 50}ms`,
+              }}
+            >
+              <img
+                src={reflection.character.avatarUrl}
+                alt={reflection.character.name}
+                className="w-8 h-8 cursor-pointer rounded-2xl object-cover flex-shrink-0 transition-transform hover:scale-105"
+              />
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-gray-900 mb-1">
+                  {reflection.character.koreanName || reflection.character.name}
+                </p>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {reflection.message}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const PostDetail = () => {
@@ -161,7 +343,7 @@ const PostDetail = () => {
               {String(dateObj.getDate()).padStart(2, "0")}
             </span>
             <div className="flex flex-col items-start">
-              <p className="text-gray-500 text-sm mb-1">
+              <p className="text-gray-500 text-sm">
                 {dateObj.toLocaleDateString("en-US", {
                   year: "numeric",
                   month: "short",
@@ -214,28 +396,12 @@ const PostDetail = () => {
                 </div>
               )}
 
-              {/* AI Reflections */}
+              {/* AI Reflections - Now Collapsible */}
               {post.aiReflections.length > 0 && (
-                <div className="space-y-6 pt-4 mt-6 border-t border-gray-100">
-                  {post.aiReflections.map((reflection) => (
-                    <div key={reflection.id} className="flex gap-3">
-                      <img
-                        src={reflection.character.avatarUrl}
-                        alt={reflection.character.name}
-                        className="w-8 h-8 cursor-pointer rounded-2xl object-cover flex-shrink-0"
-                      />
-                      <div className="flex-1">
-                        <p className="text-xs font-semibold text-gray-900 mb-1">
-                          {reflection.character.koreanName ||
-                            reflection.character.name}
-                        </p>
-                        <p className="text-sm text-gray-600 leading-relaxed">
-                          {reflection.message}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <CollapsibleComments
+                  postId={post.id}
+                  reflections={post.aiReflections}
+                />
               )}
             </div>
           ))}
@@ -250,6 +416,24 @@ const PostDetail = () => {
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
+
+      {/* Add CSS for fade-in animation */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };

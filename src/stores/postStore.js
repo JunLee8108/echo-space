@@ -2,28 +2,10 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { getMonthlyPosts } from "../services/postService";
-
-// 날짜 유틸리티 함수
-function formatDateKey(date) {
-  const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function formatMonthKey(date) {
-  const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
-}
-
-function getMonthStartEnd(year, month) {
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(year, month, 0, 23, 59, 59, 999);
-  return { start, end };
-}
+import {
+  formatMonthKey,
+  getMonthStartEnd,
+} from "../components/utils/dateUtils";
 
 const usePostStore = create(
   devtools((set, get) => ({
@@ -225,7 +207,7 @@ const usePostStore = create(
     // 새 포스트 추가 (포스트 생성 시 사용)
     addNewPost: (post) => {
       set((state) => {
-        const dateKey = formatDateKey(post.entryDate);
+        const dateKey = post.entryDate;
         const monthKey = dateKey.substring(0, 7);
 
         const newCache = { ...state.monthlyCache };

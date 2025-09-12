@@ -254,14 +254,12 @@ const PostAIReview = () => {
 
       const savedPost = await createPostMutation.mutateAsync(postData);
 
-      // Home의 형식에 맞춰 날짜 키 생성
-      const postDate = new Date(savedPost.entryDate || savedPost.createdAt);
-      const year = postDate.getFullYear();
-      const month = postDate.getMonth(); // 0-based 그대로 사용
-      const day = postDate.getDate();
+      // savedPost.entryDate는 "2024-01-15" 형식
+      const dateKey = savedPost.entryDate || savedPost.createdAt.split("T")[0];
 
-      // Home의 formatDateKey와 동일한 형식
-      const dateKey = `${year}-${month}-${day}`;
+      // Date 객체로 변환 (로컬 시간)
+      const [year, month, day] = dateKey.split("-").map(Number);
+      const postDate = new Date(year, month - 1, day);
 
       // 해당 월로 뷰 변경
       setViewMonth(postDate);
