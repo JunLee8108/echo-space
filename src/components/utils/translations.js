@@ -248,6 +248,10 @@ export const translations = {
     English: "Record Your Day",
     Korean: "오늘 하루를 기록하기",
   },
+  "postMethod.dateTitle": {
+    English: "Write diary for ${date}",
+    Korean: "${month}월 ${day}일 일기 작성하기",
+  },
   "postMethod.subtitle": {
     English: "How would you like to write?",
     Korean: "어떤 방식으로 작성하시겠어요?",

@@ -28,6 +28,22 @@ const PostMethodChoice = () => {
     }
   }, []);
 
+  // 날짜 타이틀 가져오기
+  const getDateTitle = () => {
+    if (!selectedDate) {
+      return translate("postMethod.mainTitle");
+    }
+
+    return translate("postMethod.dateTitle", {
+      month: selectedDate.getMonth() + 1,
+      day: selectedDate.getDate(),
+      date: selectedDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
+    });
+  };
+
   // 뒤로가기 핸들러
   const handleBack = () => {
     // 선택된 날짜가 있으면 클리어
@@ -62,16 +78,7 @@ const PostMethodChoice = () => {
           <div className="max-w-md mx-auto">
             <div className="text-center mb-8">
               <h2 className="text-lg font-bold text-stone-900 mb-1">
-                {selectedDate
-                  ? userLanguage === "Korean"
-                    ? `${
-                        selectedDate.getMonth() + 1
-                      }월 ${selectedDate.getDate()}일 일기 작성하기`
-                    : `Write diary for ${selectedDate.toLocaleDateString(
-                        "en-US",
-                        { month: "short", day: "numeric" }
-                      )}`
-                  : translate("postMethod.mainTitle")}
+                {getDateTitle()}
               </h2>
               <p className="text-sm text-stone-600">
                 {translate("postMethod.subtitle")}
