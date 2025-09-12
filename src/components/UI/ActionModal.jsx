@@ -75,8 +75,8 @@ const ActionModal = ({ isOpen, onClose, onAddEntry, onEdit, onDelete }) => {
                   <button
                     key={index}
                     onClick={() => {
-                      item.onClick?.();
                       onClose();
+                      item.onClick?.();
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${item.className}`}
                   >
