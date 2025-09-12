@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { ChevronLeft, Smile, Meh, Frown, MoreVertical } from "lucide-react";
+import { ChevronLeft, Smile, Meh, Frown, EllipsisVertical } from "lucide-react";
 
 import { usePostsByDate, usePostActions } from "../../stores/postStore";
 import { useUserId } from "../../stores/userStore";
@@ -8,6 +8,7 @@ import {
   fetchSinglePost,
   updatePostAIProcessingStatus,
 } from "../../services/postService";
+import { postStorage } from "../../components/utils/postStorage";
 import ActionModal from "../../components/UI/ActionModal";
 
 const MOOD_ICONS = {
@@ -106,8 +107,11 @@ const PostDetail = () => {
 
   // Action handlers
   const handleAddEntry = () => {
-    // TODO: Implement add another entry
-    console.log("Add another entry for date:", date);
+    const [year, month, day] = date.split("-").map(Number);
+    const selectedDate = new Date(year, month - 1, day);
+
+    postStorage.saveSelectedDate(selectedDate.toISOString());
+    navigate("/post/new");
   };
 
   const handleEdit = () => {
@@ -148,37 +152,40 @@ const PostDetail = () => {
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
+        </div>
+
+        {/* Date Display */}
+        <div className="flex justify-between items-center gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            <span className="text-5xl font-bold">
+              {String(dateObj.getDate()).padStart(2, "0")}
+            </span>
+            <div className="flex flex-col items-start">
+              <p className="text-gray-500 text-sm mb-1">
+                {dateObj.toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                })}
+              </p>
+              <div className="flex items-center gap-1">
+                <span className="text-gray-500 text-sm">
+                  {dateObj.toLocaleDateString("en-US", { weekday: "long" })}
+                </span>
+                {posts[0]?.mood &&
+                  (() => {
+                    const WeatherIcon = MOOD_ICONS[posts[0].mood].icon;
+                    return <WeatherIcon className="w-4 h-4 text-gray-600" />;
+                  })()}
+              </div>
+            </div>
+          </div>
 
           <button
             onClick={() => setIsActionModalOpen(true)}
             className="p-2 -m-2 hover:bg-gray-50 rounded-lg transition-colors"
           >
-            <MoreVertical className="w-5 h-5" />
+            <EllipsisVertical className="w-6 h-6" />
           </button>
-        </div>
-
-        {/* Date Display */}
-        <div className="flex items-baseline gap-4 mb-1">
-          <span className="text-5xl font-bold">
-            {String(dateObj.getDate()).padStart(2, "0")}
-          </span>
-          <p className="text-gray-500 text-sm">
-            {dateObj.toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-            })}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 mb-6">
-          <span className="text-gray-500 text-sm">
-            {dateObj.toLocaleDateString("en-US", { weekday: "long" })}
-          </span>
-          {posts[0]?.mood &&
-            (() => {
-              const WeatherIcon = MOOD_ICONS[posts[0].mood].icon;
-              return <WeatherIcon className="w-4.5 h-4.5 text-gray-600" />;
-            })()}
         </div>
 
         {/* Posts */}
