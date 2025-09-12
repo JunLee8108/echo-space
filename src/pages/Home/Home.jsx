@@ -77,8 +77,12 @@ const Home = () => {
   useEffect(() => {
     const createdDate = sessionStorage.getItem("just_created_date");
     if (createdDate && userId) {
-      const [year, month] = createdDate.split("-").map(Number);
+      const [year, month, day] = createdDate.split("-").map(Number);
       const createdMonthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+      const createdDateKey = `${createdMonthKey}-${String(day).padStart(
+        2,
+        "0"
+      )}`;
 
       // 작성한 날짜의 월이 현재 뷰 월과 같으면 강제 리로드
       if (createdMonthKey === viewMonthKey) {
@@ -86,7 +90,7 @@ const Home = () => {
         loadMonthData(userId, viewMonthKey, true); // true = forceReload
       }
 
-      setJustCreatedDate(createdDate);
+      setJustCreatedDate(createdDateKey);
       sessionStorage.removeItem("just_created_date");
 
       setTimeout(() => {
@@ -105,15 +109,7 @@ const Home = () => {
   // 현재 보고 있는 월의 캘린더 데이터
   const calendarData = useMemo(() => {
     const monthData = monthlyCache[viewMonthKey];
-    if (!monthData?.entries) return {};
-
-    const calendar = {};
-    Object.keys(monthData.entries).forEach((dateStr) => {
-      const [year, month, day] = dateStr.split("-");
-      const key = `${parseInt(year)}-${parseInt(month) - 1}-${parseInt(day)}`;
-      calendar[key] = monthData.entries[dateStr];
-    });
-    return calendar;
+    return monthData?.entries || {};
   }, [monthlyCache, viewMonthKey]);
 
   // 최근 엔트리 (모든 캐시된 데이터에서)
@@ -143,7 +139,9 @@ const Home = () => {
   };
 
   const formatDateKey = (year, month, day) => {
-    return `${year}-${month}-${day}`;
+    const monthStr = String(month + 1).padStart(2, "0");
+    const dayStr = String(day).padStart(2, "0");
+    return `${year}-${monthStr}-${dayStr}`;
   };
 
   const handleMonthChange = async (direction) => {
@@ -193,9 +191,8 @@ const Home = () => {
     const posts = calendarData[dateKey];
 
     if (posts && posts.length > 0) {
-      const monthStr = String(month + 1).padStart(2, "0");
-      const dayStr = String(day).padStart(2, "0");
-      navigate(`/post/${year}-${monthStr}-${dayStr}`);
+      // 이미 올바른 형식
+      navigate(`/post/${dateKey}`);
     } else if (isValidDate(year, month, day)) {
       const selectedDate = new Date(year, month, day);
       postStorage.saveSelectedDate(selectedDate.toISOString());
@@ -284,7 +281,7 @@ const Home = () => {
                   onClick={() => handleDateClick(day)}
                   className={`
                      aspect-square rounded-full flex items-center justify-center text-sm
-                     relative 
+                     relative
                      ${
                        hasEntry
                          ? isJustCreated

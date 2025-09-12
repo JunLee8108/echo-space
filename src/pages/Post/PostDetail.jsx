@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { ChevronLeft, Smile, Meh, Frown } from "lucide-react";
+import { ChevronLeft, Smile, Meh, Frown, MoreVertical } from "lucide-react";
 
 import { usePostsByDate, usePostActions } from "../../stores/postStore";
 import { useUserId } from "../../stores/userStore";
@@ -8,6 +8,7 @@ import {
   fetchSinglePost,
   updatePostAIProcessingStatus,
 } from "../../services/postService";
+import ActionModal from "../../components/UI/ActionModal";
 
 const MOOD_ICONS = {
   happy: {
@@ -34,6 +35,8 @@ const PostDetail = () => {
   const posts = usePostsByDate(date);
   const { updateSinglePost } = usePostActions();
   const { loadMonthData, hasMonthCache } = usePostActions();
+
+  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
 
   useEffect(() => {
     // Store에 데이터가 없으면 해당 월 데이터 로드
@@ -101,6 +104,22 @@ const PostDetail = () => {
     handleStatus();
   }, [posts?.[0]?.id, posts?.[0]?.aiProcessingStatus]);
 
+  // Action handlers
+  const handleAddEntry = () => {
+    // TODO: Implement add another entry
+    console.log("Add another entry for date:", date);
+  };
+
+  const handleEdit = () => {
+    // TODO: Implement edit
+    console.log("Edit post");
+  };
+
+  const handleDelete = () => {
+    // TODO: Implement delete
+    console.log("Delete post");
+  };
+
   if (!posts) {
     return (
       <div className="min-h-screen bg-white">
@@ -122,12 +141,19 @@ const PostDetail = () => {
     <div className="min-h-screen bg-white">
       <div className="max-w-2xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-center mb-6">
+        <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => navigate("/")}
             className="p-2 -m-2 hover:bg-gray-50 rounded-lg transition-colors"
           >
             <ChevronLeft className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={() => setIsActionModalOpen(true)}
+            className="p-2 -m-2 hover:bg-gray-50 rounded-lg transition-colors"
+          >
+            <MoreVertical className="w-5 h-5" />
           </button>
         </div>
 
@@ -208,6 +234,15 @@ const PostDetail = () => {
           ))}
         </div>
       </div>
+
+      {/* Action Modal */}
+      <ActionModal
+        isOpen={isActionModalOpen}
+        onClose={() => setIsActionModalOpen(false)}
+        onAddEntry={handleAddEntry}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
     </div>
   );
 };
