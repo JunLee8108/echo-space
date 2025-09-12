@@ -334,7 +334,7 @@ const ActionModal = ({ isOpen, onClose, onAddEntry, onEdit, onDelete }) => {
         {/* Modal - Bottom Sheet Style */}
         <div
           ref={modalRef}
-          className="absolute max-w-[500px] min-h-[50dvh] mx-auto bottom-0 left-0 right-0 bg-white border-t border-gray-300 shadow-xl select-none"
+          className="absolute overscroll-contain max-w-[500px] min-h-[50dvh] mx-auto bottom-0 left-0 right-0 bg-white border-t border-gray-300 shadow-xl select-none"
           style={{
             transform: isAnimating ? "translateY(0)" : "translateY(100%)",
             transition: isAnimating
