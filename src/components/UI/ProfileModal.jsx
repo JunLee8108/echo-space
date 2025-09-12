@@ -116,7 +116,7 @@ const AffinityInfoModal = ({ isOpen, onClose, affinityTier, userLanguage }) => {
   return (
     <div
       style={{ background: "rgba(0, 0, 0, 0.7)" }}
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      className="fixed inset-0 z-70 flex items-center justify-center p-4"
     >
       <div
         ref={modalRef}
@@ -219,10 +219,13 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
     userLanguage === "Korean"
       ? character?.korean_name || "알 수없는 캐릭터"
       : character?.name || character?.character || "Unknown Character";
+
   const characterDes =
     userLanguage === "Korean"
       ? character?.korean_description
       : character?.description;
+
+  // console.log(character);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -262,7 +265,7 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
         <div
           ref={modalRef}
           className="relative w-[90%] max-w-[380px] h-auto max-h-[70dvh] mb-[90px] sm:mb-[70px] overflow-y-auto bg-white rounded-3xl shadow-2xl"
@@ -423,72 +426,6 @@ const ProfileModal = ({ isOpen, onClose, character }) => {
                 </div>
               </div>
             )}
-
-            {/* Additional Info */}
-            <div className="space-y-3">
-              {character.background && (
-                <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-stone-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg
-                      className="w-4 h-4 text-stone-600"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-stone-500 font-medium mb-0.5">
-                      Background
-                    </p>
-                    <p className="text-sm text-stone-700">
-                      {character.background}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {character.interests && character.interests.length > 0 && (
-                <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-stone-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg
-                      className="w-4 h-4 text-stone-600"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                      />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-stone-500 font-medium mb-1">
-                      Interests
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {character.interests.map((interest, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-block px-3 py-1 bg-stone-200 text-stone-700 text-xs font-medium rounded-full"
-                        >
-                          {interest}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>

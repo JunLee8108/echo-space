@@ -45,7 +45,8 @@ export async function getMonthlyPosts(userId, startDate, endDate) {
            description,
            korean_description,
            avatar_url,
-           User_Character (
+           personality,
+           User_Character!inner (
               affinity
            )
          )
@@ -59,6 +60,7 @@ export async function getMonthlyPosts(userId, startDate, endDate) {
      `
       )
       .eq("user_id", userId)
+      .eq("Comment.Character.User_Character.user_id", userId)
       .gte("entry_date", startDate.split("T")[0])
       .lte("entry_date", endDate.split("T")[0])
       .order("entry_date", { ascending: false })
@@ -90,7 +92,7 @@ export async function getMonthlyPosts(userId, startDate, endDate) {
 }
 
 // ===================== 단일 포스트 전체 데이터 fetch (AI 댓글 포함) =====================
-export async function fetchSinglePost(postId) {
+export async function fetchSinglePost(postId, userId) {
   const { data, error } = await supabase
     .from("Post")
     .select(
@@ -114,9 +116,10 @@ export async function fetchSinglePost(postId) {
           korean_name,
           description,
           korean_description,
+          personality,
           avatar_url,
-          User_Character (
-            affinity
+          User_Character!inner (
+              affinity
           )
         )
       ),
@@ -129,6 +132,7 @@ export async function fetchSinglePost(postId) {
     `
     )
     .eq("id", postId)
+    .eq("Comment.Character.User_Character.user_id", userId)
     .single();
 
   if (error) throw error;
@@ -339,6 +343,7 @@ function formatPostForHome(post) {
             korean_description: comment.Character?.korean_description,
             affinity: comment.Character?.User_Character[0]?.affinity || 0,
             avatarUrl: comment.Character?.avatar_url,
+            personality: comment.Character?.personality || [],
           },
         })) || [],
 

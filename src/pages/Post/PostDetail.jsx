@@ -18,6 +18,7 @@ import {
 } from "../../services/postService";
 import { postStorage } from "../../components/utils/postStorage";
 import ActionModal from "../../components/UI/ActionModal";
+import ProfileModal from "../../components/UI/ProfileModal";
 
 const MOOD_ICONS = {
   happy: {
@@ -38,7 +39,7 @@ const MOOD_ICONS = {
 };
 
 // Collapsible Comments Component with Performance Optimization
-const CollapsibleComments = ({ postId, reflections }) => {
+const CollapsibleComments = ({ postId, reflections, onAvatarClick }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [height, setHeight] = useState(0);
   const contentRef = useRef(null);
@@ -135,7 +136,7 @@ const CollapsibleComments = ({ postId, reflections }) => {
                   <img
                     src={reflection.character.avatarUrl}
                     alt={reflection.character.name}
-                    className="w-8 h-8 rounded-2xl object-cover border-2 border-white shadow-sm"
+                    className="w-8 h-8 rounded-2xl object-cover border-2 border-white shadow-sm cursor-pointer"
                   />
                 </div>
               ))}
@@ -193,7 +194,8 @@ const CollapsibleComments = ({ postId, reflections }) => {
               <img
                 src={reflection.character.avatarUrl}
                 alt={reflection.character.name}
-                className="w-8 h-8 cursor-pointer rounded-2xl object-cover flex-shrink-0 transition-transform hover:scale-105"
+                className="w-8 h-8 cursor-pointer rounded-2xl object-cover flex-shrink-0"
+                onClick={() => onAvatarClick(reflection)}
               />
               <div className="flex-1">
                 <p className="text-xs font-semibold text-gray-900 mb-1">
@@ -220,6 +222,12 @@ const PostDetail = () => {
   const { loadMonthData, hasMonthCache } = usePostActions();
 
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+
+  // ProfileModal state 추가
+  const [profileModal, setProfileModal] = useState({
+    show: false,
+    character: null,
+  });
 
   useEffect(() => {
     // Store에 데이터가 없으면 해당 월 데이터 로드
@@ -268,7 +276,7 @@ const PostDetail = () => {
 
       // 나머지 경우: fetch 필요
       try {
-        const updatedPost = await fetchSinglePost(post.id);
+        const updatedPost = await fetchSinglePost(post.id, userId);
 
         if (
           updatedPost.aiProcessingStatus === "completed" &&
@@ -286,6 +294,25 @@ const PostDetail = () => {
 
     handleStatus();
   }, [posts?.[0]?.id, posts?.[0]?.aiProcessingStatus]);
+
+  // Avatar click handler
+  const handleAvatarClick = (reflection) => {
+    const characterData = {
+      id: reflection.character.id || reflection.id,
+      avatar_url: reflection.character.avatarUrl,
+      name: reflection.character.name,
+      korean_name: reflection.character.koreanName,
+      description: reflection.character.description || "",
+      korean_description: reflection.character.korean_description || "",
+      personality: reflection.character.personality || "",
+      affinity: reflection.character.affinity,
+    };
+
+    setProfileModal({
+      show: true,
+      character: characterData,
+    });
+  };
 
   // Action handlers
   const handleAddEntry = () => {
@@ -396,11 +423,12 @@ const PostDetail = () => {
                 </div>
               )}
 
-              {/* AI Reflections - Now Collapsible */}
+              {/* AI Reflections - Now Collapsible with Avatar Click Handler */}
               {post.aiReflections.length > 0 && (
                 <CollapsibleComments
                   postId={post.id}
                   reflections={post.aiReflections}
+                  onAvatarClick={handleAvatarClick}
                 />
               )}
             </div>
@@ -415,6 +443,13 @@ const PostDetail = () => {
         onAddEntry={handleAddEntry}
         onEdit={handleEdit}
         onDelete={handleDelete}
+      />
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={profileModal.show}
+        onClose={() => setProfileModal({ show: false, character: null })}
+        character={profileModal.character}
       />
     </div>
   );
