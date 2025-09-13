@@ -505,7 +505,7 @@ const ActionModal = ({
       state.currentY > DISTANCE_THRESHOLD || velocity > VELOCITY_THRESHOLD;
 
     if (shouldClose) {
-      animateClose(state.currentY);
+      animateClose();
     } else {
       animateReset();
     }
@@ -536,6 +536,13 @@ const ActionModal = ({
     modalRef.current.style.transform = "translateY(0)";
     modalTransformRef.current = 0;
   }, []);
+
+  // 백드롭 클릭 핸들러 - 애니메이션과 함께 닫기
+  const handleBackdropClick = useCallback(() => {
+    if (!isClosingRef.current) {
+      animateClose();
+    }
+  }, [animateClose]);
 
   // 전역 터치 이벤트 (non-passive로 명시적 설정)
   useEffect(() => {
@@ -580,11 +587,11 @@ const ActionModal = ({
     };
   }, [isVisible, handleTouchStart, handleTouchMove, handleTouchEnd]);
 
-  // ESC 키로 닫기
+  // ESC 키로 닫기 - 애니메이션과 함께
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape" && isOpen && !isClosingRef.current) {
-        onClose();
+        animateClose();
       }
     };
 
@@ -592,7 +599,7 @@ const ActionModal = ({
       document.addEventListener("keydown", handleEscape);
       return () => document.removeEventListener("keydown", handleEscape);
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, animateClose]);
 
   if (!isVisible) return null;
 
@@ -639,13 +646,13 @@ const ActionModal = ({
     menuItems = [
       {
         icon: Edit3,
-        label: "Edit",
+        label: "Edit this entry",
         onClick: onEdit,
         className: "hover:bg-gray-50",
       },
       {
         icon: Trash2,
-        label: "Delete",
+        label: "Delete this entry",
         onClick: onDelete,
         className: "hover:bg-red-50 hover:text-red-600",
       },
@@ -657,7 +664,7 @@ const ActionModal = ({
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-60"
-        onClick={onClose}
+        onClick={handleBackdropClick}
         style={{
           pointerEvents: isAnimating ? "auto" : "none",
         }}
@@ -697,10 +704,12 @@ const ActionModal = ({
                     key={index}
                     onClick={() => {
                       if (isClosingRef.current) return;
-                      onClose();
+                      // 애니메이션과 함께 닫기
+                      animateClose();
+                      // 애니메이션 완료 후 액션 실행
                       setTimeout(() => {
                         item.onClick?.();
-                      }, 100);
+                      }, ANIMATION_DURATION + 50);
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${item.className}`}
                   >
@@ -709,6 +718,20 @@ const ActionModal = ({
                   </button>
                 );
               })}
+            </div>
+
+            {/* Cancel Button */}
+            <div className="border-t border-gray-100 mt-2 pt-2">
+              <button
+                onClick={() => {
+                  if (isClosingRef.current) return;
+                  animateClose();
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+              >
+                <X className="w-5 h-5" />
+                <span className="text-base">Cancel</span>
+              </button>
             </div>
           </div>
         </div>
