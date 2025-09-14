@@ -32,3 +32,20 @@
   animation: slideIn 0.3s ease-out;
   animation-fill-mode: both;
 }
+
+.swipe-hint {
+  animation: swipeHint 2s ease-in-out;
+}
+
+@keyframes swipeHint {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-10px);
+  }
+  75% {
+    transform: translateX(10px);
+  }
+}
