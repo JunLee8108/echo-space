@@ -381,9 +381,8 @@
 // export default Home;
 
 // pages/Home.jsx
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router";
-import { useSwipeable } from "react-swipeable";
 import {
   ChevronLeft,
   ChevronRight,
@@ -426,9 +425,22 @@ const Home = () => {
   const navigate = useNavigate();
 
   const [justCreatedDate, setJustCreatedDate] = useState(null);
-  const [isSwipingLeft, setIsSwipingLeft] = useState(false);
-  const [isSwipingRight, setIsSwipingRight] = useState(false);
-  const [isSwiping, setIsSwiping] = useState(false);
+
+  // 스와이프 상태 관리
+  const [swipeState, setSwipeState] = useState({
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    currentY: 0,
+    deltaX: 0,
+    direction: null, // 'horizontal' | 'vertical' | null
+    isDragging: false,
+    isAnimating: false,
+  });
+
+  // Ref for calendar container
+  const calendarRef = useRef(null);
+  const animationFrameRef = useRef(null);
 
   const monthlyCache = useMonthlyCache();
   const currentMonthKey = useCurrentMonth();
@@ -536,14 +548,25 @@ const Home = () => {
 
     // 미래 월로 이동 방지
     if (isCurrentOrFutureMonth(newMonth)) {
-      if (direction > 0) {
-        setIsSwipingLeft(true);
-        setTimeout(() => setIsSwipingLeft(false), 300);
-      }
+      // 바운스 애니메이션
+      setSwipeState((prev) => ({ ...prev, isAnimating: true }));
+      setTimeout(() => {
+        setSwipeState((prev) => ({ ...prev, isAnimating: false, deltaX: 0 }));
+      }, 300);
       return;
     }
 
-    setViewMonth(newMonth);
+    // 월 변경 애니메이션
+    setSwipeState((prev) => ({ ...prev, isAnimating: true }));
+
+    setTimeout(() => {
+      setViewMonth(newMonth);
+      setSwipeState((prev) => ({
+        ...prev,
+        isAnimating: false,
+        deltaX: 0,
+      }));
+    }, 300);
 
     const newMonthKey = `${newMonth.getFullYear()}-${String(
       newMonth.getMonth() + 1
@@ -573,7 +596,8 @@ const Home = () => {
   };
 
   const handleDateClick = (day) => {
-    if (isSwiping) return;
+    // 스와이프 중에는 클릭 무시
+    if (swipeState.isDragging) return;
 
     const year = viewMonth.getFullYear();
     const month = viewMonth.getMonth();
@@ -593,54 +617,217 @@ const Home = () => {
     navigate(`/post/${dateStr}`);
   };
 
-  // 스와이프 핸들러 설정 - react-swipeable 설정만으로 완벽 구현
-  const swipeHandlers = useSwipeable({
-    // 스와이프 콜백
-    onSwipeStart: (eventData) => {
-      setIsSwiping(true);
-    },
-    onSwipedLeft: () => {
-      handleMonthChange(1);
-    },
-    onSwipedRight: () => {
-      handleMonthChange(-1);
-    },
-    onSwiping: (eventData) => {
-      // 가로 움직임이 세로보다 큰 경우에만 스와이프로 인식
-      if (Math.abs(eventData.deltaX) > Math.abs(eventData.deltaY)) {
-        if (eventData.dir === "Left") {
-          setIsSwipingLeft(true);
-          setIsSwipingRight(false);
-        } else if (eventData.dir === "Right") {
-          setIsSwipingRight(true);
-          setIsSwipingLeft(false);
+  // 스와이프 상태 초기화
+  const resetSwipeState = () => {
+    setSwipeState({
+      startX: 0,
+      startY: 0,
+      currentX: 0,
+      currentY: 0,
+      deltaX: 0,
+      direction: null,
+      isDragging: false,
+      isAnimating: false,
+    });
+  };
+
+  // 터치 시작
+  const handleTouchStart = (e) => {
+    // 멀티 터치 방지
+    if (e.touches.length > 1) return;
+
+    const touch = e.touches[0];
+    setSwipeState({
+      startX: touch.clientX,
+      startY: touch.clientY,
+      currentX: touch.clientX,
+      currentY: touch.clientY,
+      deltaX: 0,
+      direction: null,
+      isDragging: true,
+      isAnimating: false,
+    });
+  };
+
+  // 터치 이동
+  const handleTouchMove = (e) => {
+    if (!swipeState.isDragging) return;
+    if (e.touches.length > 1) return;
+
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - swipeState.startX;
+    const deltaY = touch.clientY - swipeState.startY;
+
+    // 방향이 아직 결정되지 않았다면
+    if (!swipeState.direction) {
+      // 10px 이상 움직였을 때 방향 결정
+      if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+          // 가로 움직임이 더 크면 스와이프로 판단
+          setSwipeState((prev) => ({
+            ...prev,
+            direction: "horizontal",
+            currentX: touch.clientX,
+            currentY: touch.clientY,
+            deltaX: deltaX,
+          }));
+        } else {
+          // 세로 움직임이 더 크면 스크롤로 판단
+          setSwipeState((prev) => ({
+            ...prev,
+            direction: "vertical",
+            isDragging: false,
+          }));
         }
       }
-    },
-    onTouchEndOrOnMouseUp: () => {
+    } else if (swipeState.direction === "horizontal") {
+      // 가로 스와이프 중일 때만 preventDefault 호출하여 세로 스크롤 차단
+      e.preventDefault();
+
+      // 저항감 있는 드래그 (최대 100px)
+      const resistance = 0.3;
+      const maxDelta = 100;
+      let adjustedDelta = deltaX * resistance;
+
+      if (Math.abs(adjustedDelta) > maxDelta) {
+        adjustedDelta = adjustedDelta > 0 ? maxDelta : -maxDelta;
+      }
+
+      // requestAnimationFrame으로 부드러운 업데이트
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+
+      animationFrameRef.current = requestAnimationFrame(() => {
+        setSwipeState((prev) => ({
+          ...prev,
+          currentX: touch.clientX,
+          currentY: touch.clientY,
+          deltaX: adjustedDelta,
+        }));
+      });
+    }
+    // direction이 'vertical'이면 아무것도 하지 않음 (일반 스크롤 허용)
+  };
+
+  // 터치 종료
+  const handleTouchEnd = () => {
+    if (!swipeState.isDragging) return;
+
+    if (swipeState.direction === "horizontal") {
+      const threshold = 50; // 50px 이상 움직여야 월 변경
+      const actualDelta = swipeState.currentX - swipeState.startX;
+
+      if (Math.abs(actualDelta) > threshold) {
+        if (actualDelta > 0) {
+          // 오른쪽 스와이프 → 이전 달
+          handleMonthChange(-1);
+        } else {
+          // 왼쪽 스와이프 → 다음 달
+          handleMonthChange(1);
+        }
+      } else {
+        // 임계값 미달 시 원위치로 애니메이션
+        setSwipeState((prev) => ({ ...prev, isAnimating: true, deltaX: 0 }));
+        setTimeout(() => {
+          resetSwipeState();
+        }, 300);
+      }
+    } else {
+      resetSwipeState();
+    }
+  };
+
+  // 마우스 이벤트 (데스크톱 지원)
+  const handleMouseDown = (e) => {
+    setSwipeState({
+      startX: e.clientX,
+      startY: e.clientY,
+      currentX: e.clientX,
+      currentY: e.clientY,
+      deltaX: 0,
+      direction: null,
+      isDragging: true,
+      isAnimating: false,
+    });
+  };
+
+  const handleMouseMove = (e) => {
+    if (!swipeState.isDragging) return;
+
+    const deltaX = e.clientX - swipeState.startX;
+    const deltaY = e.clientY - swipeState.startY;
+
+    if (!swipeState.direction) {
+      if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+          setSwipeState((prev) => ({
+            ...prev,
+            direction: "horizontal",
+            currentX: e.clientX,
+            currentY: e.clientY,
+            deltaX: deltaX * 0.3, // 저항감
+          }));
+        } else {
+          setSwipeState((prev) => ({
+            ...prev,
+            direction: "vertical",
+            isDragging: false,
+          }));
+        }
+      }
+    } else if (swipeState.direction === "horizontal") {
+      e.preventDefault();
+
+      const resistance = 0.3;
+      const maxDelta = 100;
+      let adjustedDelta = deltaX * resistance;
+
+      if (Math.abs(adjustedDelta) > maxDelta) {
+        adjustedDelta = adjustedDelta > 0 ? maxDelta : -maxDelta;
+      }
+
+      setSwipeState((prev) => ({
+        ...prev,
+        currentX: e.clientX,
+        currentY: e.clientY,
+        deltaX: adjustedDelta,
+      }));
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (!swipeState.isDragging) return;
+
+    if (swipeState.direction === "horizontal") {
+      const threshold = 50;
+      const actualDelta = swipeState.currentX - swipeState.startX;
+
+      if (Math.abs(actualDelta) > threshold) {
+        if (actualDelta > 0) {
+          handleMonthChange(-1);
+        } else {
+          handleMonthChange(1);
+        }
+      } else {
+        setSwipeState((prev) => ({ ...prev, isAnimating: true, deltaX: 0 }));
+        setTimeout(() => {
+          resetSwipeState();
+        }, 300);
+      }
+    } else {
+      resetSwipeState();
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (swipeState.isDragging) {
+      setSwipeState((prev) => ({ ...prev, isAnimating: true, deltaX: 0 }));
       setTimeout(() => {
-        setIsSwiping(false);
-        setIsSwipingLeft(false);
-        setIsSwipingRight(false);
-      }, 100);
-    },
-
-    // 핵심 스크롤 차단 설정
-    preventScrollOnSwipe: true, // 스와이프 중 스크롤 방지
-    preventDefaultTouchmoveEvent: true, // touchmove 기본 동작 차단
-
-    // 이벤트 옵션
-    touchEventOptions: { passive: false }, // preventDefault 허용
-
-    // 감도 및 방향 설정
-    delta: 10, // 빠른 감지를 위한 낮은 임계값
-    rotationAngle: 0, // 정확히 수평 스와이프만 인식
-    swipeDuration: Infinity, // 시간 제한 없음
-
-    // 추적 설정
-    trackTouch: true, // 터치 추적 활성화
-    trackMouse: true, // 마우스 드래그도 지원
-  });
+        resetSwipeState();
+      }, 300);
+    }
+  };
 
   // 로딩 상태
   if (!userId) {
@@ -664,7 +851,7 @@ const Home = () => {
           <button
             onClick={() => handleMonthChange(-1)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            disabled={isSwiping}
+            disabled={swipeState.isDragging}
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
@@ -677,25 +864,38 @@ const Home = () => {
           <button
             onClick={() => handleMonthChange(1)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            disabled={isSwiping}
+            disabled={swipeState.isDragging}
           >
             <ChevronRight className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Calendar Grid with Swipe */}
+        {/* Calendar Grid with Custom Swipe */}
         <div
-          {...swipeHandlers}
+          ref={calendarRef}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
           className={`
-            mb-8 select-none transition-transform duration-300 ease-out relative
-            ${isSwipingLeft ? "-translate-x-2" : ""}
-            ${isSwipingRight ? "translate-x-2" : ""}
-            ${isSwiping ? "cursor-grabbing" : "cursor-grab"}
+            mb-8 select-none relative overflow-hidden
+            ${
+              swipeState.isDragging && swipeState.direction === "horizontal"
+                ? "cursor-grabbing"
+                : "cursor-grab"
+            }
           `}
           style={{
+            transform: `translateX(${swipeState.deltaX}px)`,
+            transition: swipeState.isAnimating
+              ? "transform 0.3s ease-out"
+              : "none",
             WebkitUserSelect: "none",
             userSelect: "none",
-            // 터치 액션은 react-swipeable이 자동 처리
+            touchAction: "pan-y", // 기본적으로 세로 스크롤 허용
           }}
         >
           <div className="grid grid-cols-7 gap-3 mb-4">
@@ -746,9 +946,9 @@ const Home = () => {
                          ? "text-gray-300 cursor-not-allowed"
                          : "text-gray-500 hover:bg-gray-200 cursor-pointer"
                      }
-                     ${isSwiping ? "pointer-events-none" : ""}
+                     ${swipeState.isDragging ? "pointer-events-none" : ""}
                    `}
-                  disabled={isFuture || isLoading || isSwiping}
+                  disabled={isFuture || isLoading || swipeState.isDragging}
                 >
                   {String(day)}
                 </button>
@@ -788,7 +988,7 @@ const Home = () => {
                     key={dateStr}
                     onClick={() => handleRecentEntryClick(dateStr)}
                     className="w-full text-left rounded-lg p-2 transition-colors hover:bg-gray-50"
-                    disabled={isSwiping}
+                    disabled={swipeState.isDragging}
                   >
                     <div className="flex items-start gap-4">
                       <span className="text-3xl font-bold">
