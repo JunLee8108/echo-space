@@ -429,16 +429,17 @@ const Home = () => {
   const [isSwipingLeft, setIsSwipingLeft] = useState(false);
   const [isSwipingRight, setIsSwipingRight] = useState(false);
   const [isSwiping, setIsSwiping] = useState(false);
+  const [touchAction, setTouchAction] = useState("auto"); // 동적 touch-action 관리
 
   const monthlyCache = useMonthlyCache();
   const currentMonthKey = useCurrentMonth();
-  const viewMonth = useViewMonth(); // store에서 가져옴
+  const viewMonth = useViewMonth();
   const {
     loadCurrentMonth,
     loadMonthData,
     prefetchAdjacentMonths,
     hasMonthCache,
-    setViewMonth, // store의 setter 사용
+    setViewMonth,
   } = usePostActions();
 
   const viewMonthKey = `${viewMonth.getFullYear()}-${String(
@@ -450,7 +451,6 @@ const Home = () => {
   useEffect(() => {
     if (userId && !currentMonthKey) {
       loadCurrentMonth(userId).then(() => {
-        // 현재 월 로드 후 인접 월 프리페치 (선택적)
         const currentKey = `${new Date().getFullYear()}-${String(
           new Date().getMonth() + 1
         ).padStart(2, "0")}`;
@@ -473,10 +473,9 @@ const Home = () => {
         "0"
       )}`;
 
-      // 작성한 날짜의 월이 현재 뷰 월과 같으면 강제 리로드
       if (createdMonthKey === viewMonthKey) {
         console.log("Force reloading month after post creation:", viewMonthKey);
-        loadMonthData(userId, viewMonthKey, true); // true = forceReload
+        loadMonthData(userId, viewMonthKey, true);
       }
 
       setJustCreatedDate(createdDateKey);
@@ -513,7 +512,6 @@ const Home = () => {
       }
     });
 
-    // 날짜순 정렬하고 최근 4개만
     return allEntries
       .sort((a, b) => b.dateStr.localeCompare(a.dateStr))
       .slice(0, 4);
@@ -539,7 +537,6 @@ const Home = () => {
 
     // 미래 월로 이동 방지
     if (isCurrentOrFutureMonth(newMonth)) {
-      // 바운스 효과를 위한 애니메이션
       if (direction > 0) {
         setIsSwipingLeft(true);
         setTimeout(() => setIsSwipingLeft(false), 300);
@@ -547,14 +544,12 @@ const Home = () => {
       return;
     }
 
-    setViewMonth(newMonth); // store의 setter 사용
+    setViewMonth(newMonth);
 
-    // 새로운 월로 이동 시 데이터 로드 (useEffect에서 처리됨)
     const newMonthKey = `${newMonth.getFullYear()}-${String(
       newMonth.getMonth() + 1
     ).padStart(2, "0")}`;
 
-    // 인접 월 프리페치
     if (userId) {
       prefetchAdjacentMonths(userId, newMonthKey);
     }
@@ -579,7 +574,6 @@ const Home = () => {
   };
 
   const handleDateClick = (day) => {
-    // 스와이프 중에는 클릭 무시
     if (isSwiping) return;
 
     const year = viewMonth.getFullYear();
@@ -604,17 +598,15 @@ const Home = () => {
   const swipeHandlers = useSwipeable({
     onSwipeStart: () => {
       setIsSwiping(true);
+      setTouchAction("pan-x"); // 스와이프 시작 시 세로 스크롤 차단
     },
     onSwipedLeft: () => {
-      // 왼쪽으로 스와이프 = 다음 달
       handleMonthChange(1);
     },
     onSwipedRight: () => {
-      // 오른쪽으로 스와이프 = 이전 달
       handleMonthChange(-1);
     },
     onSwiping: (eventData) => {
-      // 스와이프 중 시각적 피드백
       if (eventData.dir === "Left") {
         setIsSwipingLeft(true);
         setIsSwipingRight(false);
@@ -624,17 +616,17 @@ const Home = () => {
       }
     },
     onTouchEndOrOnMouseUp: () => {
-      // 스와이프 종료 시 상태 초기화
       setTimeout(() => {
         setIsSwiping(false);
         setIsSwipingLeft(false);
         setIsSwipingRight(false);
+        setTouchAction("auto"); // 스와이프 종료 시 세로 스크롤 복원
       }, 100);
     },
-    preventScrollOnSwipe: false, // touch-action으로 처리하므로 false
-    trackMouse: true, // 데스크톱에서도 마우스 드래그로 스와이프 가능
-    delta: 50, // 최소 스와이프 거리 (픽셀)
-    swipeDuration: 500, // 스와이프 인식 최대 시간 (밀리초)
+    preventScrollOnSwipe: true, // 스와이프 중 preventDefault 호출
+    trackMouse: true,
+    delta: 50,
+    swipeDuration: 500,
   });
 
   // 로딩 상태
@@ -688,10 +680,7 @@ const Home = () => {
             ${isSwiping ? "cursor-grabbing" : "cursor-grab"}
           `}
           style={{
-            // touch-action으로 스크롤 제어
-            // pan-x: 가로 스와이프만 허용
-            // pinch-zoom: 핀치 줌은 허용
-            touchAction: "pan-x pinch-zoom",
+            touchAction: touchAction, // 동적으로 변경되는 touch-action
             WebkitUserSelect: "none",
             userSelect: "none",
           }}
@@ -747,10 +736,6 @@ const Home = () => {
                      ${isSwiping ? "pointer-events-none" : ""}
                    `}
                   disabled={isFuture || isLoading || isSwiping}
-                  style={{
-                    // 개별 버튼에서는 기본 터치 동작 허용
-                    touchAction: "auto",
-                  }}
                 >
                   {String(day)}
                 </button>
