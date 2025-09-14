@@ -429,7 +429,6 @@ const Home = () => {
   const [isSwipingLeft, setIsSwipingLeft] = useState(false);
   const [isSwipingRight, setIsSwipingRight] = useState(false);
   const [isSwiping, setIsSwiping] = useState(false);
-  const [touchAction, setTouchAction] = useState("auto"); // 동적 touch-action 관리
 
   const monthlyCache = useMonthlyCache();
   const currentMonthKey = useCurrentMonth();
@@ -594,11 +593,11 @@ const Home = () => {
     navigate(`/post/${dateStr}`);
   };
 
-  // 스와이프 핸들러 설정
+  // 스와이프 핸들러 설정 - react-swipeable 설정만으로 완벽 구현
   const swipeHandlers = useSwipeable({
-    onSwipeStart: () => {
+    // 스와이프 콜백
+    onSwipeStart: (eventData) => {
       setIsSwiping(true);
-      setTouchAction("pan-x"); // 스와이프 시작 시 세로 스크롤 차단
     },
     onSwipedLeft: () => {
       handleMonthChange(1);
@@ -607,12 +606,15 @@ const Home = () => {
       handleMonthChange(-1);
     },
     onSwiping: (eventData) => {
-      if (eventData.dir === "Left") {
-        setIsSwipingLeft(true);
-        setIsSwipingRight(false);
-      } else if (eventData.dir === "Right") {
-        setIsSwipingRight(true);
-        setIsSwipingLeft(false);
+      // 가로 움직임이 세로보다 큰 경우에만 스와이프로 인식
+      if (Math.abs(eventData.deltaX) > Math.abs(eventData.deltaY)) {
+        if (eventData.dir === "Left") {
+          setIsSwipingLeft(true);
+          setIsSwipingRight(false);
+        } else if (eventData.dir === "Right") {
+          setIsSwipingRight(true);
+          setIsSwipingLeft(false);
+        }
       }
     },
     onTouchEndOrOnMouseUp: () => {
@@ -620,13 +622,24 @@ const Home = () => {
         setIsSwiping(false);
         setIsSwipingLeft(false);
         setIsSwipingRight(false);
-        setTouchAction("auto"); // 스와이프 종료 시 세로 스크롤 복원
       }, 100);
     },
-    preventScrollOnSwipe: true, // 스와이프 중 preventDefault 호출
-    trackMouse: true,
-    delta: 50,
-    swipeDuration: 500,
+
+    // 핵심 스크롤 차단 설정
+    preventScrollOnSwipe: true, // 스와이프 중 스크롤 방지
+    preventDefaultTouchmoveEvent: true, // touchmove 기본 동작 차단
+
+    // 이벤트 옵션
+    touchEventOptions: { passive: false }, // preventDefault 허용
+
+    // 감도 및 방향 설정
+    delta: 10, // 빠른 감지를 위한 낮은 임계값
+    rotationAngle: 0, // 정확히 수평 스와이프만 인식
+    swipeDuration: Infinity, // 시간 제한 없음
+
+    // 추적 설정
+    trackTouch: true, // 터치 추적 활성화
+    trackMouse: true, // 마우스 드래그도 지원
   });
 
   // 로딩 상태
@@ -680,9 +693,9 @@ const Home = () => {
             ${isSwiping ? "cursor-grabbing" : "cursor-grab"}
           `}
           style={{
-            touchAction: touchAction, // 동적으로 변경되는 touch-action
             WebkitUserSelect: "none",
             userSelect: "none",
+            // 터치 액션은 react-swipeable이 자동 처리
           }}
         >
           <div className="grid grid-cols-7 gap-3 mb-4">
@@ -721,7 +734,7 @@ const Home = () => {
                   onClick={() => handleDateClick(day)}
                   className={`
                      aspect-square rounded-full flex items-center justify-center text-sm
-                     relative 
+                     relative
                      ${
                        hasEntry
                          ? isJustCreated
