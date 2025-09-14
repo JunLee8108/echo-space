@@ -428,6 +428,7 @@ const Home = () => {
   const [justCreatedDate, setJustCreatedDate] = useState(null);
   const [isSwipingLeft, setIsSwipingLeft] = useState(false);
   const [isSwipingRight, setIsSwipingRight] = useState(false);
+  const [isSwiping, setIsSwiping] = useState(false);
 
   const monthlyCache = useMonthlyCache();
   const currentMonthKey = useCurrentMonth();
@@ -578,6 +579,9 @@ const Home = () => {
   };
 
   const handleDateClick = (day) => {
+    // 스와이프 중에는 클릭 무시
+    if (isSwiping) return;
+
     const year = viewMonth.getFullYear();
     const month = viewMonth.getMonth();
     const dateKey = formatDateKey(year, month, day);
@@ -598,6 +602,9 @@ const Home = () => {
 
   // 스와이프 핸들러 설정
   const swipeHandlers = useSwipeable({
+    onSwipeStart: () => {
+      setIsSwiping(true);
+    },
     onSwipedLeft: () => {
       // 왼쪽으로 스와이프 = 다음 달
       handleMonthChange(1);
@@ -618,10 +625,13 @@ const Home = () => {
     },
     onTouchEndOrOnMouseUp: () => {
       // 스와이프 종료 시 상태 초기화
-      setIsSwipingLeft(false);
-      setIsSwipingRight(false);
+      setTimeout(() => {
+        setIsSwiping(false);
+        setIsSwipingLeft(false);
+        setIsSwipingRight(false);
+      }, 100);
     },
-    preventScrollOnSwipe: true,
+    preventScrollOnSwipe: false, // touch-action으로 처리하므로 false
     trackMouse: true, // 데스크톱에서도 마우스 드래그로 스와이프 가능
     delta: 50, // 최소 스와이프 거리 (픽셀)
     swipeDuration: 500, // 스와이프 인식 최대 시간 (밀리초)
@@ -649,6 +659,7 @@ const Home = () => {
           <button
             onClick={() => handleMonthChange(-1)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={isSwiping}
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
@@ -661,6 +672,7 @@ const Home = () => {
           <button
             onClick={() => handleMonthChange(1)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={isSwiping}
           >
             <ChevronRight className="w-6 h-6" />
           </button>
@@ -670,11 +682,21 @@ const Home = () => {
         <div
           {...swipeHandlers}
           className={`
-            mb-8 select-none transition-transform duration-300 ease-out
-            // ${isSwipingLeft ? "-translate-x-2" : ""}
-            // ${isSwipingRight ? "translate-x-2" : ""}
+            mb-8 select-none transition-transform duration-300 ease-out relative
+            ${isSwipingLeft ? "-translate-x-2" : ""}
+            ${isSwipingRight ? "translate-x-2" : ""}
+            ${isSwiping ? "cursor-grabbing" : "cursor-grab"}
           `}
-          style={{ touchAction: "pan-y" }}
+          style={{
+            // touch-action으로 스크롤 제어
+            // pan-x: 가로 스와이프만 허용
+            // pinch-zoom: 핀치 줌은 허용
+            touchAction: "pan-x pinch-zoom",
+            WebkitUserSelect: "none",
+            userSelect: "none",
+            // 스와이프 영역의 높이를 명시적으로 설정하여 더 나은 터치 영역 제공
+            minHeight: "400px",
+          }}
         >
           <div className="grid grid-cols-7 gap-3 mb-4">
             {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day) => (
@@ -712,7 +734,7 @@ const Home = () => {
                   onClick={() => handleDateClick(day)}
                   className={`
                      aspect-square rounded-full flex items-center justify-center text-sm
-                     relative
+                     relative 
                      ${
                        hasEntry
                          ? isJustCreated
@@ -724,8 +746,13 @@ const Home = () => {
                          ? "text-gray-300 cursor-not-allowed"
                          : "text-gray-500 hover:bg-gray-200 cursor-pointer"
                      }
+                     ${isSwiping ? "pointer-events-none" : ""}
                    `}
-                  disabled={isFuture || isLoading}
+                  disabled={isFuture || isLoading || isSwiping}
+                  style={{
+                    // 개별 버튼에서는 기본 터치 동작 허용
+                    touchAction: "auto",
+                  }}
                 >
                   {String(day)}
                 </button>
@@ -735,7 +762,7 @@ const Home = () => {
 
           {/* 로딩 중 오버레이 */}
           {isLoading && (
-            <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-white/50 flex items-center justify-center pointer-events-none">
               <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
             </div>
           )}
@@ -765,6 +792,7 @@ const Home = () => {
                     key={dateStr}
                     onClick={() => handleRecentEntryClick(dateStr)}
                     className="w-full text-left rounded-lg p-2 transition-colors hover:bg-gray-50"
+                    disabled={isSwiping}
                   >
                     <div className="flex items-start gap-4">
                       <span className="text-3xl font-bold">
