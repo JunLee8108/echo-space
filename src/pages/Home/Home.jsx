@@ -694,8 +694,6 @@ const Home = () => {
             touchAction: "pan-x pinch-zoom",
             WebkitUserSelect: "none",
             userSelect: "none",
-            // 스와이프 영역의 높이를 명시적으로 설정하여 더 나은 터치 영역 제공
-            minHeight: "400px",
           }}
         >
           <div className="grid grid-cols-7 gap-3 mb-4">
