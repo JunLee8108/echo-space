@@ -420,13 +420,6 @@ const MOOD_ICONS = {
   },
 };
 
-// 스와이프 관련 상수
-const SWIPE_THRESHOLD = 50; // 스와이프 인식 최소 거리 (px)
-const SWIPE_VELOCITY_THRESHOLD = 0.3; // 빠른 스와이프 속도 임계값
-const ANIMATION_DURATION = 300; // 애니메이션 지속 시간 (ms)
-const DRAG_RESISTANCE = 0.5; // 드래그 저항 계수
-const BOUNCE_RESISTANCE = 0.2; // 경계에서의 바운스 저항
-
 const Home = () => {
   const userId = useUserId();
   const navigate = useNavigate();
@@ -434,18 +427,12 @@ const Home = () => {
   const [justCreatedDate, setJustCreatedDate] = useState(null);
 
   // 스와이프 관련 상태
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
+  const [touchStartY, setTouchStartY] = useState(0);
+  const [touchCurrentY, setTouchCurrentY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [calendarHeight, setCalendarHeight] = useState(0);
 
-  // 터치 시작 시간 (속도 계산용)
-  const touchStartTime = useRef(null);
-  const calendarRef = useRef(null);
   const containerRef = useRef(null);
-  const swipeAreaRef = useRef(null);
 
   const monthlyCache = useMonthlyCache();
   const currentMonthKey = useCurrentMonth();
@@ -475,50 +462,6 @@ const Home = () => {
     date.setMonth(date.getMonth() + 1);
     return date;
   }, [viewMonth]);
-
-  // 캘린더 높이 측정
-  useEffect(() => {
-    if (calendarRef.current) {
-      const resizeObserver = new ResizeObserver((entries) => {
-        for (let entry of entries) {
-          setCalendarHeight(entry.contentRect.height);
-        }
-      });
-      resizeObserver.observe(calendarRef.current);
-      return () => resizeObserver.disconnect();
-    }
-  }, []);
-
-  // 스크롤 방지를 위한 이벤트 리스너
-  useEffect(() => {
-    const element = swipeAreaRef.current;
-    if (!element) return;
-
-    const preventScroll = (e) => {
-      if (isDragging) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    // touchmove 이벤트에 passive: false 설정
-    element.addEventListener("touchmove", preventScroll, { passive: false });
-
-    // 드래그 중일 때 body 스크롤도 방지
-    if (isDragging) {
-      document.body.style.overflow = "hidden";
-      document.body.style.touchAction = "none";
-    } else {
-      document.body.style.overflow = "";
-      document.body.style.touchAction = "";
-    }
-
-    return () => {
-      element.removeEventListener("touchmove", preventScroll);
-      document.body.style.overflow = "";
-      document.body.style.touchAction = "";
-    };
-  }, [isDragging]);
 
   // 초기 로드: 현재 월 데이터
   useEffect(() => {
@@ -634,159 +577,67 @@ const Home = () => {
   };
 
   // 터치 이벤트 핸들러
-  const handleTouchStart = useCallback(
-    (e) => {
-      if (isAnimating) return;
+  const handleTouchStart = (e) => {
+    if (isAnimating) return;
+    setTouchStartY(e.touches[0].clientY);
+    setTouchCurrentY(e.touches[0].clientY);
+    setIsDragging(true);
+  };
 
-      // 캘린더 영역 내에서만 스와이프 활성화
-      const touch = e.touches[0];
-      setTouchStart(touch.clientY);
-      setTouchEnd(null);
-      setIsDragging(true);
-      touchStartTime.current = Date.now();
-    },
-    [isAnimating]
-  );
+  const handleTouchMove = (e) => {
+    if (!isDragging || isAnimating) return;
+    e.preventDefault();
+    setTouchCurrentY(e.touches[0].clientY);
+  };
 
-  const handleTouchMove = useCallback(
-    (e) => {
-      if (!touchStart || isAnimating) return;
+  const handleTouchEnd = () => {
+    if (!isDragging || isAnimating) return;
 
-      e.preventDefault(); // 스크롤 방지
+    const diff = touchCurrentY - touchStartY;
+    const threshold = 50;
 
-      const touch = e.touches[0];
-      const currentTouch = touch.clientY;
-      setTouchEnd(currentTouch);
-
-      // 드래그 오프셋 계산
-      let offset = (currentTouch - touchStart) * DRAG_RESISTANCE;
-
-      // 경계 저항 적용
-      // 아래로 드래그(이전 월로 가려는 경우)
-      if (offset > 0) {
-        // 첫 번째 월인지 체크 (더 이상 이전 월이 없는 경우)
-        const isFirstAvailableMonth = false; // 필요시 구현
-        if (isFirstAvailableMonth) {
-          offset = offset * BOUNCE_RESISTANCE;
-          offset = Math.min(offset, 30); // 최대 30px 바운스
-        }
-      }
-      // 위로 드래그(다음 월로 가려는 경우)
-      else if (offset < 0) {
-        // 미래 월인지 체크
-        if (isCurrentOrFutureMonth(nextMonth)) {
-          offset = offset * BOUNCE_RESISTANCE;
-          offset = Math.max(offset, -30); // 최대 -30px 바운스
-        }
-      }
-
-      setDragOffset(offset);
-    },
-    [touchStart, isAnimating, nextMonth]
-  );
-
-  const handleTouchEnd = useCallback(async () => {
-    if (!touchStart || !touchEnd || isAnimating) {
-      setIsDragging(false);
-      setDragOffset(0);
-      return;
-    }
-
-    const distance = touchEnd - touchStart;
-    const absDistance = Math.abs(distance);
-    const velocity = absDistance / (Date.now() - touchStartTime.current);
-
-    // 스와이프 판정
-    if (absDistance > SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY_THRESHOLD) {
-      setIsAnimating(true);
-
-      if (distance > 0) {
-        // 아래로 스와이프 → 이전 월로 이동
-        // (이전 월이 위에서 아래로 내려옴)
-        setDragOffset(calendarHeight);
-
-        setTimeout(() => {
-          setViewMonth(prevMonth);
-          setDragOffset(0);
-          setIsAnimating(false);
-
-          if (userId) {
-            const prevMonthKey = `${prevMonth.getFullYear()}-${String(
-              prevMonth.getMonth() + 1
-            ).padStart(2, "0")}`;
-            prefetchAdjacentMonths(userId, prevMonthKey);
-          }
-        }, ANIMATION_DURATION);
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        // 아래로 스와이프 - 이전 월로
+        handleMonthChange(-1);
       } else {
-        // 위로 스와이프 → 다음 월로 이동
-        // (다음 월이 아래에서 위로 올라옴)
+        // 위로 스와이프 - 다음 월로
         if (!isCurrentOrFutureMonth(nextMonth)) {
-          setDragOffset(-calendarHeight);
-
-          setTimeout(() => {
-            setViewMonth(nextMonth);
-            setDragOffset(0);
-            setIsAnimating(false);
-
-            if (userId) {
-              const nextMonthKey = `${nextMonth.getFullYear()}-${String(
-                nextMonth.getMonth() + 1
-              ).padStart(2, "0")}`;
-              prefetchAdjacentMonths(userId, nextMonthKey);
-            }
-          }, ANIMATION_DURATION);
-        } else {
-          // 미래 월로는 이동 불가 - 바운스 백
-          setDragOffset(0);
-          setTimeout(() => {
-            setIsAnimating(false);
-          }, ANIMATION_DURATION);
+          handleMonthChange(1);
         }
       }
-    } else {
-      // 스와이프 취소 - 원위치로 복귀
-      setDragOffset(0);
-      setTimeout(() => {
-        setIsAnimating(false);
-      }, ANIMATION_DURATION);
     }
 
     setIsDragging(false);
-    setTouchStart(null);
-    setTouchEnd(null);
-  }, [
-    touchStart,
-    touchEnd,
-    isAnimating,
-    calendarHeight,
-    prevMonth,
-    nextMonth,
-    userId,
-    setViewMonth,
-    prefetchAdjacentMonths,
-  ]);
+    setTouchStartY(0);
+    setTouchCurrentY(0);
+  };
 
   const handleMonthChange = async (direction) => {
-    if (isAnimating) return;
-
     const newMonth = new Date(viewMonth);
     newMonth.setMonth(newMonth.getMonth() + direction);
 
-    // 미래 월로는 이동 불가
     if (direction === 1 && isCurrentOrFutureMonth(newMonth)) {
       return;
     }
 
     setIsAnimating(true);
 
-    // 버튼 클릭 시에도 자연스러운 애니메이션
-    // direction이 -1이면 이전 월 (아래로 스와이프 효과)
-    // direction이 1이면 다음 월 (위로 스와이프 효과)
-    setDragOffset(direction === -1 ? calendarHeight : -calendarHeight);
+    // 애니메이션을 위한 클래스 추가
+    if (containerRef.current) {
+      containerRef.current.style.opacity = "0.5";
+      containerRef.current.style.transform =
+        direction === 1 ? "translateY(-20px)" : "translateY(20px)";
+    }
 
     setTimeout(() => {
       setViewMonth(newMonth);
-      setDragOffset(0);
+
+      if (containerRef.current) {
+        containerRef.current.style.opacity = "1";
+        containerRef.current.style.transform = "translateY(0)";
+      }
+
       setIsAnimating(false);
 
       const newMonthKey = `${newMonth.getFullYear()}-${String(
@@ -795,27 +646,14 @@ const Home = () => {
       if (userId) {
         prefetchAdjacentMonths(userId, newMonthKey);
       }
-    }, ANIMATION_DURATION);
+    }, 200);
   };
 
-  const handleDateClick = (day, monthOffset = 0) => {
-    if (isDragging || isAnimating) return; // 드래그 중이거나 애니메이션 중에는 클릭 무시
-
-    const targetMonth = new Date(viewMonth);
-    targetMonth.setMonth(targetMonth.getMonth() + monthOffset);
-
-    const year = targetMonth.getFullYear();
-    const month = targetMonth.getMonth();
+  const handleDateClick = (day) => {
+    const year = viewMonth.getFullYear();
+    const month = viewMonth.getMonth();
     const dateKey = formatDateKey(year, month, day);
-
-    let posts;
-    if (monthOffset === -1) {
-      posts = prevMonthData[dateKey];
-    } else if (monthOffset === 1) {
-      posts = nextMonthData[dateKey];
-    } else {
-      posts = calendarData[dateKey];
-    }
+    const posts = calendarData[dateKey];
 
     if (posts && posts.length > 0) {
       navigate(`/post/${dateKey}`);
@@ -830,66 +668,8 @@ const Home = () => {
     navigate(`/post/${dateStr}`);
   };
 
-  // 캘린더 그리드 렌더링 함수
-  const renderCalendarGrid = (month, data, monthOffset = 0) => {
-    const daysInMonth = getDaysInMonth(month);
-    const firstDay = getFirstDayOfMonth(month);
-    const year = month.getFullYear();
-    const monthNum = month.getMonth();
-
-    return (
-      <div className="grid grid-cols-7 gap-3">
-        {Array.from({ length: firstDay }).map((_, i) => (
-          <div key={`empty-${i}`} className="aspect-square" />
-        ))}
-
-        {Array.from({ length: daysInMonth }).map((_, i) => {
-          const day = i + 1;
-          const dateKey = formatDateKey(year, monthNum, day);
-          const hasEntry = data[dateKey];
-          const isToday =
-            new Date().toDateString() ===
-            new Date(year, monthNum, day).toDateString();
-          const isFuture = !isValidDate(year, monthNum, day);
-          const isJustCreated =
-            justCreatedDate === dateKey && monthOffset === 0;
-
-          return (
-            <button
-              key={day}
-              onClick={() => handleDateClick(day, monthOffset)}
-              className={`
-                aspect-square rounded-full flex items-center justify-center text-sm
-                relative transition-all select-none
-                ${
-                  hasEntry
-                    ? isJustCreated
-                      ? "bg-blue-500 text-white font-medium animate-pulse ring-2 ring-blue-300"
-                      : "text-shadow-sm text-gray-900 underline underline-offset-4 font-semibold cursor-pointer hover:bg-gray-300"
-                    : isToday
-                    ? "text-black font-medium hover:bg-gray-200"
-                    : isFuture
-                    ? "text-gray-300 cursor-not-allowed"
-                    : "text-gray-500 hover:bg-gray-200 cursor-pointer"
-                }
-              `}
-              disabled={isFuture || isLoading}
-            >
-              {String(day)}
-            </button>
-          );
-        })}
-      </div>
-    );
-  };
-
-  // 월 이름 렌더링 함수
-  const renderMonthTitle = (month) => {
-    return month.toLocaleDateString("en-US", {
-      month: "short",
-      year: "numeric",
-    });
-  };
+  // 드래그 오프셋 계산
+  const dragOffset = isDragging ? (touchCurrentY - touchStartY) * 0.3 : 0;
 
   if (!userId) {
     return (
@@ -916,8 +696,11 @@ const Home = () => {
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h2 className="text-md font-medium min-w-[120px] text-center select-none">
-            {renderMonthTitle(viewMonth)}
+          <h2 className="text-md font-medium min-w-[120px] text-center">
+            {viewMonth.toLocaleDateString("en-US", {
+              month: "short",
+              year: "numeric",
+            })}
           </h2>
           <button
             onClick={() => handleMonthChange(1)}
@@ -928,99 +711,78 @@ const Home = () => {
           </button>
         </div>
 
-        {/* Calendar Container with Swipe */}
+        {/* Calendar Grid with Touch Support */}
         <div
           ref={containerRef}
-          className="mb-8 overflow-hidden"
-          style={{ height: calendarHeight || "auto" }}
+          className="mb-8 transition-all duration-200"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{
+            transform: `translateY(${dragOffset}px)`,
+            opacity: isDragging ? 0.8 : 1,
+            touchAction: "none",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+          }}
         >
-          {/* Week Days Header */}
-          <div className="grid grid-cols-7 gap-3 mb-4 relative z-10">
+          <div className="grid grid-cols-7 gap-3 mb-4">
             {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day) => (
               <div
                 key={day}
-                className="text-center text-xs text-gray-500 font-medium py-2 select-none"
+                className="text-center text-xs text-gray-500 font-medium py-2"
               >
                 {day}
               </div>
             ))}
           </div>
 
-          {/* Swipeable Calendar Area */}
-          <div
-            ref={swipeAreaRef}
-            className="relative touch-none"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            style={{
-              transform: `translateY(${dragOffset}px)`,
-              transition: !isDragging
-                ? `transform ${ANIMATION_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`
-                : "none",
-              willChange: isDragging ? "transform" : "auto",
-            }}
-          >
-            {/* Previous Month (위에 숨겨짐) */}
-            <div
-              className="absolute w-full"
-              style={{
-                top: `-${calendarHeight}px`,
-                opacity:
-                  dragOffset > 0
-                    ? Math.min(1, dragOffset / (calendarHeight * 0.5))
-                    : 0,
-                pointerEvents:
-                  dragOffset > calendarHeight * 0.5 ? "auto" : "none",
-              }}
-            >
-              {/* 이전 월 타이틀 (스와이프 시 보임) */}
-              <div className="text-center mb-4 text-sm text-gray-600 font-medium">
-                {renderMonthTitle(prevMonth)}
-              </div>
-              {renderCalendarGrid(prevMonth, prevMonthData, -1)}
-            </div>
+          <div className="grid grid-cols-7 gap-3">
+            {Array.from({ length: getFirstDayOfMonth(viewMonth) }).map(
+              (_, i) => (
+                <div key={`empty-${i}`} className="aspect-square" />
+              )
+            )}
 
-            {/* Current Month */}
-            <div
-              ref={calendarRef}
-              style={{
-                opacity: 1 - Math.abs(dragOffset) / calendarHeight,
-              }}
-            >
-              {renderCalendarGrid(viewMonth, calendarData, 0)}
-            </div>
+            {Array.from({ length: getDaysInMonth(viewMonth) }).map((_, i) => {
+              const day = i + 1;
+              const year = viewMonth.getFullYear();
+              const month = viewMonth.getMonth();
+              const dateKey = formatDateKey(year, month, day);
+              const hasEntry = calendarData[dateKey];
+              const isToday =
+                new Date().toDateString() ===
+                new Date(year, month, day).toDateString();
+              const isFuture = !isValidDate(year, month, day);
+              const isJustCreated = justCreatedDate === dateKey;
 
-            {/* Next Month (아래에 숨겨짐) */}
-            <div
-              className="absolute w-full"
-              style={{
-                top: `${calendarHeight}px`,
-                opacity:
-                  dragOffset < 0
-                    ? Math.min(1, -dragOffset / (calendarHeight * 0.5))
-                    : 0,
-                pointerEvents:
-                  dragOffset < -calendarHeight * 0.5 ? "auto" : "none",
-              }}
-            >
-              {/* 다음 월 타이틀 (스와이프 시 보임) */}
-              <div className="text-center mb-4 text-sm text-gray-600 font-medium">
-                {renderMonthTitle(nextMonth)}
-              </div>
-              {renderCalendarGrid(nextMonth, nextMonthData, 1)}
-            </div>
+              return (
+                <button
+                  key={day}
+                  onClick={() => handleDateClick(day)}
+                  className={`
+                     aspect-square rounded-full flex items-center justify-center text-sm
+                     relative
+                     ${
+                       hasEntry
+                         ? isJustCreated
+                           ? "bg-blue-500 text-white font-medium animate-pulse ring-2 ring-blue-300"
+                           : "text-shadow-sm text-gray-900 underline underline-offset-4 font-semibold cursor-pointer hover:bg-gray-300"
+                         : isToday
+                         ? "text-black font-medium hover:bg-gray-200"
+                         : isFuture
+                         ? "text-gray-300 cursor-not-allowed"
+                         : "text-gray-500 hover:bg-gray-200 cursor-pointer"
+                     }
+                   `}
+                  disabled={isFuture || isLoading || isDragging}
+                >
+                  {String(day)}
+                </button>
+              );
+            })}
           </div>
         </div>
-
-        {/* Swipe Indicator (optional) */}
-        {isDragging && Math.abs(dragOffset) > 20 && (
-          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-            <div className="bg-black/50 text-white px-4 py-2 rounded-full text-sm">
-              {dragOffset > 0 ? "← Previous Month" : "Next Month →"}
-            </div>
-          </div>
-        )}
 
         {/* Recent Entries */}
         {recentEntries.length > 0 && (
@@ -1091,6 +853,16 @@ const Home = () => {
           </>
         )}
       </div>
+
+      {/* CSS 추가 (Home.css에 추가하거나 인라인 스타일로) */}
+      <style jsx>{`
+        @media (pointer: coarse) {
+          /* 터치 디바이스에서만 적용 */
+          .calendar-container {
+            -webkit-overflow-scrolling: touch;
+          }
+        }
+      `}</style>
     </div>
   );
 };
