@@ -419,6 +419,8 @@ const DiaryFriendWebsite = () => {
     }
   };
 
+  console.log(language);
+
   return (
     <div
       className="min-h-screen bg-white"
@@ -633,7 +635,11 @@ const DiaryFriendWebsite = () => {
             <span className="inline-block px-4 py-2 bg-white text-gray-700 rounded-full text-xs font-semibold uppercase tracking-wider mb-6 border border-gray-200">
               {t.features.tag}
             </span>
-            <h2 className="text-3xl md:text-5xl font-semibold text-gray-900 mb-6 leading-[1.3]">
+            <h2
+              className={`text-3xl md:text-5xl font-semibold text-gray-900 mb-6 ${
+                language === "en" ? "leading-[1.15]" : "leading-[1.3]"
+              }`}
+            >
               {t.features.title}
               <br />
               <span className="text-emerald-600">
@@ -723,7 +729,11 @@ const DiaryFriendWebsite = () => {
             <span className="inline-block px-4 py-2 bg-white text-gray-700 rounded-full text-xs font-semibold uppercase tracking-wider mb-6 border border-gray-200">
               {t.howItWorks.tag}
             </span>
-            <h2 className="text-3xl md:text-5xl font-semibold text-gray-900 mb-6 leading-[1.3]">
+            <h2
+              className={`text-3xl md:text-5xl font-semibold text-gray-900 mb-6 ${
+                language === "en" ? "leading-[1.15]" : "leading-[1.3]"
+              }`}
+            >
               {t.howItWorks.title}
               <br />
               <span className="text-emerald-600">
@@ -771,7 +781,11 @@ const DiaryFriendWebsite = () => {
             <span className="inline-block px-4 py-2 bg-white text-gray-700 rounded-full text-xs font-semibold uppercase tracking-wider mb-6 border border-gray-200">
               {t.aiFriends.tag}
             </span>
-            <h2 className="text-3xl md:text-5xl font-semibold text-gray-900 mb-6 leading-[1.3]">
+            <h2
+              className={`text-3xl md:text-5xl font-semibold text-gray-900 mb-6 ${
+                language === "en" ? "leading-[1.15]" : "leading-[1.3]"
+              }`}
+            >
               {t.aiFriends.title}
               <br />
               <span className="text-emerald-600">
