@@ -15,7 +15,6 @@
   .prose p {
     margin-top: 0;
     margin-bottom: 0;
-    /* 원하는 스타일 */
   }
 
   .prose p:empty {
@@ -37,12 +36,16 @@ html {
   overflow-y: scroll;
 }
 
-#root {
+/* #root {
   width: 100%;
   max-width: 500px;
   min-height: 100dvh;
   background-color: #fff;
   margin: 0 auto;
+} */
+
+#root {
+  width: 100%;
 }
 
 :root {

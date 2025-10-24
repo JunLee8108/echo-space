@@ -4,7 +4,6 @@ import { devtools, subscribeWithSelector } from "zustand/middleware";
 import {
   fetchUserCreatedAndSystemCharacters,
   switchUserCharacterFollow,
-  updateMultipleCharacterAffinities,
   batchToggleFollow, // 새로 추가된 배치 함수
 } from "../services/characterService";
 
@@ -313,78 +312,6 @@ const useCharacterStore = create(
         return shuffled.slice(0, count);
       },
 
-      // Affinity 업데이트 액션 추가
-      updateCharacterAffinities: async (affinityUpdates) => {
-        const { userId, characters } = get();
-        if (!userId || !affinityUpdates.length) return [];
-
-        try {
-          // 서버 업데이트
-          const results = await updateMultipleCharacterAffinities(
-            userId,
-            affinityUpdates
-          );
-
-          // 성공한 업데이트만 로컬 상태에 반영
-          const updatedCharacters = characters.map((char) => {
-            const successResult = results.find(
-              (r) => r.success !== false && r.character_id === char.id
-            );
-
-            if (successResult) {
-              return {
-                ...char,
-                affinity: successResult.affinity,
-              };
-            }
-            return char;
-          });
-
-          const updatedDerivedState =
-            get().updateDerivedState(updatedCharacters);
-
-          set({
-            characters: updatedCharacters,
-            ...updatedDerivedState,
-            cache: {
-              data: updatedCharacters,
-              timestamp: Date.now(),
-              promise: null,
-            },
-          });
-
-          return results;
-        } catch (error) {
-          console.error("Affinity update failed:", error);
-          throw error;
-        }
-      },
-
-      // 로컬 상태만 업데이트하는 함수 추가 (DB 호출 없음)
-      updateLocalCharacterAffinity: (characterId, increment) => {
-        const { characters, updateDerivedState } = get();
-
-        // 캐릭터 찾아서 affinity 업데이트
-        const updatedCharacters = characters.map((char) =>
-          char.id === characterId
-            ? { ...char, affinity: (char.affinity || 0) + increment }
-            : char
-        );
-
-        const updatedDerivedState = updateDerivedState(updatedCharacters);
-
-        // 로컬 상태와 캐시만 업데이트 (DB 호출 없음)
-        set({
-          characters: updatedCharacters,
-          ...updatedDerivedState,
-          cache: {
-            data: updatedCharacters,
-            timestamp: Date.now(),
-            promise: null,
-          },
-        });
-      },
-
       // Clear cache
       clearCache: () => {
         set({
@@ -428,12 +355,6 @@ export const useCharacterActions = () => {
   const getRandomCharacters = useCharacterStore(
     (state) => state.getRandomCharacters
   );
-  const updateCharacterAffinities = useCharacterStore(
-    (state) => state.updateCharacterAffinities
-  );
-  const updateLocalCharacterAffinity = useCharacterStore(
-    (state) => state.updateLocalCharacterAffinity // 추가
-  );
   const refreshCharacters = useCharacterStore(
     (state) => state.refreshCharacters
   );
@@ -445,8 +366,6 @@ export const useCharacterActions = () => {
     toggleFollow,
     batchToggleFollow,
     getRandomCharacters,
-    updateCharacterAffinities,
-    updateLocalCharacterAffinity, // 추가
     refreshCharacters,
     clearCache,
     loadCharacters,
