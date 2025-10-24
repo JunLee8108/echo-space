@@ -598,10 +598,10 @@ const DiaryFriendWebsite = () => {
       >
         <div className="max-w-7xl mx-auto">
           <div className="space-y-8 fade-up text-center">
-            <h1 className="text-3xl md:text-5xl font-bold text-gray-900 leading-[1.15]">
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-[1.15]">
               {t.hero.title}
             </h1>
-            <p className="text-xl md:text-2xl font-medium text-gray-700 leading-relaxed">
+            <p className="text-lg md:text-xl lg:text-2xl font-medium text-gray-700 leading-relaxed">
               {t.hero.subtitle}
             </p>
             <div className="flex justify-center flex-wrap gap-4 pt-4">
