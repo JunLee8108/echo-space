@@ -574,14 +574,14 @@ const DiaryFriendWebsite = () => {
               >
                 {t.nav.download}
               </button>
-              <div className="border-t border-gray-200 pt-3">
-                <button
-                  onClick={() => {
-                    toggleLanguage();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex items-center gap-2 py-2 text-gray-700 hover:text-emerald-600 transition-colors"
-                >
+              <div
+                className="border-t border-gray-200 pt-3"
+                onClick={() => {
+                  toggleLanguage();
+                  setMobileMenuOpen(false);
+                }}
+              >
+                <button className="flex items-center gap-2 py-2 text-gray-700 hover:text-emerald-600 transition-colors">
                   <Globe className="w-5 h-5" />
                   <span>{language === "ko" ? "English" : "한국어"}</span>
                 </button>
