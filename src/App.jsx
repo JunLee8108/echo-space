@@ -478,7 +478,11 @@ const DiaryFriendWebsite = () => {
       {/* Navbar */}
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6 ${
-          scrolled ? "bg-white shadow-sm" : "bg-transparent"
+          scrolled && !mobileMenuOpen
+            ? "bg-white shadow-sm"
+            : scrolled
+            ? "bg-white"
+            : "bg-transparent"
         }`}
       >
         <div className="max-w-7xl mx-auto py-2 sm:py-4">
@@ -545,38 +549,43 @@ const DiaryFriendWebsite = () => {
 
           {/* Mobile Menu */}
           {mobileMenuOpen && (
-            <div className="md:hidden mt-4 pb-4 space-y-3">
+            <div className="md:hidden mt-2 pb-4 space-y-3 bg-white rounded-2xl shadow-lg border border-gray-200 p-4">
               <button
                 onClick={() => scrollToSection("features")}
-                className="block w-full text-left py-2 text-gray-700"
+                className="block w-full text-left py-2 text-gray-700 hover:text-emerald-600 transition-colors"
               >
                 {t.nav.features}
               </button>
               <button
                 onClick={() => scrollToSection("how-it-works")}
-                className="block w-full text-left py-2 text-gray-700"
+                className="block w-full text-left py-2 text-gray-700 hover:text-emerald-600 transition-colors"
               >
                 {t.nav.howItWorks}
               </button>
               <button
                 onClick={() => scrollToSection("ai-friends")}
-                className="block w-full text-left py-2 text-gray-700"
+                className="block w-full text-left py-2 text-gray-700 hover:text-emerald-600 transition-colors"
               >
                 {t.nav.aiFriends}
               </button>
               <button
                 onClick={() => scrollToSection("download")}
-                className="block w-full text-left py-2 text-gray-700"
+                className="block w-full text-left py-2 text-gray-700 hover:text-emerald-600 transition-colors"
               >
                 {t.nav.download}
               </button>
-              <button
-                onClick={toggleLanguage}
-                className="flex items-center gap-2 py-2 text-gray-700"
-              >
-                <Globe className="w-5 h-5" />
-                <span>{language === "ko" ? "English" : "한국어"}</span>
-              </button>
+              <div className="border-t border-gray-200 pt-3">
+                <button
+                  onClick={() => {
+                    toggleLanguage();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 py-2 text-gray-700 hover:text-emerald-600 transition-colors"
+                >
+                  <Globe className="w-5 h-5" />
+                  <span>{language === "ko" ? "English" : "한국어"}</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
