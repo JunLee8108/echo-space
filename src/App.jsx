@@ -596,7 +596,7 @@ const DiaryFriendWebsite = () => {
         ref={heroRef}
         className="pt-32 h-screen flex items-center justify-center pb-32 px-6 bg-white"
       >
-        <div className="max-w-7xl mx-auto pb-12">
+        <div className="max-w-7xl mx-auto pb-24 sm:pb-10">
           <div className="space-y-8 fade-up text-center">
             <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-[1.15]">
               {t.hero.title}
