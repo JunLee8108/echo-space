@@ -350,7 +350,23 @@ const translations = {
 // 언어 Hook
 const useLanguage = () => {
   const [language, setLanguage] = useState(() => {
-    return localStorage.getItem("language") || "en";
+    // 1. localStorage에 저장된 언어가 있으면 그것을 사용
+    const savedLanguage = localStorage.getItem("language");
+    if (savedLanguage) {
+      return savedLanguage;
+    }
+
+    // 2. 없으면 브라우저 언어 감지
+    const browserLanguage = navigator.language || navigator.languages[0];
+    // 'ko-KR', 'ko' 등의 형식에서 'ko'만 추출
+    const detectedLanguage = browserLanguage.toLowerCase().startsWith("ko")
+      ? "ko"
+      : "en";
+
+    // 3. 감지된 언어를 localStorage에 저장
+    localStorage.setItem("language", detectedLanguage);
+
+    return detectedLanguage;
   });
 
   const toggleLanguage = () => {
@@ -418,8 +434,6 @@ const DiaryFriendWebsite = () => {
       setMobileMenuOpen(false);
     }
   };
-
-  console.log(language);
 
   return (
     <div
